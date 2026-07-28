@@ -1,0 +1,18 @@
+# Operating system and editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and generated archives
+*.log
+*.zip
+
+# Test and tool caches
+.coverage
+.pytest_cache/
+

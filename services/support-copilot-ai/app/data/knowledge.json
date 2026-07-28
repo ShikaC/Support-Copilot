@@ -1,0 +1,102 @@
+[
+  {
+    "chunk_id": "chunk-billing-07",
+    "document_id": "kb-billing-policy",
+    "document_title": "账单异常与退款处理政策",
+    "section": "3.2 重复扣款",
+    "content": "确认同一账单周期、相同金额与相同支付方式出现两笔已完成交易后，应创建支付核验记录。客服不得在交易核验完成前承诺退款到账时间。",
+    "source_uri": "kb://billing-policy/v3#duplicate-charge",
+    "categories": ["BILLING"],
+    "keywords": ["重复扣款", "重复支付", "两笔扣款", "账单"]
+  },
+  {
+    "chunk_id": "chunk-payment-04",
+    "document_id": "kb-payment-runbook",
+    "document_title": "支付争议处理手册",
+    "section": "2.1 核验所需信息",
+    "content": "支付核验需要订单号、扣款日期、金额和支付渠道。涉及重复扣款时，工单优先级至少为高，并转交账务支持组复核。",
+    "source_uri": "kb://payment-runbook/v5#verification",
+    "categories": ["BILLING"],
+    "keywords": ["支付核验", "订单号", "支付渠道", "账务支持"]
+  },
+  {
+    "chunk_id": "chunk-refund-02",
+    "document_id": "kb-refund-sla",
+    "document_title": "退款时效说明",
+    "section": "1.3 银行处理周期",
+    "content": "退款审核通过后，原路退回通常需要 3 至 7 个工作日。实际到账时间取决于发卡行，不应在核验前引用该时效。",
+    "source_uri": "kb://refund-sla/v2#bank-window",
+    "categories": ["BILLING"],
+    "keywords": ["退款", "到账", "银行", "工作日"]
+  },
+  {
+    "chunk_id": "chunk-account-sso-01",
+    "document_id": "kb-account-access",
+    "document_title": "账号访问故障排查手册",
+    "section": "3.1 企业 SSO",
+    "content": "企业 SSO 用户应先确认身份提供商状态与域名配置。若普通密码登录入口被禁用，不应要求用户重置平台密码。",
+    "source_uri": "kb://account-access/v4#sso",
+    "categories": ["ACCOUNT_ACCESS"],
+    "keywords": ["SSO", "Azure AD", "登录循环", "域名"]
+  },
+  {
+    "chunk_id": "chunk-account-lock-02",
+    "document_id": "kb-account-access",
+    "document_title": "账号访问故障排查手册",
+    "section": "1.4 连续验证失败",
+    "content": "连续五次验证失败会触发 30 分钟保护锁定。用户可等待自动解锁，或由管理员在确认身份后执行一次性解锁。",
+    "source_uri": "kb://account-access/v4#lockout",
+    "categories": ["ACCOUNT_ACCESS"],
+    "keywords": ["账号锁定", "登录失败", "解锁", "验证"]
+  },
+  {
+    "chunk_id": "chunk-invoice-03",
+    "document_id": "kb-invoice-guide",
+    "document_title": "电子发票服务规范",
+    "section": "2.4 抬头信息更正",
+    "content": "已开具电子发票的购买方名称填写错误时，需要先提交原发票作废申请。审核通过后，客服可以按正确抬头发起重新开具。",
+    "source_uri": "kb://invoice-guide/v3#title-correction",
+    "categories": ["INVOICE"],
+    "keywords": ["发票抬头", "作废重开", "公司名称", "电子发票"]
+  },
+  {
+    "chunk_id": "chunk-export-04",
+    "document_id": "kb-export-runbook",
+    "document_title": "数据导出任务排查手册",
+    "section": "4.1 长时间运行任务",
+    "content": "数据导出任务超过 30 分钟仍未完成时，应记录任务编号、数据量和开始时间，并由数据平台组检查队列与存储状态。",
+    "source_uri": "kb://export-runbook/v6#long-running",
+    "categories": ["DATA_EXPORT"],
+    "keywords": ["导出任务", "处理中", "任务编号", "数据量"]
+  },
+  {
+    "chunk_id": "chunk-subscription-02",
+    "document_id": "kb-plan-guide",
+    "document_title": "套餐与成员计费说明",
+    "section": "2.2 专业版成员",
+    "content": "专业版默认包含 20 位成员。超过默认数量后按新增席位计费，具体单价以当前有效的订单报价为准。",
+    "source_uri": "kb://plan-guide/v5#pro-members",
+    "categories": ["SUBSCRIPTION"],
+    "keywords": ["专业版", "成员上限", "协作者", "席位计费"]
+  },
+  {
+    "chunk_id": "chunk-privacy-05",
+    "document_id": "kb-privacy-policy",
+    "document_title": "数据主体请求处理规范",
+    "section": "4.2 导出与删除请求",
+    "content": "涉及员工数据导出或删除的请求必须完成申请人身份、企业授权和数据范围核验，并由隐私与合规组审批。",
+    "source_uri": "kb://privacy-policy/v2#export-delete",
+    "categories": ["PRIVACY"],
+    "keywords": ["数据删除", "离职员工", "授权材料", "数据导出"]
+  },
+  {
+    "chunk_id": "chunk-sync-2047",
+    "document_id": "kb-sync-errors",
+    "document_title": "桌面客户端同步错误码",
+    "section": "SYNC-2047",
+    "content": "SYNC-2047 通常表示同步连接在代理网络或旧版客户端中被中断。应记录客户端版本、系统版本和代理配置后继续排查。",
+    "source_uri": "kb://sync-errors/v7#SYNC-2047",
+    "categories": ["TECHNICAL"],
+    "keywords": ["SYNC-2047", "同步失败", "Windows", "代理"]
+  }
+]
