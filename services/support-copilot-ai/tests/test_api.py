@@ -25,7 +25,6 @@ def request_payload(
         "options": {
             "topN": 10,
             "topK": 3,
-            "enableRerank": False,
             "promptVersion": "ticket-analysis-v1",
         },
     }
@@ -75,3 +74,40 @@ def test_missing_recovery_evidence_returns_fallback() -> None:
     assert body["status"] == "FALLBACK"
     assert body["retrieval"]["hits"] == []
     assert body["decision"]["escalationRequired"] is True
+
+
+def test_rejects_top_k_larger_than_top_n() -> None:
+    payload = request_payload(
+        "企业账号无法登录",
+        "管理员和成员都无法进入工作区。",
+        "ACCOUNT_ACCESS",
+    )
+    payload["options"] = {
+        "topN": 3,
+        "topK": 10,
+        "promptVersion": "ticket-analysis-v1",
+    }
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == "top_k_exceeds_top_n"
+
+
+def test_rejects_unimplemented_rerank_option() -> None:
+    payload = request_payload(
+        "企业账号无法登录",
+        "管理员和成员都无法进入工作区。",
+        "ACCOUNT_ACCESS",
+    )
+    payload["options"] = {
+        "topN": 10,
+        "topK": 3,
+        "enableRerank": True,
+        "promptVersion": "ticket-analysis-v1",
+    }
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["type"] == "extra_forbidden"

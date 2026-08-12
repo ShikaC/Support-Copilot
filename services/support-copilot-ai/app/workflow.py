@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime
 
 from app.config import Settings
+from app.errors import RecoverableAiError
 from app.knowledge import KnowledgeRetriever
 from app.models import (
     AnalyzeRequest,
@@ -38,6 +39,9 @@ class AnalysisWorkflow:
         mode = "live" if live else "mock"
 
         try:
+            # AI 工作流有三个可见输出：
+            # 分类结果、检索证据和回复建议。
+            # 页面展示这些可审计结果，而不是假装展示模型隐藏推理。
             query = self._build_query(request)
             retrieval_started = time.perf_counter()
             hits = await self._retriever.search(
@@ -104,7 +108,9 @@ class AnalysisWorkflow:
                 ),
                 created_at=datetime.now(UTC),
             )
-        except Exception as exc:
+        # 只有经过外部依赖边界确认的可恢复错误才会降级。
+        # RuntimeError、AttributeError 等程序缺陷会继续抛出并留下真实错误信息。
+        except RecoverableAiError as exc:
             if not live:
                 raise
             logger.warning("Live analysis failed, switching to fallback: %s", exc)
@@ -248,6 +254,8 @@ class AnalysisWorkflow:
         hits: list[RetrievalHit],
         evidence_missing: bool,
     ) -> SuggestedReply:
+        # 当前会列出被采用的知识片段，但仅有引用列表不能证明回复中的每个结论都有证据支持。
+        # citation accuracy 仍需要用评估案例逐条核对“结论”和“引用内容”是否一致。
         citations = [
             f"{hit.document_title} {hit.section}"
             for hit in hits

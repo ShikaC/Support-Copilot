@@ -36,4 +36,6 @@ async def health() -> dict[str, object]:
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+    # FastAPI 会先用 AnalyzeRequest 校验传入 JSON，
+    # 工作流返回后再用 AnalyzeResponse 校验响应结构。
     return await workflow.run(request)

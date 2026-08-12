@@ -2,11 +2,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+from pydantic_core import PydanticCustomError
 
 
 class ApiModel(BaseModel):
+    # Java 发送的是 camelCase JSON；Python 内部仍使用 snake_case 字段名。
+    # extra="forbid" 会拒绝契约中不存在的字段，避免错误数据悄悄流入工作流。
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -28,6 +31,8 @@ class Sentiment(StrEnum):
 
 
 class TicketInput(ApiModel):
+    # Python 分析的是工单内容，不只是一条工单 ID。
+    # 标题和描述不能为空，并限制长度，避免无效或过大的输入进入 AI 流程。
     id: str
     subject: str = Field(min_length=1, max_length=240)
     description: str = Field(min_length=1, max_length=4000)
@@ -40,11 +45,21 @@ class TicketInput(ApiModel):
 class AnalyzeOptions(ApiModel):
     top_n: int = Field(default=10, ge=1, le=30)
     top_k: int = Field(default=3, ge=1, le=10)
-    enable_rerank: bool = False
     prompt_version: str = "ticket-analysis-v1"
+
+    @model_validator(mode="after")
+    def validate_retrieval_window(self) -> "AnalyzeOptions":
+        # 最终证据只能从第一轮候选中选出，因此 top_k 不能超过 top_n。
+        if self.top_k > self.top_n:
+            raise PydanticCustomError(
+                "top_k_exceeds_top_n",
+                "topK must be less than or equal to topN",
+            )
+        return self
 
 
 class AnalyzeRequest(ApiModel):
+    # Java 调用 /analyze 时必须交付：追踪标识、完整工单和检索选项。
     trace_id: str
     ticket: TicketInput
     options: AnalyzeOptions = AnalyzeOptions()
@@ -75,8 +90,10 @@ class RetrievalHit(ApiModel):
     content: str
     source_uri: str
     retrieval_method: str
+    # initial_rank 是第一轮召回名次，数字越小表示初始排名越靠前。
     initial_rank: int
     initial_score: float
+    # rerank_position 是调整后的最终名次，页面展示和 MRR 评估应使用最终名次。
     rerank_position: int
     rerank_score: float
     used_as_evidence: bool
