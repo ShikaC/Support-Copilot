@@ -4,12 +4,18 @@ from evaluation.models import EvaluationReport
 def render_markdown(report: EvaluationReport) -> str:
     metrics = report.metrics
     failed_cases = "、".join(report.failed_case_ids) or "无"
-    model_performance_rows = [
+    configuration_performance_rows = [
         (
-            f"| {model.model_name} | {model.total_cases} | "
-            f"{model.slow_case_count} | {model.slow_case_rate:.3f} |"
+            f"| {configuration.model_name} | {configuration.prompt_version} | "
+            f"{configuration.total_cases} | "
+            f"{configuration.classification_accuracy:.3f} | "
+            f"{configuration.priority_accuracy:.3f} | "
+            f"{configuration.high_risk_priority_downgrade_count} | "
+            f"{configuration.high_risk_priority_downgrade_rate:.3f} | "
+            f"{configuration.slow_case_count} | "
+            f"{configuration.slow_case_rate:.3f} |"
         )
-        for model in report.model_performance
+        for configuration in report.configuration_performance
     ]
     lines = [
         "# Support-Copilot Mock 评估报告",
@@ -18,6 +24,7 @@ def render_markdown(report: EvaluationReport) -> str:
         f"> 数据集：{report.dataset_name}",
         f"> 模式：{report.mode}",
         f"> 模型：{', '.join(report.model_names)}",
+        f"> 提示词版本：{', '.join(report.prompt_versions)}",
         f"> 结论：{'通过' if report.passed else '未通过'}",
         "",
         "## 运行环境",
@@ -50,11 +57,11 @@ def render_markdown(report: EvaluationReport) -> str:
         f"| 慢案例数量 | {metrics.slow_case_count} |",
         f"| 慢案例比例 | {metrics.slow_case_rate:.3f} |",
         "",
-        "## 分模型性能",
+        "## 分析配置性能",
         "",
-        "| 模型 | 总案例数 | 慢案例数 | 慢案例比例 |",
-        "| --- | ---: | ---: | ---: |",
-        *model_performance_rows,
+        "| 模型 | 提示词版本 | 总案例数 | 分类准确率 | 优先级准确率 | 高风险降级数 | 高风险降级比例 | 慢案例数 | 慢案例比例 |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        *configuration_performance_rows,
         "",
         "## 失败样例",
         "",

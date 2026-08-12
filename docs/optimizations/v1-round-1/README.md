@@ -33,6 +33,12 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 15. [记录评估实际使用的模型](./15-evaluation-model-names.md)
 16. [记录每条评估案例使用的模型](./16-case-model-attribution.md)
 17. [按模型统计慢案例比例](./17-model-slow-case-metrics.md)
+18. [将提示词版本绑定到实际提示词](./18-bind-prompt-version.md)
+19. [在评估报告中记录提示词版本](./19-report-prompt-versions.md)
+20. [按完整分析配置统计性能](./20-group-performance-by-analysis-configuration.md)
+21. [按分析配置统计分类准确率](./21-configuration-classification-accuracy.md)
+22. [按分析配置统计优先级准确率](./22-configuration-priority-accuracy.md)
+23. [统计高风险优先级降级](./23-high-risk-priority-downgrades.md)
 
 ## 优化后的主流程
 

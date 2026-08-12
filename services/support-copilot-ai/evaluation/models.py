@@ -98,9 +98,15 @@ class EvaluationMetrics(EvaluationModel):
     slow_case_rate: EvaluationRate
 
 
-class ModelPerformanceMetrics(EvaluationModel):
+class AnalysisConfigurationMetrics(EvaluationModel):
+    # 模型和提示词共同组成一次可比较的分析配置。
     model_name: str
+    prompt_version: str
     total_cases: int = Field(gt=0)
+    classification_accuracy: EvaluationRate
+    priority_accuracy: EvaluationRate
+    high_risk_priority_downgrade_count: int = Field(ge=0)
+    high_risk_priority_downgrade_rate: EvaluationRate
     slow_case_count: int = Field(ge=0)
     slow_case_rate: EvaluationRate
 
@@ -137,6 +143,7 @@ class CaseEvaluationResult(EvaluationModel):
     status: str
     mode: str
     model_name: str
+    prompt_version: str
     reply_content: str
     warnings: tuple[str, ...]
     duration_ms: int = Field(ge=0)
@@ -159,12 +166,13 @@ class EvaluationReport(EvaluationModel):
     dataset_name: str
     mode: str
     model_names: tuple[str, ...]
+    prompt_versions: tuple[str, ...]
     top_n: int
     top_k: int
     environment: EvaluationEnvironment
     thresholds: EvaluationThresholds
     metrics: EvaluationMetrics
-    model_performance: tuple[ModelPerformanceMetrics, ...]
+    configuration_performance: tuple[AnalysisConfigurationMetrics, ...]
     failed_case_ids: tuple[str, ...]
     cases: tuple[CaseEvaluationResult, ...]
     passed: bool

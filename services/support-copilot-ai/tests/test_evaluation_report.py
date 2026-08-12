@@ -5,7 +5,7 @@ import pytest
 
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
-from app.models import AnalyzeOptions
+from app.models import AnalyzeOptions, Priority
 from app.workflow import AnalysisWorkflow
 from evaluation.dataset import load_evaluation_cases
 from evaluation.markdown import render_markdown
@@ -30,7 +30,24 @@ async def test_build_report_preserves_current_mock_baseline() -> None:
     responses = tuple(
         response.model_copy(
             update={
-                "model_name": "model-x" if index == 0 else "model-y",
+                "model_name": "model-x" if index < 2 else "model-y",
+                "prompt_version": (
+                    "ticket-analysis-v1" if index == 0 else "ticket-analysis-v2"
+                ),
+                "classification": response.classification.model_copy(
+                    update={
+                        "category": (
+                            "ACCOUNT_ACCESS"
+                            if index == 1
+                            else response.classification.category
+                        ),
+                        "priority": (
+                            Priority.LOW
+                            if index == 1
+                            else response.classification.priority
+                        ),
+                    },
+                ),
                 "usage": response.usage.model_copy(
                     update={"duration_ms": duration_ms},
                 ),
@@ -52,33 +69,59 @@ async def test_build_report_preserves_current_mock_baseline() -> None:
         mode="mock",
     )
 
-    # Then: 报告保留批次指标、案例模型归属和分模型慢案例统计。
+    # Then: 相同模型使用不同提示词时，报告仍按完整配置分别统计。
     assert report.dataset_name == "tickets.jsonl"
     assert report.mode == "mock"
     assert report.model_names == ("model-x", "model-y")
+    assert report.prompt_versions == ("ticket-analysis-v1", "ticket-analysis-v2")
     assert report.cases[0].model_name == "model-x"
-    assert report.cases[1].model_name == "model-y"
-    assert report.model_performance[0].model_name == "model-x"
-    assert report.model_performance[0].total_cases == 1
-    assert report.model_performance[0].slow_case_count == 1
-    assert report.model_performance[0].slow_case_rate == pytest.approx(1.0)
-    assert report.model_performance[1].model_name == "model-y"
-    assert report.model_performance[1].total_cases == 17
-    assert report.model_performance[1].slow_case_count == 1
-    assert report.model_performance[1].slow_case_rate == pytest.approx(1 / 17)
+    assert report.cases[1].model_name == "model-x"
+    assert report.cases[0].prompt_version == "ticket-analysis-v1"
+    assert report.cases[1].prompt_version == "ticket-analysis-v2"
+    performance = report.configuration_performance
+    assert performance[0].model_name == "model-x"
+    assert performance[0].prompt_version == "ticket-analysis-v1"
+    assert performance[0].total_cases == 1
+    assert performance[0].classification_accuracy == pytest.approx(1.0)
+    assert performance[0].priority_accuracy == pytest.approx(1.0)
+    assert performance[0].high_risk_priority_downgrade_count == 0
+    assert performance[0].high_risk_priority_downgrade_rate == pytest.approx(0.0)
+    assert performance[0].slow_case_count == 1
+    assert performance[0].slow_case_rate == pytest.approx(1.0)
+    assert performance[1].model_name == "model-x"
+    assert performance[1].prompt_version == "ticket-analysis-v2"
+    assert performance[1].total_cases == 1
+    assert performance[1].classification_accuracy == pytest.approx(0.0)
+    assert performance[1].priority_accuracy == pytest.approx(0.0)
+    assert performance[1].high_risk_priority_downgrade_count == 1
+    assert performance[1].high_risk_priority_downgrade_rate == pytest.approx(1.0)
+    assert performance[1].slow_case_count == 1
+    assert performance[1].slow_case_rate == pytest.approx(1.0)
+    assert performance[2].model_name == "model-y"
+    assert performance[2].prompt_version == "ticket-analysis-v2"
+    assert performance[2].total_cases == 16
+    assert performance[2].classification_accuracy == pytest.approx(1.0)
+    assert performance[2].priority_accuracy == pytest.approx(1.0)
+    assert performance[2].high_risk_priority_downgrade_count == 0
+    assert performance[2].high_risk_priority_downgrade_rate == pytest.approx(0.0)
+    assert performance[2].slow_case_count == 0
+    assert performance[2].slow_case_rate == pytest.approx(0.0)
     assert report.metrics.total_cases == 18
-    assert report.metrics.classification_accuracy == pytest.approx(1.0)
+    assert report.metrics.classification_accuracy == pytest.approx(17 / 18)
+    assert report.metrics.priority_accuracy == pytest.approx(17 / 18)
     assert report.metrics.hit_rate_at_k == pytest.approx(1.0)
     assert report.metrics.no_evidence_safety_rate == pytest.approx(1.0)
     assert report.passed is True
-    assert report.failed_case_ids == ()
+    assert report.failed_case_ids == ("billing-details-002",)
     assert report.metrics.slow_case_threshold_ms == 2_000
     assert report.metrics.slow_case_count == 2
     assert report.metrics.slow_case_rate == pytest.approx(2 / 18)
     markdown = render_markdown(report)
     assert "> 模型：model-x, model-y" in markdown
-    assert "| model-x | 1 | 1 | 1.000 |" in markdown
-    assert "| model-y | 17 | 1 | 0.059 |" in markdown
+    assert "> 提示词版本：ticket-analysis-v1, ticket-analysis-v2" in markdown
+    assert "| model-x | ticket-analysis-v1 | 1 | 1.000 | 1.000 | 0 | 0.000 | 1 | 1.000 |" in markdown
+    assert "| model-x | ticket-analysis-v2 | 1 | 0.000 | 0.000 | 1 | 1.000 | 1 | 1.000 |" in markdown
+    assert "| model-y | ticket-analysis-v2 | 16 | 1.000 | 1.000 | 0 | 0.000 | 0 | 0.000 |" in markdown
     assert "| 慢案例标准（毫秒） | > 2000 |" in markdown
     assert "| 慢案例数量 | 2 |" in markdown
     assert "| 慢案例比例 | 0.111 |" in markdown

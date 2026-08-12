@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from app.models import Priority
 from evaluation.metrics import (
     calculate_accuracy,
     calculate_escalation_precision,
@@ -10,6 +11,7 @@ from evaluation.metrics import (
     escalation_recall_failure,
     EvaluationInputError,
     first_relevant_rank,
+    is_high_risk_priority_downgrade,
 )
 from evaluation.models import EvaluationThresholds
 
@@ -57,6 +59,23 @@ def test_accuracy_rejects_an_empty_result_set() -> None:
         calculate_accuracy(())
 
     assert error.value.reason == "at least one result is required"
+
+
+@pytest.mark.parametrize(
+    ("expected", "actual", "is_high_risk"),
+    (
+        (Priority.URGENT, Priority.MEDIUM, True),
+        (Priority.HIGH, Priority.LOW, True),
+        (Priority.URGENT, Priority.HIGH, False),
+        (Priority.MEDIUM, Priority.HIGH, False),
+    ),
+)
+def test_high_risk_priority_downgrade_requires_at_least_two_levels(
+    expected: Priority,
+    actual: Priority,
+    is_high_risk: bool,
+) -> None:
+    assert is_high_risk_priority_downgrade(expected, actual) is is_high_risk
 
 
 def test_escalation_recall_counts_required_escalations_only() -> None:

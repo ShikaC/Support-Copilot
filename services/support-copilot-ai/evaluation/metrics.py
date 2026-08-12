@@ -1,5 +1,7 @@
 from collections.abc import Sequence, Set
+from typing import assert_never
 
+from app.models import Priority
 from evaluation.models import EvaluationThresholds, RetrievalMetrics
 
 
@@ -13,6 +15,27 @@ def calculate_accuracy(correct_results: Sequence[bool]) -> float:
     if not correct_results:
         raise EvaluationInputError("at least one result is required")
     return sum(correct_results) / len(correct_results)
+
+
+def is_high_risk_priority_downgrade(
+    expected: Priority,
+    actual: Priority,
+) -> bool:
+    return _priority_level(expected) - _priority_level(actual) >= 2
+
+
+def _priority_level(priority: Priority) -> int:
+    match priority:
+        case Priority.LOW:
+            return 1
+        case Priority.MEDIUM:
+            return 2
+        case Priority.HIGH:
+            return 3
+        case Priority.URGENT:
+            return 4
+        case unreachable:
+            assert_never(unreachable)
 
 
 def calculate_escalation_recall(

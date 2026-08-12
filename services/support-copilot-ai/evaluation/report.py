@@ -18,14 +18,15 @@ from evaluation.metrics import (
     calculate_escalation_recall,
     calculate_retrieval_metrics,
     first_relevant_rank,
+    is_high_risk_priority_downgrade,
 )
 from evaluation.models import (
+    AnalysisConfigurationMetrics,
     CaseEvaluationResult,
     EvaluationCase,
     EvaluationMetrics,
     EvaluationReport,
     EvaluationThresholds,
-    ModelPerformanceMetrics,
 )
 
 SLOW_CASE_THRESHOLD_MS: Final = 2_000
@@ -54,12 +55,15 @@ def build_evaluation_report(
         dataset_name=dataset_path.name,
         mode=mode,
         model_names=tuple(sorted({response.model_name for response in responses})),
+        prompt_versions=tuple(
+            sorted({response.prompt_version for response in responses})
+        ),
         top_n=top_n,
         top_k=top_k,
         environment=capture_environment(dataset_path, knowledge_path),
         thresholds=thresholds,
         metrics=metrics,
-        model_performance=_model_performance(case_results),
+        configuration_performance=_configuration_performance(case_results),
         failed_case_ids=tuple(
             result.id for result in case_results if result.failures
         ),
@@ -92,6 +96,7 @@ def _case_result(
         status=response.status,
         mode=response.mode,
         model_name=response.model_name,
+        prompt_version=response.prompt_version,
         reply_content=response.suggested_reply.content,
         warnings=tuple(response.suggested_reply.warnings),
         duration_ms=response.usage.duration_ms,
@@ -171,25 +176,57 @@ def _metrics(
     )
 
 
-def _model_performance(
+def _configuration_performance(
     results: Sequence[CaseEvaluationResult],
-) -> tuple[ModelPerformanceMetrics, ...]:
-    performance: list[ModelPerformanceMetrics] = []
-    model_names = sorted({result.model_name for result in results})
-    for model_name in model_names:
-        model_results = tuple(
-            result for result in results if result.model_name == model_name
+) -> tuple[AnalysisConfigurationMetrics, ...]:
+    performance: list[AnalysisConfigurationMetrics] = []
+    configurations = sorted(
+        {(result.model_name, result.prompt_version) for result in results}
+    )
+    for model_name, prompt_version in configurations:
+        configuration_results = tuple(
+            result
+            for result in results
+            if result.model_name == model_name
+            and result.prompt_version == prompt_version
         )
         slow_case_count = sum(
             result.duration_ms > SLOW_CASE_THRESHOLD_MS
-            for result in model_results
+            for result in configuration_results
+        )
+        high_risk_priority_downgrade_count = sum(
+            is_high_risk_priority_downgrade(
+                result.expected_priority,
+                result.actual_priority,
+            )
+            for result in configuration_results
         )
         performance.append(
-            ModelPerformanceMetrics(
+            AnalysisConfigurationMetrics(
                 model_name=model_name,
-                total_cases=len(model_results),
+                prompt_version=prompt_version,
+                total_cases=len(configuration_results),
+                classification_accuracy=calculate_accuracy(
+                    tuple(
+                        result.expected_category == result.actual_category
+                        for result in configuration_results
+                    )
+                ),
+                priority_accuracy=calculate_accuracy(
+                    tuple(
+                        result.expected_priority == result.actual_priority
+                        for result in configuration_results
+                    )
+                ),
+                high_risk_priority_downgrade_count=(
+                    high_risk_priority_downgrade_count
+                ),
+                high_risk_priority_downgrade_rate=(
+                    high_risk_priority_downgrade_count
+                    / len(configuration_results)
+                ),
                 slow_case_count=slow_case_count,
-                slow_case_rate=slow_case_count / len(model_results),
+                slow_case_rate=slow_case_count / len(configuration_results),
             )
         )
     return tuple(performance)
