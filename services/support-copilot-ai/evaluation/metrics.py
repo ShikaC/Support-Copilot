@@ -2,7 +2,12 @@ from collections.abc import Sequence, Set
 from typing import assert_never
 
 from app.models import Priority
-from evaluation.models import EvaluationThresholds, RetrievalMetrics
+from evaluation.models import (
+    AnalysisConfigurationMetrics,
+    CaseEvaluationResult,
+    EvaluationThresholds,
+    RetrievalMetrics,
+)
 
 
 class EvaluationInputError(Exception):
@@ -22,6 +27,63 @@ def is_high_risk_priority_downgrade(
     actual: Priority,
 ) -> bool:
     return _priority_level(expected) - _priority_level(actual) >= 2
+
+
+def calculate_configuration_performance(
+    results: Sequence[CaseEvaluationResult],
+    slow_case_threshold_ms: int,
+) -> tuple[AnalysisConfigurationMetrics, ...]:
+    performance: list[AnalysisConfigurationMetrics] = []
+    configurations = sorted(
+        {(result.model_name, result.prompt_version) for result in results}
+    )
+    for model_name, prompt_version in configurations:
+        configuration_results = tuple(
+            result
+            for result in results
+            if result.model_name == model_name
+            and result.prompt_version == prompt_version
+        )
+        slow_case_count = sum(
+            result.duration_ms > slow_case_threshold_ms
+            for result in configuration_results
+        )
+        high_risk_priority_downgrade_count = sum(
+            is_high_risk_priority_downgrade(
+                result.expected_priority,
+                result.actual_priority,
+            )
+            for result in configuration_results
+        )
+        performance.append(
+            AnalysisConfigurationMetrics(
+                model_name=model_name,
+                prompt_version=prompt_version,
+                total_cases=len(configuration_results),
+                classification_accuracy=calculate_accuracy(
+                    tuple(
+                        result.expected_category == result.actual_category
+                        for result in configuration_results
+                    )
+                ),
+                priority_accuracy=calculate_accuracy(
+                    tuple(
+                        result.expected_priority == result.actual_priority
+                        for result in configuration_results
+                    )
+                ),
+                high_risk_priority_downgrade_count=(
+                    high_risk_priority_downgrade_count
+                ),
+                high_risk_priority_downgrade_rate=(
+                    high_risk_priority_downgrade_count
+                    / len(configuration_results)
+                ),
+                slow_case_count=slow_case_count,
+                slow_case_rate=slow_case_count / len(configuration_results),
+            )
+        )
+    return tuple(performance)
 
 
 def _priority_level(priority: Priority) -> int:

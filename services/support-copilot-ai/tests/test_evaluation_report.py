@@ -20,7 +20,7 @@ OPTIONS: Final = AnalyzeOptions(topN=10, topK=3)
 
 
 @pytest.mark.asyncio
-async def test_build_report_preserves_current_mock_baseline() -> None:
+async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> None:
     # Given: 评估集包含两条超过标准的案例，以及一条恰好等于标准的案例。
     cases = load_evaluation_cases(DATASET_PATH)
     settings = Settings(ai_mode="mock")
@@ -109,9 +109,12 @@ async def test_build_report_preserves_current_mock_baseline() -> None:
     assert report.metrics.total_cases == 18
     assert report.metrics.classification_accuracy == pytest.approx(17 / 18)
     assert report.metrics.priority_accuracy == pytest.approx(17 / 18)
+    assert report.metrics.high_risk_priority_downgrade_count == 1
+    assert report.metrics.high_risk_priority_downgrade_rate == pytest.approx(1 / 18)
+    assert report.thresholds.max_high_risk_priority_downgrade_count == 0
     assert report.metrics.hit_rate_at_k == pytest.approx(1.0)
     assert report.metrics.no_evidence_safety_rate == pytest.approx(1.0)
-    assert report.passed is True
+    assert report.passed is False
     assert report.failed_case_ids == ("billing-details-002",)
     assert report.metrics.slow_case_threshold_ms == 2_000
     assert report.metrics.slow_case_count == 2
@@ -119,12 +122,40 @@ async def test_build_report_preserves_current_mock_baseline() -> None:
     markdown = render_markdown(report)
     assert "> 模型：model-x, model-y" in markdown
     assert "> 提示词版本：ticket-analysis-v1, ticket-analysis-v2" in markdown
+    assert "> 结论：未通过" in markdown
     assert "| model-x | ticket-analysis-v1 | 1 | 1.000 | 1.000 | 0 | 0.000 | 1 | 1.000 |" in markdown
     assert "| model-x | ticket-analysis-v2 | 1 | 0.000 | 0.000 | 1 | 1.000 | 1 | 1.000 |" in markdown
     assert "| model-y | ticket-analysis-v2 | 16 | 1.000 | 1.000 | 0 | 0.000 | 0 | 0.000 |" in markdown
     assert "| 慢案例标准（毫秒） | > 2000 |" in markdown
+    assert "| 高风险优先级降级数量 | 1 |" in markdown
+    assert "| 高风险优先级降级比例 | 0.056 |" in markdown
+    assert "| 允许最大高风险降级数量 | 0 |" in markdown
     assert "| 慢案例数量 | 2 |" in markdown
     assert "| 慢案例比例 | 0.111 |" in markdown
     assert report.cases[0].retrieved_evidence_ids == tuple(
         hit.chunk_id for hit in responses[0].retrieval.hits
     )
+
+
+@pytest.mark.asyncio
+async def test_report_passes_when_no_high_risk_priority_downgrade_occurs() -> None:
+    # Given: 确定性 mock 基线不会把任何工单的优先级降低两级或以上。
+    cases = load_evaluation_cases(DATASET_PATH)
+    settings = Settings(ai_mode="mock")
+    workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
+    responses = await analyze_cases(cases, workflow.run, OPTIONS)
+
+    # When: 使用未经篡改的实际 mock 响应生成报告。
+    report = build_evaluation_report(
+        cases=cases,
+        responses=responses,
+        dataset_path=DATASET_PATH,
+        knowledge_path=KNOWLEDGE_PATH,
+        top_n=OPTIONS.top_n,
+        top_k=OPTIONS.top_k,
+        mode="mock",
+    )
+
+    # Then: 零高风险降级满足最大允许数量为零的发布门槛。
+    assert report.metrics.high_risk_priority_downgrade_count == 0
+    assert report.passed is True

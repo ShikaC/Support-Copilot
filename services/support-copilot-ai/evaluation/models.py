@@ -82,6 +82,8 @@ class EvaluationMetrics(EvaluationModel):
     total_cases: int = Field(ge=0)
     classification_accuracy: float = Field(ge=0, le=1)
     priority_accuracy: float = Field(ge=0, le=1)
+    high_risk_priority_downgrade_count: int = Field(ge=0)
+    high_risk_priority_downgrade_rate: EvaluationRate
     escalation_recall: float = Field(ge=0, le=1)
     escalation_precision: float = Field(ge=0, le=1)
     hit_rate_at_k: float = Field(ge=0, le=1)
@@ -115,6 +117,7 @@ class EvaluationThresholds(EvaluationModel):
     # 所有比例阈值都必须位于 0 到 1，非法配置在评估开始前就会被拒绝。
     classification_accuracy: EvaluationRate = 0.90
     priority_accuracy: EvaluationRate = 0.90
+    max_high_risk_priority_downgrade_count: int = Field(default=0, ge=0)
     escalation_recall: EvaluationRate = 1.0
     escalation_precision: EvaluationRate = 0.90
     hit_rate_at_k: EvaluationRate = 0.90

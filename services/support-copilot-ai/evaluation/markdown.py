@@ -42,6 +42,12 @@ def render_markdown(report: EvaluationReport) -> str:
         "| --- | ---: |",
         f"| 分类准确率 | {metrics.classification_accuracy:.3f} |",
         f"| 优先级准确率 | {metrics.priority_accuracy:.3f} |",
+        f"| 高风险优先级降级数量 | {metrics.high_risk_priority_downgrade_count} |",
+        f"| 高风险优先级降级比例 | {metrics.high_risk_priority_downgrade_rate:.3f} |",
+        (
+            "| 允许最大高风险降级数量 | "
+            f"{report.thresholds.max_high_risk_priority_downgrade_count} |"
+        ),
         f"| 升级召回率 | {metrics.escalation_recall:.3f} |",
         f"| 升级准确率 | {metrics.escalation_precision:.3f} |",
         f"| Hit@{report.top_k} | {metrics.hit_rate_at_k:.3f} |",

@@ -14,6 +14,7 @@ from evaluation.case_checks import (
 from evaluation.environment import capture_environment
 from evaluation.metrics import (
     calculate_accuracy,
+    calculate_configuration_performance,
     calculate_escalation_precision,
     calculate_escalation_recall,
     calculate_retrieval_metrics,
@@ -21,7 +22,6 @@ from evaluation.metrics import (
     is_high_risk_priority_downgrade,
 )
 from evaluation.models import (
-    AnalysisConfigurationMetrics,
     CaseEvaluationResult,
     EvaluationCase,
     EvaluationMetrics,
@@ -63,7 +63,10 @@ def build_evaluation_report(
         environment=capture_environment(dataset_path, knowledge_path),
         thresholds=thresholds,
         metrics=metrics,
-        configuration_performance=_configuration_performance(case_results),
+        configuration_performance=calculate_configuration_performance(
+            case_results,
+            SLOW_CASE_THRESHOLD_MS,
+        ),
         failed_case_ids=tuple(
             result.id for result in case_results if result.failures
         ),
@@ -139,10 +142,21 @@ def _metrics(
     slow_case_count = sum(
         duration > SLOW_CASE_THRESHOLD_MS for duration in durations
     )
+    high_risk_priority_downgrade_count = sum(
+        is_high_risk_priority_downgrade(
+            result.expected_priority,
+            result.actual_priority,
+        )
+        for result in results
+    )
     return EvaluationMetrics(
         total_cases=len(results),
         classification_accuracy=calculate_accuracy(classification),
         priority_accuracy=calculate_accuracy(priorities),
+        high_risk_priority_downgrade_count=high_risk_priority_downgrade_count,
+        high_risk_priority_downgrade_rate=(
+            high_risk_priority_downgrade_count / len(results)
+        ),
         escalation_recall=calculate_escalation_recall(
             expected_escalation,
             actual_escalation,
@@ -176,62 +190,6 @@ def _metrics(
     )
 
 
-def _configuration_performance(
-    results: Sequence[CaseEvaluationResult],
-) -> tuple[AnalysisConfigurationMetrics, ...]:
-    performance: list[AnalysisConfigurationMetrics] = []
-    configurations = sorted(
-        {(result.model_name, result.prompt_version) for result in results}
-    )
-    for model_name, prompt_version in configurations:
-        configuration_results = tuple(
-            result
-            for result in results
-            if result.model_name == model_name
-            and result.prompt_version == prompt_version
-        )
-        slow_case_count = sum(
-            result.duration_ms > SLOW_CASE_THRESHOLD_MS
-            for result in configuration_results
-        )
-        high_risk_priority_downgrade_count = sum(
-            is_high_risk_priority_downgrade(
-                result.expected_priority,
-                result.actual_priority,
-            )
-            for result in configuration_results
-        )
-        performance.append(
-            AnalysisConfigurationMetrics(
-                model_name=model_name,
-                prompt_version=prompt_version,
-                total_cases=len(configuration_results),
-                classification_accuracy=calculate_accuracy(
-                    tuple(
-                        result.expected_category == result.actual_category
-                        for result in configuration_results
-                    )
-                ),
-                priority_accuracy=calculate_accuracy(
-                    tuple(
-                        result.expected_priority == result.actual_priority
-                        for result in configuration_results
-                    )
-                ),
-                high_risk_priority_downgrade_count=(
-                    high_risk_priority_downgrade_count
-                ),
-                high_risk_priority_downgrade_rate=(
-                    high_risk_priority_downgrade_count
-                    / len(configuration_results)
-                ),
-                slow_case_count=slow_case_count,
-                slow_case_rate=slow_case_count / len(configuration_results),
-            )
-        )
-    return tuple(performance)
-
-
 def _passes_thresholds(
     metrics: EvaluationMetrics,
     thresholds: EvaluationThresholds,
@@ -240,6 +198,8 @@ def _passes_thresholds(
         (
             metrics.classification_accuracy >= thresholds.classification_accuracy,
             metrics.priority_accuracy >= thresholds.priority_accuracy,
+            metrics.high_risk_priority_downgrade_count
+            <= thresholds.max_high_risk_priority_downgrade_count,
             metrics.escalation_recall >= thresholds.escalation_recall,
             metrics.escalation_precision >= thresholds.escalation_precision,
             metrics.hit_rate_at_k >= thresholds.hit_rate_at_k,
