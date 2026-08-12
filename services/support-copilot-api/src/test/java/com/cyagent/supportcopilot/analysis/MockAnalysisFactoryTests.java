@@ -32,6 +32,17 @@ class MockAnalysisFactoryTests {
 		assertThat(response.decision().escalationRequired()).isTrue();
 	}
 
+	@Test
+	void explicitFallbackIsNotReportedAsSuccessfulAnalysis() {
+		var response = factory.create(ticket("SUBSCRIPTION", "LOW"), "fallback");
+
+		assertThat(response.mode()).isEqualTo("fallback");
+		assertThat(response.status()).isEqualTo("FALLBACK");
+		assertThat(response.classification().confidence()).isLessThanOrEqualTo(0.5);
+		assertThat(response.suggestedReply().warnings()).contains("AI 服务不可用，本次为降级结果，必须人工复核。");
+		assertThat(response.decision().escalationRequired()).isTrue();
+	}
+
 	private Ticket ticket(String category, String priority) {
 		var ticket = new Ticket();
 		ticket.setId("ticket-test");

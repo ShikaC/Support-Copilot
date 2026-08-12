@@ -22,6 +22,8 @@ public class AiServiceClient {
 	) {
 		var timeout = Duration.ofMillis(timeoutMs);
 		var httpClient = HttpClient.newBuilder()
+			// 这里要强制使用普通 HTTP/1.1。
+			// 否则 Java 可能尝试 h2c 协商，导致 Uvicorn 拒绝 AI 服务请求。
 			.version(HttpClient.Version.HTTP_1_1)
 			.connectTimeout(timeout)
 			.build();
@@ -34,6 +36,8 @@ public class AiServiceClient {
 	}
 
 	public AnalysisResponse analyze(Ticket ticket) {
+		// 这个 DTO 是 Java 业务 API 与 Python AI/RAG 服务之间的契约。
+		// 修改这里时，必须同时确认 services/support-copilot-ai/app/models.py 仍然兼容。
 		var request = new AnalyzeRequest(
 			"trace_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
 			new TicketInput(
@@ -45,7 +49,7 @@ public class AiServiceClient {
 				ticket.getCategory(),
 				ticket.getPriority()
 			),
-			new AnalyzeOptions(10, 3, false, "ticket-analysis-v1")
+			new AnalyzeOptions(10, 3, "ticket-analysis-v1")
 		);
 
 		return restClient.post()
@@ -69,6 +73,6 @@ public class AiServiceClient {
 	) {
 	}
 
-	private record AnalyzeOptions(int topN, int topK, boolean enableRerank, String promptVersion) {
+	private record AnalyzeOptions(int topN, int topK, String promptVersion) {
 	}
 }

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
@@ -32,6 +34,11 @@ public final class TicketDtos {
 	) {
 	}
 
+	public record UnassignTicketRequest(
+		@NotNull @PositiveOrZero Long expectedVersion
+	) {
+	}
+
 	public record TicketEventResponse(
 		String id,
 		String label,
@@ -57,6 +64,7 @@ public final class TicketDtos {
 		Instant slaDeadline,
 		Instant createdAt,
 		Instant updatedAt,
+		long version,
 		AnalysisResponse latestAnalysis,
 		List<TicketEventResponse> events
 	) {

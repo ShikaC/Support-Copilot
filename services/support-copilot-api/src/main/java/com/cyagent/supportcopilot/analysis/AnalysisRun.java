@@ -25,6 +25,9 @@ public class AnalysisRun {
 	@Column(nullable = false, length = 48)
 	private String ticketId;
 
+	@Column(nullable = false)
+	private long sourceTicketVersion;
+
 	@Column(nullable = false, length = 64)
 	private String traceId;
 

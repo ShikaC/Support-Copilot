@@ -19,6 +19,7 @@ import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.AnalysisService;
 import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketResponse;
+import com.cyagent.supportcopilot.ticket.TicketDtos.UnassignTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDtos.UpdateTicketRequest;
 
 @RestController
@@ -58,8 +59,20 @@ public class TicketController {
 		return ticketService.update(id, request);
 	}
 
+	@PostMapping("/{id}/unassign")
+	TicketResponse unassign(
+		@PathVariable String id,
+		@Valid @RequestBody UnassignTicketRequest request
+	) {
+		// 取消负责人是有业务语义的命令，不使用普通 PATCH 隐含表达。
+		return ticketService.unassign(id, request.expectedVersion());
+	}
+
 	@PostMapping("/{id}/analyze")
+	// 从 URL 的 {id} 位置取出工单编号，例如 ticket-10042。
 	AnalysisResponse analyze(@PathVariable String id) {
+		// Controller 只负责暴露 HTTP 接口。
+		// 真正的业务编排逻辑在 AnalysisService 里。
 		return analysisService.analyze(id);
 	}
 

@@ -10,10 +10,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.data.domain.Sort;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cyagent.supportcopilot.analysis.AnalysisService;
+import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketEventResponse;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketResponse;
@@ -79,6 +81,31 @@ public class TicketService {
 		return toResponse(ticketRepository.save(ticket));
 	}
 
+	@Transactional
+	public TicketResponse unassign(String id, long expectedVersion) {
+		var ticket = find(id);
+		if (ticket.getVersion() != expectedVersion) {
+			throw new TicketVersionConflictException(id, expectedVersion, ticket.getVersion());
+		}
+		if (ticket.getAssigneeName() == null) {
+			// 重复点击不会再次修改数据库，因此同一个请求可以安全重试。
+			return toResponse(ticket);
+		}
+		if ("RESOLVED".equals(ticket.getStatus()) || "CLOSED".equals(ticket.getStatus())) {
+			throw new TicketStateConflictException(id, ticket.getStatus());
+		}
+
+		ticket.setAssigneeName(null);
+		ticket.setUpdatedAt(Instant.now());
+		try {
+			// 显式 flush，让并发更新在本次请求中尽早转换成可识别的版本冲突。
+			ticketRepository.saveAndFlush(ticket);
+		} catch (ObjectOptimisticLockingFailureException exception) {
+			throw new TicketVersionConflictException(id, expectedVersion, null, exception);
+		}
+		return toResponse(ticket);
+	}
+
 	private Ticket find(String id) {
 		return ticketRepository.findById(id)
 			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + id));
@@ -119,6 +146,7 @@ public class TicketService {
 			ticket.getSlaDeadline(),
 			ticket.getCreatedAt(),
 			ticket.getUpdatedAt(),
+			ticket.getVersion(),
 			latest,
 			events
 		);

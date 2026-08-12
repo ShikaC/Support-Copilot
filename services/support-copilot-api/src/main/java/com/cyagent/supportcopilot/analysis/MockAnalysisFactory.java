@@ -22,14 +22,17 @@ public class MockAnalysisFactory {
 	public AnalysisResponse create(Ticket ticket, String mode) {
 		var category = ticket.getCategory();
 		var lowEvidence = "DATA_RECOVERY".equals(category);
-		var escalation = List.of("BILLING", "PRIVACY", "ACCOUNT_ACCESS", "DATA_RECOVERY").contains(category);
+		var serviceFallback = "fallback".equals(mode);
+		var fallback = lowEvidence || serviceFallback;
+		var escalation = fallback
+			|| List.of("BILLING", "PRIVACY", "ACCOUNT_ACCESS", "DATA_RECOVERY").contains(category);
 		var hits = lowEvidence ? List.<RetrievalHit>of() : hitsFor(category);
-		var effectiveMode = lowEvidence ? "fallback" : mode;
+		var effectiveMode = fallback ? "fallback" : mode;
 
 		return new AnalysisResponse(
 			"run_" + compactUuid(),
 			"trace_" + compactUuid(),
-			lowEvidence ? "FALLBACK" : "SUCCEEDED",
+			fallback ? "FALLBACK" : "SUCCEEDED",
 			effectiveMode,
 			"configured-chat-model",
 			"ticket-analysis-v1",
@@ -38,28 +41,43 @@ public class MockAnalysisFactory {
 				category,
 				ticket.getPriority(),
 				"LOW".equals(ticket.getPriority()) ? "NEUTRAL" : "NEGATIVE",
-				lowEvidence ? 0.42 : confidenceFor(category),
+				lowEvidence ? 0.42 : serviceFallback ? Math.min(0.5, confidenceFor(category)) : confidenceFor(category),
 				reasonFor(category)
 			),
-			workflow(lowEvidence, hits.size()),
+			workflow(lowEvidence, serviceFallback, hits.size()),
 			new Retrieval(queryFor(ticket), hits),
-			replyFor(category, lowEvidence),
+			replyFor(category, lowEvidence, serviceFallback),
 			new Decision(
-				escalation || lowEvidence,
-				escalationReason(category, lowEvidence)
+				escalation,
+				escalationReason(category, lowEvidence, serviceFallback)
 			),
 			new Usage(1268, 224, lowEvidence ? 912 : 1684),
 			Instant.now()
 		);
 	}
 
-	private List<WorkflowStep> workflow(boolean lowEvidence, int hitCount) {
+	private List<WorkflowStep> workflow(boolean lowEvidence, boolean serviceFallback, int hitCount) {
+		var retrievalDescription = lowEvidence
+			? "未找到满足阈值的有效证据"
+			: serviceFallback
+				? "AI 服务不可用，采用本地兜底资料"
+				: "重排序后采用 " + hitCount + " 条证据";
+		var generationDescription = serviceFallback
+			? "生成待人工复核的降级回复"
+			: lowEvidence
+				? "生成谨慎回复并保留不确定性"
+				: "已根据证据生成回复草稿";
+		var riskDescription = serviceFallback
+			? "AI 服务不可用，转入人工复核"
+			: lowEvidence
+				? "证据不足，转入人工复核"
+				: "规则检查完成";
 		return List.of(
 			step("normalize", "内容预处理", "语言识别与敏感字段标记完成", 38L),
 			step("classify", "工单理解", "类别、优先级与情绪识别完成", 472L),
-			step("retrieve", "知识检索", lowEvidence ? "未找到满足阈值的有效证据" : "重排序后采用 " + hitCount + " 条证据", 326L),
-			step("generate", "回复生成", lowEvidence ? "生成谨慎回复并保留不确定性" : "已根据证据生成回复草稿", 812L),
-			step("risk", "风险检查", lowEvidence ? "证据不足，转入人工复核" : "规则检查完成", 36L)
+			step("retrieve", "知识检索", retrievalDescription, 326L),
+			step("generate", "回复生成", generationDescription, 812L),
+			step("risk", "风险检查", riskDescription, 36L)
 		);
 	}
 
@@ -113,7 +131,15 @@ public class MockAnalysisFactory {
 		);
 	}
 
-	private SuggestedReply replyFor(String category, boolean lowEvidence) {
+	private SuggestedReply replyFor(String category, boolean lowEvidence, boolean serviceFallback) {
+		if (serviceFallback) {
+			return new SuggestedReply(
+				"AI 分析服务当前不可用。系统已保留工单信息，请客服根据知识依据人工确认分类与回复内容。",
+				List.of(),
+				List.of("AI 服务不可用，本次为降级结果，必须人工复核。")
+			);
+		}
+
 		if (lowEvidence) {
 			return new SuggestedReply(
 				"您好，我们需要由数据支持团队确认该项目是否仍在可恢复范围内。当前知识库没有足够依据承诺恢复结果，请提供项目名称和大致删除日期。",
@@ -182,7 +208,10 @@ public class MockAnalysisFactory {
 		};
 	}
 
-	private String escalationReason(String category, boolean lowEvidence) {
+	private String escalationReason(String category, boolean lowEvidence, boolean serviceFallback) {
+		if (serviceFallback) {
+			return "AI 服务不可用，本次结果为降级结果，必须人工复核。";
+		}
 		if (lowEvidence) {
 			return "检索无有效证据，必须人工确认资料与处理边界。";
 		}
