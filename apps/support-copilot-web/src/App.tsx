@@ -18,6 +18,7 @@ import {
   Search,
   Send,
   UserRound,
+  UserRoundX,
 } from 'lucide-react'
 import {
   Button,
@@ -33,7 +34,14 @@ import {
   Tooltip,
 } from 'antd'
 import ReactECharts from 'echarts-for-react'
-import { analyzeTicket, fetchMetrics, fetchTickets, updateTicket } from './services/api'
+import {
+  analyzeTicket,
+  ApiError,
+  fetchMetrics,
+  fetchTickets,
+  unassignTicket,
+  updateTicket,
+} from './services/api'
 import {
   createDemoAnalysis,
   demoKnowledgeArticles,
@@ -126,6 +134,11 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
+function formatTicketDescription(value: string) {
+  // 数字和中文日期单位属于一个阅读单元，避免窄屏把“7 月”拆成两行。
+  return value.replace(/(\d)\s+([年月日])/g, '$1\u00a0$2')
+}
+
 function secondsUntil(value: string) {
   return Math.floor((new Date(value).getTime() - Date.now()) / 1000)
 }
@@ -147,33 +160,44 @@ function isAbortError(error: unknown) {
   )
 }
 
-function StatusStrip({ metrics }: { metrics: Metrics }) {
+type ApiState = 'connecting' | 'connected' | 'partial' | 'demo'
+
+function UnavailablePanel({ title, description }: { title: string; description: string }) {
+  return (
+    <section className="data-unavailable-panel" role="status">
+      <h2>{title}</h2>
+      <p>{description}</p>
+    </section>
+  )
+}
+
+function StatusStrip({ metrics }: { metrics: Metrics | null }) {
   const items = [
     {
       label: '待处理工单',
-      value: metrics.summary.openTickets,
-      delta: '+6 今日',
+      value: metrics?.summary.openTickets ?? '--',
+      delta: metrics ? '+6 今日' : '指标暂不可用',
       icon: Inbox,
       tone: '',
     },
     {
       label: '紧急优先级',
-      value: metrics.summary.urgentTickets,
-      delta: '2 条临近 SLA',
+      value: metrics?.summary.urgentTickets ?? '--',
+      delta: metrics ? '2 条临近 SLA' : '指标暂不可用',
       icon: AlertTriangle,
       tone: 'danger',
     },
     {
       label: 'SLA 风险',
-      value: metrics.summary.slaRiskTickets,
-      delta: '较昨日 -2',
+      value: metrics?.summary.slaRiskTickets ?? '--',
+      delta: metrics ? '较昨日 -2' : '指标暂不可用',
       icon: Clock3,
       tone: 'warning',
     },
     {
       label: '分析成功率',
-      value: `${(metrics.summary.analysisSuccessRate * 100).toFixed(1)}%`,
-      delta: '+1.8%',
+      value: metrics ? `${(metrics.summary.analysisSuccessRate * 100).toFixed(1)}%` : '--',
+      delta: metrics ? '+1.8%' : '指标暂不可用',
       icon: CircleGauge,
       tone: 'neutral',
     },
@@ -190,7 +214,7 @@ function StatusStrip({ metrics }: { metrics: Metrics }) {
             </span>
             <span>
               <span className="metric-label">{item.label}</span>
-              <span className="metric-value">
+              <span className={`metric-value ${metrics ? '' : 'metric-value-unavailable'}`}>
                 {item.value}
                 <span className="metric-delta">{item.delta}</span>
               </span>
@@ -315,11 +339,15 @@ function TicketDetail({
   analyzing,
   onAnalyze,
   onAssign,
+  onUnassign,
+  assigneeUpdating,
 }: {
   ticket: Ticket
   analyzing: boolean
   onAnalyze: () => void
   onAssign: () => void
+  onUnassign: () => void
+  assigneeUpdating: boolean
 }) {
   return (
     <section className="workspace-column detail-column" aria-label="工单详情">
@@ -349,9 +377,24 @@ function TicketDetail({
           >
             {ticket.latestAnalysis ? '重新分析' : '开始分析'}
           </Button>
-          <Button icon={<UserRound size={14} />} onClick={onAssign}>
+          <Button
+            icon={<UserRound size={14} />}
+            loading={assigneeUpdating}
+            disabled={assigneeUpdating}
+            onClick={onAssign}
+          >
             {ticket.assigneeName ? '重新分配' : '领取工单'}
           </Button>
+          {ticket.assigneeName && (
+            <Button
+              icon={<UserRoundX size={14} />}
+              loading={assigneeUpdating}
+              disabled={assigneeUpdating}
+              onClick={onUnassign}
+            >
+              取消负责人
+            </Button>
+          )}
         </div>
 
         <div className="detail-grid">
@@ -375,7 +418,7 @@ function TicketDetail({
 
         <div className="section-block">
           <h3 className="section-label">客户问题</h3>
-          <div className="message-body">{ticket.description}</div>
+          <div className="message-body">{formatTicketDescription(ticket.description)}</div>
         </div>
 
         <div className="section-block">
@@ -732,15 +775,19 @@ function WorkbenchView({
   onSelect,
   onAnalyze,
   onAssign,
+  onUnassign,
+  assigneeUpdating,
   onToast,
 }: {
   tickets: Ticket[]
   selectedTicket: Ticket
-  metrics: Metrics
+  metrics: Metrics | null
   analyzing: boolean
   onSelect: (ticketId: string) => void
   onAnalyze: () => void
   onAssign: () => void
+  onUnassign: () => void
+  assigneeUpdating: boolean
   onToast: (message: string) => void
 }) {
   return (
@@ -753,6 +800,8 @@ function WorkbenchView({
           analyzing={analyzing}
           onAnalyze={onAnalyze}
           onAssign={onAssign}
+          onUnassign={onUnassign}
+          assigneeUpdating={assigneeUpdating}
         />
         <AnalysisColumn
           ticket={selectedTicket}
@@ -765,7 +814,19 @@ function WorkbenchView({
   )
 }
 
-function OverviewView({ metrics, tickets }: { metrics: Metrics; tickets: Ticket[] }) {
+function OverviewView({ metrics, tickets }: { metrics: Metrics | null; tickets: Ticket[] }) {
+  if (!metrics) {
+    return (
+      <div className="view-enter">
+        <StatusStrip metrics={null} />
+        <UnavailablePanel
+          title="运营指标暂不可用"
+          description="工单列表仍可使用；指标服务恢复后重新加载页面即可查看趋势和质量数据。"
+        />
+      </div>
+    )
+  }
+
   const trendOption = {
     animationDuration: 350,
     color: ['#1d8067', '#c4872c'],
@@ -1034,7 +1095,18 @@ function KnowledgeView({ articles }: { articles: KnowledgeArticle[] }) {
   )
 }
 
-function QualityView({ metrics }: { metrics: Metrics }) {
+function QualityView({ metrics }: { metrics: Metrics | null }) {
+  if (!metrics) {
+    return (
+      <div className="view-enter">
+        <UnavailablePanel
+          title="质量指标暂不可用"
+          description="当前没有收到后端指标数据，因此不展示可能过期或虚假的评估数字。"
+        />
+      </div>
+    )
+  }
+
   const evaluationRows = [
     ['检索基线 2026-07-A', '48', '向量 Top 3', '88.6%', '82.1%', '1.24s', '通过'],
     ['混合检索候选', '48', 'RRF + 重排序', '91.7%', '86.4%', '1.79s', '观察'],
@@ -1107,33 +1179,65 @@ function QualityView({ metrics }: { metrics: Metrics }) {
 function App() {
   const [view, setView] = useState<ViewKey>('workbench')
   const [tickets, setTickets] = useState<Ticket[]>(demoTickets)
-  const [metrics, setMetrics] = useState<Metrics>(demoMetrics)
+  const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [selectedTicketId, setSelectedTicketId] = useState(demoTickets[0].id)
-  const [apiState, setApiState] = useState<'connecting' | 'connected' | 'demo'>('connecting')
+  const [apiState, setApiState] = useState<ApiState>('connecting')
   const [analyzingTicketId, setAnalyzingTicketId] = useState<string | null>(null)
+  const [assigneeActionTicketId, setAssigneeActionTicketId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number | null>(null)
 
   const selectedTicket =
     tickets.find((ticket) => ticket.id === selectedTicketId) ?? tickets[0] ?? demoTickets[0]
 
+  // 这个 effect 是应用启动时的“真实后端还是演示模式？”检查。
+  // 如果 Spring Boot 可访问，页面使用 H2 中的持久化数据；如果不可访问，
+  // 页面保留本地演示数据，保证面试演示仍然可以继续。
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([fetchTickets(controller.signal), fetchMetrics(controller.signal)])
-      .then(([ticketData, metricData]) => {
+    // 两个请求并行发出，但分别处理结果，避免指标失败时丢弃已经成功取得的工单。
+    const loadInitialData = async () => {
+      const [ticketResult, metricResult] = await Promise.allSettled([
+        fetchTickets(controller.signal),
+        fetchMetrics(controller.signal),
+      ])
+
+      if (controller.signal.aborted) return
+
+      const ticketsAvailable = ticketResult.status === 'fulfilled'
+      const metricsAvailable = metricResult.status === 'fulfilled'
+
+      if (ticketsAvailable) {
+        const ticketData = ticketResult.value
         if (ticketData.length > 0) {
           setTickets(ticketData)
           setSelectedTicketId((current) =>
             ticketData.some((ticket) => ticket.id === current) ? current : ticketData[0].id,
           )
         }
-        setMetrics(metricData)
-        setApiState('connected')
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error)) return
-        setApiState('demo')
-      })
+      } else if (!isAbortError(ticketResult.reason)) {
+        console.warn('Ticket data unavailable; keeping demo tickets.', ticketResult.reason)
+      }
+
+      if (metricsAvailable) {
+        setMetrics(metricResult.value)
+      } else {
+        setMetrics(ticketsAvailable ? null : demoMetrics)
+        if (!isAbortError(metricResult.reason)) {
+          console.warn('Metrics unavailable; hiding metric values.', metricResult.reason)
+        }
+      }
+
+      setApiState(
+        ticketsAvailable && metricsAvailable
+          ? 'connected'
+          : ticketsAvailable || metricsAvailable
+            ? 'partial'
+            : 'demo',
+      )
+    }
+
+    void loadInitialData()
 
     return () => controller.abort()
   }, [])
@@ -1153,6 +1257,8 @@ function App() {
   const runAnalysis = async () => {
     setAnalyzingTicketId(selectedTicket.id)
     try {
+      // 这次点击会启动 V1 主链路：
+      // React -> Spring Boot /api/tickets/{id}/analyze -> FastAPI /analyze -> React。
       const result = await analyzeTicket(selectedTicket.id)
       setTickets((current) =>
         current.map((ticket) =>
@@ -1168,10 +1274,29 @@ function App() {
             : ticket,
         ),
       )
-      setApiState('connected')
+      setApiState((current) => (current === 'connected' ? 'connected' : 'partial'))
       showToast('分析完成，分类、证据和回复建议已更新')
     } catch (error: unknown) {
-      console.warn('Ticket analysis request failed; using demo result.', error)
+      console.warn('Ticket analysis request failed.', error)
+
+      if (error instanceof ApiError) {
+        setApiState((current) => (current === 'connected' ? 'connected' : 'partial'))
+        const message =
+          error.code === 'VERSION_CONFLICT'
+            ? `工单 ${selectedTicket.id} 版本已变化，请重新加载后再分析${
+                error.traceId ? `（traceId: ${error.traceId}）` : ''
+              }`
+            : error.message
+        showToast(message)
+        return
+      }
+
+      if (!(error instanceof TypeError)) {
+        showToast('分析失败，请稍后重试')
+        return
+      }
+
+      // 只有没有收到 HTTP 响应的网络错误，才允许回退到本地演示数据。
       await new Promise((resolve) => window.setTimeout(resolve, 1100))
       const result = createDemoAnalysis(selectedTicket)
       setTickets((current) =>
@@ -1196,22 +1321,70 @@ function App() {
   }
 
   const assignSelectedTicket = async () => {
+    if (assigneeActionTicketId) return
     const assigneeName = '演示管理员'
-    setTickets((current) =>
-      current.map((ticket) =>
-        ticket.id === selectedTicket.id
-          ? { ...ticket, assigneeName, updatedAt: new Date().toISOString() }
-          : ticket,
-      ),
-    )
+
+    if (selectedTicket.version == null) {
+      setTickets((current) =>
+        current.map((ticket) =>
+          ticket.id === selectedTicket.id
+            ? { ...ticket, assigneeName, updatedAt: new Date().toISOString() }
+            : ticket,
+        ),
+      )
+      showToast('已在演示数据中更新负责人')
+      return
+    }
+
+    setAssigneeActionTicketId(selectedTicket.id)
     try {
       const updated = await updateTicket(selectedTicket.id, { assigneeName })
       setTickets((current) =>
         current.map((ticket) => (ticket.id === updated.id ? updated : ticket)),
       )
       showToast('工单已分配给演示管理员')
-    } catch {
-      showToast('已在演示数据中更新负责人')
+    } catch (error: unknown) {
+      showToast(error instanceof ApiError ? error.message : '服务不可用，负责人未更新')
+    } finally {
+      setAssigneeActionTicketId(null)
+    }
+  }
+
+  const unassignSelectedTicket = async () => {
+    if (assigneeActionTicketId) return
+    if (!selectedTicket.assigneeName) return
+
+    if (selectedTicket.version == null) {
+      setTickets((current) =>
+        current.map((ticket) =>
+          ticket.id === selectedTicket.id
+            ? { ...ticket, assigneeName: null, updatedAt: new Date().toISOString() }
+            : ticket,
+        ),
+      )
+      showToast('已在演示数据中取消负责人')
+      return
+    }
+
+    setAssigneeActionTicketId(selectedTicket.id)
+    try {
+      const updated = await unassignTicket(selectedTicket.id, selectedTicket.version)
+      setTickets((current) =>
+        current.map((ticket) => (ticket.id === updated.id ? updated : ticket)),
+      )
+      showToast('负责人已取消')
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        const message =
+          error.code === 'VERSION_CONFLICT'
+            ? '工单已被其他操作更新，请刷新后再取消负责人'
+            : error.message
+        showToast(message)
+        return
+      }
+      showToast('服务不可用，负责人未取消')
+    } finally {
+      setAssigneeActionTicketId(null)
     }
   }
 
@@ -1268,13 +1441,19 @@ function App() {
                     ? '业务 API 已连接'
                     : apiState === 'connecting'
                       ? '正在检查服务'
-                      : '演示数据模式'}
+                      : apiState === 'partial'
+                        ? '部分服务可用'
+                        : '演示数据模式'}
                 </span>
               </div>
               <small>
                 {apiState === 'connected'
                   ? '工单与指标来自本地服务'
-                  : '无需 API Key 也可审查完整界面'}
+                  : apiState === 'partial'
+                    ? '部分数据暂不可用，页面未伪造缺失指标'
+                    : apiState === 'connecting'
+                      ? '正在读取业务服务'
+                      : '无需 API Key 也可审查完整界面'}
               </small>
             </div>
           </div>
@@ -1322,6 +1501,8 @@ function App() {
                 onSelect={setSelectedTicketId}
                 onAnalyze={runAnalysis}
                 onAssign={assignSelectedTicket}
+                onUnassign={unassignSelectedTicket}
+                assigneeUpdating={assigneeActionTicketId === selectedTicket.id}
                 onToast={showToast}
               />
             )}

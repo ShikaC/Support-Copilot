@@ -97,6 +97,7 @@ export interface Ticket {
   slaDeadline: string
   createdAt: string
   updatedAt: string
+  version?: number
   latestAnalysis?: AnalysisResult
   events: TicketEvent[]
 }
