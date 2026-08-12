@@ -1,10 +1,15 @@
 from typing import assert_never
 
-from evaluation.models import EvaluationReport, ThresholdFailure, ThresholdMetric
+from evaluation.models import (
+    CaseEvaluationResult,
+    EvaluationReport,
+    ThresholdFailure,
+    ThresholdMetric,
+)
 
 def render_markdown(report: EvaluationReport) -> str:
     metrics = report.metrics
-    failed_cases = "、".join(report.failed_case_ids) or "无"
+    failed_case_lines = _render_failed_cases(report.cases)
     threshold_failure_lines = [
         _render_threshold_failure(failure)
         for failure in report.threshold_failures
@@ -80,7 +85,7 @@ def render_markdown(report: EvaluationReport) -> str:
         "",
         "## 失败样例",
         "",
-        failed_cases,
+        *failed_case_lines,
         "",
         "## 说明",
         "",
@@ -88,6 +93,20 @@ def render_markdown(report: EvaluationReport) -> str:
         "指标只能解释当前固定评估集，不能外推为通用准确率。",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _render_failed_cases(
+    cases: tuple[CaseEvaluationResult, ...],
+) -> list[str]:
+    lines: list[str] = []
+    for case in cases:
+        if not case.failures:
+            continue
+        if lines:
+            lines.append("")
+        lines.append(f"### {case.id} - {case.subject}")
+        lines.extend(f"- {failure}" for failure in case.failures)
+    return lines or ["无"]
 
 
 def _render_threshold_failure(failure: ThresholdFailure) -> str:

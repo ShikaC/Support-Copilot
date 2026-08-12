@@ -144,6 +144,13 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
     assert "| 慢案例比例 | 0.111 |" in markdown
     assert "- 分类准确率：实际 0.889，要求至少 0.900" in markdown
     assert "- 高风险优先级降级数量：实际 1，要求最多 0" in markdown
+    assert (
+        "### billing-details-002 - 支付争议需要补充什么资料" in markdown
+    )
+    assert "- classification: expected BILLING, got ACCOUNT_ACCESS" in markdown
+    assert "- priority: expected HIGH, got LOW" in markdown
+    assert "### billing-refund-003 - 退款审核通过后多久到账" in markdown
+    assert "billing-details-002、billing-refund-003" not in markdown
     assert report.cases[0].retrieved_evidence_ids == tuple(
         hit.chunk_id for hit in responses[0].retrieval.hits
     )
@@ -172,3 +179,4 @@ async def test_report_passes_when_no_high_risk_priority_downgrade_occurs() -> No
     assert report.metrics.high_risk_priority_downgrade_count == 0
     assert report.threshold_failures == ()
     assert report.passed is True
+    assert "## 失败样例\n\n无" in render_markdown(report)
