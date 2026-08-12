@@ -188,6 +188,15 @@ cd services/support-copilot-ai
 .venv/bin/pytest -q
 ```
 
+Mock 评估：
+
+```bash
+cd services/support-copilot-ai
+.venv/bin/python -m evaluation.run_mock_evaluation
+```
+
+评估报告会写入 `services/support-copilot-ai/evaluation/reports/`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)。
+
 ## 关键接口
 
 | 方法 | 路径 | 用途 |
@@ -196,6 +205,7 @@ cd services/support-copilot-ai
 | GET | `/api/tickets/{id}` | 查询工单详情 |
 | POST | `/api/tickets` | 创建工单 |
 | PATCH | `/api/tickets/{id}` | 修改状态、分类、优先级或负责人 |
+| POST | `/api/tickets/{id}/unassign` | 按工单版本取消负责人 |
 | POST | `/api/tickets/{id}/analyze` | 触发分析 |
 | GET | `/api/tickets/{id}/analyses` | 查询分析历史 |
 | GET | `/api/knowledge/search` | 调试知识检索 |
