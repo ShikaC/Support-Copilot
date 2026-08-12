@@ -40,6 +40,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 22. [按分析配置统计优先级准确率](./22-configuration-priority-accuracy.md)
 23. [统计高风险优先级降级](./23-high-risk-priority-downgrades.md)
 24. [高风险优先级降级零容忍门槛](./24-zero-tolerance-priority-downgrade-gate.md)
+25. [结构化列出全部失败门槛](./25-structured-threshold-failures.md)
 
 ## 优化后的主流程
 

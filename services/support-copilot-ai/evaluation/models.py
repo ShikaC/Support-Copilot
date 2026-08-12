@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
@@ -8,6 +8,18 @@ from pydantic_core import PydanticCustomError
 from app.models import AnalyzeOptions, AnalyzeRequest, Priority, TicketInput
 
 EvaluationRate = Annotated[float, Field(ge=0, le=1)]
+ThresholdMetric = Literal[
+    "classification_accuracy",
+    "priority_accuracy",
+    "high_risk_priority_downgrade_count",
+    "escalation_recall",
+    "escalation_precision",
+    "hit_rate_at_k",
+    "mrr",
+    "citation_coverage",
+    "no_evidence_safety_rate",
+    "reply_constraint_pass_rate",
+]
 
 
 class EvaluationModel(BaseModel):
@@ -164,6 +176,13 @@ class EvaluationEnvironment(EvaluationModel):
     knowledge_sha256: str
 
 
+class ThresholdFailure(EvaluationModel):
+    metric: ThresholdMetric
+    actual: float = Field(ge=0)
+    comparison: Literal["at_least", "at_most"]
+    threshold: float = Field(ge=0)
+
+
 class EvaluationReport(EvaluationModel):
     generated_at: datetime
     dataset_name: str
@@ -176,6 +195,7 @@ class EvaluationReport(EvaluationModel):
     thresholds: EvaluationThresholds
     metrics: EvaluationMetrics
     configuration_performance: tuple[AnalysisConfigurationMetrics, ...]
+    threshold_failures: tuple[ThresholdFailure, ...]
     failed_case_ids: tuple[str, ...]
     cases: tuple[CaseEvaluationResult, ...]
     passed: bool

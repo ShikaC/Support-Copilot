@@ -38,7 +38,7 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
                     update={
                         "category": (
                             "ACCOUNT_ACCESS"
-                            if index == 1
+                            if index in (1, 2)
                             else response.classification.category
                         ),
                         "priority": (
@@ -100,14 +100,14 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
     assert performance[2].model_name == "model-y"
     assert performance[2].prompt_version == "ticket-analysis-v2"
     assert performance[2].total_cases == 16
-    assert performance[2].classification_accuracy == pytest.approx(1.0)
+    assert performance[2].classification_accuracy == pytest.approx(15 / 16)
     assert performance[2].priority_accuracy == pytest.approx(1.0)
     assert performance[2].high_risk_priority_downgrade_count == 0
     assert performance[2].high_risk_priority_downgrade_rate == pytest.approx(0.0)
     assert performance[2].slow_case_count == 0
     assert performance[2].slow_case_rate == pytest.approx(0.0)
     assert report.metrics.total_cases == 18
-    assert report.metrics.classification_accuracy == pytest.approx(17 / 18)
+    assert report.metrics.classification_accuracy == pytest.approx(16 / 18)
     assert report.metrics.priority_accuracy == pytest.approx(17 / 18)
     assert report.metrics.high_risk_priority_downgrade_count == 1
     assert report.metrics.high_risk_priority_downgrade_rate == pytest.approx(1 / 18)
@@ -115,7 +115,17 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
     assert report.metrics.hit_rate_at_k == pytest.approx(1.0)
     assert report.metrics.no_evidence_safety_rate == pytest.approx(1.0)
     assert report.passed is False
-    assert report.failed_case_ids == ("billing-details-002",)
+    assert tuple(failure.metric for failure in report.threshold_failures) == (
+        "classification_accuracy",
+        "high_risk_priority_downgrade_count",
+    )
+    assert report.threshold_failures[0].actual == pytest.approx(16 / 18)
+    assert report.threshold_failures[0].comparison == "at_least"
+    assert report.threshold_failures[0].threshold == pytest.approx(0.90)
+    assert report.threshold_failures[1].actual == 1
+    assert report.threshold_failures[1].comparison == "at_most"
+    assert report.threshold_failures[1].threshold == 0
+    assert report.failed_case_ids == ("billing-details-002", "billing-refund-003")
     assert report.metrics.slow_case_threshold_ms == 2_000
     assert report.metrics.slow_case_count == 2
     assert report.metrics.slow_case_rate == pytest.approx(2 / 18)
@@ -125,13 +135,15 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
     assert "> 结论：未通过" in markdown
     assert "| model-x | ticket-analysis-v1 | 1 | 1.000 | 1.000 | 0 | 0.000 | 1 | 1.000 |" in markdown
     assert "| model-x | ticket-analysis-v2 | 1 | 0.000 | 0.000 | 1 | 1.000 | 1 | 1.000 |" in markdown
-    assert "| model-y | ticket-analysis-v2 | 16 | 1.000 | 1.000 | 0 | 0.000 | 0 | 0.000 |" in markdown
+    assert "| model-y | ticket-analysis-v2 | 16 | 0.938 | 1.000 | 0 | 0.000 | 0 | 0.000 |" in markdown
     assert "| 慢案例标准（毫秒） | > 2000 |" in markdown
     assert "| 高风险优先级降级数量 | 1 |" in markdown
     assert "| 高风险优先级降级比例 | 0.056 |" in markdown
     assert "| 允许最大高风险降级数量 | 0 |" in markdown
     assert "| 慢案例数量 | 2 |" in markdown
     assert "| 慢案例比例 | 0.111 |" in markdown
+    assert "- 分类准确率：实际 0.889，要求至少 0.900" in markdown
+    assert "- 高风险优先级降级数量：实际 1，要求最多 0" in markdown
     assert report.cases[0].retrieved_evidence_ids == tuple(
         hit.chunk_id for hit in responses[0].retrieval.hits
     )
@@ -158,4 +170,5 @@ async def test_report_passes_when_no_high_risk_priority_downgrade_occurs() -> No
 
     # Then: 零高风险降级满足最大允许数量为零的发布门槛。
     assert report.metrics.high_risk_priority_downgrade_count == 0
+    assert report.threshold_failures == ()
     assert report.passed is True

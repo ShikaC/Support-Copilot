@@ -28,6 +28,7 @@ from evaluation.models import (
     EvaluationReport,
     EvaluationThresholds,
 )
+from evaluation.thresholds import collect_threshold_failures
 
 SLOW_CASE_THRESHOLD_MS: Final = 2_000
 
@@ -50,6 +51,7 @@ def build_evaluation_report(
     )
     thresholds = EvaluationThresholds()
     metrics = _metrics(cases, responses, case_results, top_k)
+    threshold_failures = collect_threshold_failures(metrics, thresholds)
     return EvaluationReport(
         generated_at=datetime.now(UTC),
         dataset_name=dataset_path.name,
@@ -67,11 +69,12 @@ def build_evaluation_report(
             case_results,
             SLOW_CASE_THRESHOLD_MS,
         ),
+        threshold_failures=threshold_failures,
         failed_case_ids=tuple(
             result.id for result in case_results if result.failures
         ),
         cases=case_results,
-        passed=_passes_thresholds(metrics, thresholds),
+        passed=not threshold_failures,
     )
 
 
@@ -187,27 +190,6 @@ def _metrics(
         slow_case_threshold_ms=SLOW_CASE_THRESHOLD_MS,
         slow_case_count=slow_case_count,
         slow_case_rate=slow_case_count / len(durations),
-    )
-
-
-def _passes_thresholds(
-    metrics: EvaluationMetrics,
-    thresholds: EvaluationThresholds,
-) -> bool:
-    return all(
-        (
-            metrics.classification_accuracy >= thresholds.classification_accuracy,
-            metrics.priority_accuracy >= thresholds.priority_accuracy,
-            metrics.high_risk_priority_downgrade_count
-            <= thresholds.max_high_risk_priority_downgrade_count,
-            metrics.escalation_recall >= thresholds.escalation_recall,
-            metrics.escalation_precision >= thresholds.escalation_precision,
-            metrics.hit_rate_at_k >= thresholds.hit_rate_at_k,
-            metrics.mrr >= thresholds.mrr,
-            metrics.citation_coverage >= thresholds.citation_coverage,
-            metrics.no_evidence_safety_rate >= thresholds.no_evidence_safety_rate,
-            metrics.reply_constraint_pass_rate >= thresholds.reply_constraint_pass_rate,
-        )
     )
 
 

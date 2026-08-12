@@ -1,9 +1,14 @@
-from evaluation.models import EvaluationReport
+from typing import assert_never
 
+from evaluation.models import EvaluationReport, ThresholdFailure, ThresholdMetric
 
 def render_markdown(report: EvaluationReport) -> str:
     metrics = report.metrics
     failed_cases = "、".join(report.failed_case_ids) or "无"
+    threshold_failure_lines = [
+        _render_threshold_failure(failure)
+        for failure in report.threshold_failures
+    ] or ["无"]
     configuration_performance_rows = [
         (
             f"| {configuration.model_name} | {configuration.prompt_version} | "
@@ -69,6 +74,10 @@ def render_markdown(report: EvaluationReport) -> str:
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         *configuration_performance_rows,
         "",
+        "## 失败门槛",
+        "",
+        *threshold_failure_lines,
+        "",
         "## 失败样例",
         "",
         failed_cases,
@@ -79,3 +88,50 @@ def render_markdown(report: EvaluationReport) -> str:
         "指标只能解释当前固定评估集，不能外推为通用准确率。",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _render_threshold_failure(failure: ThresholdFailure) -> str:
+    metric = failure.metric
+    label = _threshold_label(metric)
+    match failure.comparison:
+        case "at_least":
+            comparison = "至少"
+        case "at_most":
+            comparison = "最多"
+        case unreachable:
+            assert_never(unreachable)
+    actual = _format_threshold_value(metric, failure.actual)
+    threshold = _format_threshold_value(metric, failure.threshold)
+    return f"- {label}：实际 {actual}，要求{comparison} {threshold}"
+
+
+def _format_threshold_value(metric: ThresholdMetric, value: float) -> str:
+    if metric.endswith("_count"):
+        return str(round(value))
+    return f"{value:.3f}"
+
+
+def _threshold_label(metric: ThresholdMetric) -> str:
+    match metric:
+        case "classification_accuracy":
+            return "分类准确率"
+        case "priority_accuracy":
+            return "优先级准确率"
+        case "high_risk_priority_downgrade_count":
+            return "高风险优先级降级数量"
+        case "escalation_recall":
+            return "升级召回率"
+        case "escalation_precision":
+            return "升级准确率"
+        case "hit_rate_at_k":
+            return "检索命中率"
+        case "mrr":
+            return "MRR"
+        case "citation_coverage":
+            return "引用覆盖率"
+        case "no_evidence_safety_rate":
+            return "无证据安全率"
+        case "reply_constraint_pass_rate":
+            return "回复约束通过率"
+        case unreachable:
+            assert_never(unreachable)
