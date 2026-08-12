@@ -60,6 +60,7 @@ class AnalysisWorkflow:
                 draft, input_tokens, output_tokens = await self._provider.analyze(
                     request.ticket,
                     hits,
+                    request.options.prompt_version,
                 )
             else:
                 draft = self._mock_draft(request, hits)

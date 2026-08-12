@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import PydanticCustomError
 
+PromptVersion = Literal["ticket-analysis-v1"]
+
 
 class ApiModel(BaseModel):
     # Java 发送的是 camelCase JSON；Python 内部仍使用 snake_case 字段名。
@@ -45,7 +47,7 @@ class TicketInput(ApiModel):
 class AnalyzeOptions(ApiModel):
     top_n: int = Field(default=10, ge=1, le=30)
     top_k: int = Field(default=3, ge=1, le=10)
-    prompt_version: str = "ticket-analysis-v1"
+    prompt_version: PromptVersion = "ticket-analysis-v1"
 
     @model_validator(mode="after")
     def validate_retrieval_window(self) -> "AnalyzeOptions":

@@ -6,7 +6,13 @@ from openai import OpenAIError
 from app.config import Settings
 from app.errors import ExternalAiServiceError
 from app.knowledge import KnowledgeRetriever
-from app.models import AnalyzeRequest, ModelDraft, RetrievalHit, TicketInput
+from app.models import (
+    AnalyzeRequest,
+    ModelDraft,
+    PromptVersion,
+    RetrievalHit,
+    TicketInput,
+)
 from app.openai_provider import OpenAIProvider
 from app.workflow import AnalysisWorkflow
 
@@ -53,7 +59,9 @@ async def test_recoverable_ai_error_returns_fallback(monkeypatch: pytest.MonkeyP
         provider: OpenAIProvider,
         ticket: TicketInput,
         evidence: list[RetrievalHit],
+        prompt_version: PromptVersion,
     ) -> Never:
+        assert prompt_version == "ticket-analysis-v1"
         raise ExternalAiServiceError(operation="structured analysis")
 
     monkeypatch.setattr(retriever, "search", no_retrieval_hits)
@@ -78,6 +86,7 @@ async def test_programming_error_is_not_hidden_as_fallback(
         provider: OpenAIProvider,
         ticket: TicketInput,
         evidence: list[RetrievalHit],
+        prompt_version: PromptVersion,
     ) -> Never:
         raise RuntimeError("simulated programming defect")
 
@@ -128,4 +137,8 @@ async def test_provider_converts_openai_error(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(provider._client.responses, "parse", unavailable_model)
 
     with pytest.raises(ExternalAiServiceError, match="structured analysis"):
-        await provider.analyze(analyze_request().ticket, [])
+        await provider.analyze(
+            analyze_request().ticket,
+            [],
+            "ticket-analysis-v1",
+        )

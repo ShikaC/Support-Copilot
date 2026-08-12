@@ -111,3 +111,21 @@ def test_rejects_unimplemented_rerank_option() -> None:
 
     assert response.status_code == 422
     assert response.json()["detail"][0]["type"] == "extra_forbidden"
+
+
+def test_rejects_unknown_prompt_version() -> None:
+    payload = request_payload(
+        "企业账号无法登录",
+        "管理员和成员都无法进入工作区。",
+        "ACCOUNT_ACCESS",
+    )
+    payload["options"] = {
+        "topN": 10,
+        "topK": 3,
+        "promptVersion": "ticket-analysis-v99",
+    }
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"][-1] == "promptVersion"
