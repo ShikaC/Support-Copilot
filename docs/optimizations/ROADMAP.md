@@ -86,6 +86,8 @@ cd services/support-copilot-ai
 
 结果：9 passed，存在一个 Starlette/httpx 弃用警告。
 
+后续状态：第 31 轮优化已安装 `httpx2` 并增加警告回归保护；当前 Python 完整测试为 49 passed，已不再出现该警告。历史基线结果保留在此处，用于说明优化前状态。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

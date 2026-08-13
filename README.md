@@ -68,14 +68,14 @@ V1 默认使用 H2 和本地知识数据，不需要 Docker、MySQL 或 Redis。
 ```bash
 cd services/support-copilot-ai
 python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
 启动默认 mock 模式：
 
 ```bash
 cd services/support-copilot-ai
-.venv/bin/uvicorn app.main:app --reload --port 8000
+.venv/bin/python -m uvicorn app.main:app --reload --port 8000
 ```
 
 健康检查：
