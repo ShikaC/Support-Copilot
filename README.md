@@ -68,8 +68,17 @@ V1 默认使用 H2 和本地知识数据，不需要 Docker、MySQL 或 Redis。
 ```bash
 cd services/support-copilot-ai
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pip install --require-hashes -r requirements-dev.lock.txt
 ```
+
+`requirements.txt` 和 `requirements-dev.txt` 声明允许使用的版本范围；日常安装使用锁文件，确保直接依赖和间接依赖保持在已经验证的准确版本。修改依赖范围后，在 AI 服务目录重新生成锁文件：
+
+```bash
+.venv/bin/python -m uv pip compile --universal --python-version 3.11 --generate-hashes --output-file requirements.lock.txt requirements.txt
+.venv/bin/python -m uv pip compile --universal --python-version 3.11 --generate-hashes --output-file requirements-dev.lock.txt requirements-dev.txt
+```
+
+以上命令会优先保留现有锁定版本；需要主动升级全部依赖时，再额外添加 `--upgrade`。
 
 启动默认 mock 模式：
 

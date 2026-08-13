@@ -109,3 +109,5 @@ StarletteDeprecationWarning: Using `httpx` ... is deprecated
 本次只迁移 Starlette 的测试客户端依赖，没有把 OpenAI SDK 的内部 HTTP 客户端改为 `httpx2`。live 模式仍受 OpenAI SDK 自身依赖约束，不能为了消除测试警告而卸载旧 `httpx`。
 
 项目当前仍使用范围依赖文件而不是锁文件。不同时间重新创建环境时可能安装不同的小版本或次版本；后续需要根据部署方式决定是否引入可复现的依赖锁定流程。
+
+后续状态：第 32 轮已经增加生产和开发锁文件，并在全新虚拟环境中完成带 hash 安装、完整测试和 mock 评估。以上内容保留为第 31 轮结束时的历史边界。

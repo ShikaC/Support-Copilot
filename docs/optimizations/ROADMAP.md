@@ -88,6 +88,8 @@ cd services/support-copilot-ai
 
 后续状态：第 31 轮优化已安装 `httpx2` 并增加警告回归保护；当前 Python 完整测试为 49 passed，已不再出现该警告。历史基线结果保留在此处，用于说明优化前状态。
 
+第 32 轮进一步增加了生产与开发 Python 锁文件。锁文件固定直接和间接依赖版本及发行文件 hash，并已在全新 Python 3.11 虚拟环境中完成安装、49 条测试和 18 条 mock 评估验证。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
@@ -287,6 +289,7 @@ P0 完成前不开始新增业务功能。
 完成条件：
 
 - 三个服务检查命令可复现。
+- Python 直接和间接依赖可按带 hash 的锁文件复现。
 - mock 主流程和无证据流程可复现。
 - 工作区变更边界已记录。
 - README 的启动命令、服务端口和环境变量与实际代码一致。

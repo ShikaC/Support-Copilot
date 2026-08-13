@@ -47,6 +47,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 29. [防止新增案例错误类型漏测](./29-case-failure-test-completeness.md)
 30. [防止案例错误显示测试重复](./30-case-failure-test-uniqueness.md)
 31. [将 Starlette 测试客户端迁移到 httpx2](./31-starlette-testclient-httpx2.md)
+32. [锁定 Python 完整依赖树](./32-python-dependency-locks.md)
 
 ## 优化后的主流程
 
