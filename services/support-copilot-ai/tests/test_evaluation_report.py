@@ -8,8 +8,7 @@ from app.knowledge import KnowledgeRetriever
 from app.models import AnalyzeOptions, Priority
 from app.workflow import AnalysisWorkflow
 from evaluation.dataset import load_evaluation_cases
-from evaluation.markdown import _render_case_failure, render_markdown
-from evaluation.models import CaseFailure
+from evaluation.markdown import render_markdown
 from evaluation.report import build_evaluation_report
 from evaluation.runner import analyze_cases
 
@@ -18,71 +17,6 @@ DATASET_PATH: Final = (
 )
 KNOWLEDGE_PATH: Final = Path(__file__).parents[1] / "app" / "data" / "knowledge.json"
 OPTIONS: Final = AnalyzeOptions(topN=10, topK=3)
-
-
-@pytest.mark.parametrize(
-    ("failure", "expected_line"),
-    [
-        (
-            CaseFailure(
-                metric="classification",
-                expected="BILLING",
-                actual="ACCOUNT_ACCESS",
-            ),
-            "- 分类：预期 BILLING，实际 ACCOUNT_ACCESS",
-        ),
-        (
-            CaseFailure(metric="priority", expected="HIGH", actual="LOW"),
-            "- 优先级：预期 HIGH，实际 LOW",
-        ),
-        (
-            CaseFailure(metric="escalation", expected=True, actual=False),
-            "- 人工升级：预期 True，实际 False",
-        ),
-        (
-            CaseFailure(
-                metric="citation",
-                expected="retrieved_evidence_cited",
-                actual="missing_citation",
-            ),
-            "- 引用：已检索到相关证据，但回复没有引用",
-        ),
-        (
-            CaseFailure(
-                metric="no_evidence_safety",
-                expected="safe_fallback",
-                actual="unsafe_response",
-            ),
-            "- 无证据安全：未使用无引用并升级人工复核的 fallback",
-        ),
-        (
-            CaseFailure(
-                metric="reply_constraint",
-                expected="must_cite_evidence",
-                actual="violated",
-            ),
-            "- 回复约束：未满足 must_cite_evidence",
-        ),
-    ],
-    ids=(
-        "classification",
-        "priority",
-        "escalation",
-        "citation",
-        "no-evidence-safety",
-        "reply-constraint",
-    ),
-)
-def test_renders_every_case_failure_type(
-    failure: CaseFailure,
-    expected_line: str,
-) -> None:
-    # Given: 参数列表分别提供六种合法的结构化错误。
-    # When: 报告层把当前错误转换成一行 Markdown。
-    line = _render_case_failure(failure)
-
-    # Then: 每种错误都使用对应的中文说明，不会遗漏显示分支。
-    assert line == expected_line
 
 
 @pytest.mark.asyncio

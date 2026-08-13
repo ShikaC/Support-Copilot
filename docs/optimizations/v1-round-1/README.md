@@ -44,6 +44,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 26. [失败样例直接展示错误原因](./26-detailed-failed-case-reporting.md)
 27. [结构化保存案例失败详情](./27-structured-case-failures.md)
 28. [覆盖全部案例错误显示分支](./28-case-failure-rendering-tests.md)
+29. [防止新增案例错误类型漏测](./29-case-failure-test-completeness.md)
 
 ## 优化后的主流程
 
