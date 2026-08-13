@@ -214,6 +214,19 @@ cd services/support-copilot-ai
 
 评估报告会写入 `services/support-copilot-ai/evaluation/reports/`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)。
 
+### Python AI CI
+
+GitHub Actions 会在每次 `push` 和 Pull Request 时自动验证 Python AI 服务：
+
+```text
+按锁文件安装开发依赖
+-> 检查范围文件与锁文件是否同步
+-> 运行 Python 测试
+-> 运行固定 mock 评估
+```
+
+任意一步返回非零退出码，整个 `Python AI CI` 任务都会失败。工作流定义见 [`.github/workflows/python-ai-ci.yml`](.github/workflows/python-ai-ci.yml)。CI 只使用 mock 模式，不需要 OpenAI API Key，也不会调用真实模型。
+
 ## 关键接口
 
 | 方法 | 路径 | 用途 |
