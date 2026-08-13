@@ -16,6 +16,7 @@ from evaluation.case_checks import (
     priority_failure,
 )
 from evaluation.dataset import load_evaluation_cases
+from evaluation.models import CaseFailure
 
 DATASET_PATH: Final = (
     Path(__file__).parents[1] / "evaluation" / "data" / "tickets.jsonl"
@@ -23,14 +24,19 @@ DATASET_PATH: Final = (
 OPTIONS: Final = AnalyzeOptions(topN=10, topK=3)
 
 
-def test_collect_failures_keeps_only_error_messages() -> None:
+def test_collect_failures_keeps_only_failure_objects() -> None:
+    classification = CaseFailure(
+        metric="classification",
+        expected="BILLING",
+        actual="SUBSCRIPTION",
+    )
     failures = collect_failures(
         None,
-        "classification: expected BILLING, got SUBSCRIPTION",
+        classification,
         None,
     )
 
-    assert failures == ("classification: expected BILLING, got SUBSCRIPTION",)
+    assert failures == (classification,)
 
 
 @pytest.mark.asyncio
@@ -45,8 +51,10 @@ async def test_compares_expected_category_with_actual_workflow_result() -> None:
     assert classification_is_correct(case, response) is True
 
     mismatched_case = case.model_copy(update={"expected_category": "SUBSCRIPTION"})
-    assert classification_failure(mismatched_case, response) == (
-        "classification: expected SUBSCRIPTION, got BILLING"
+    assert classification_failure(mismatched_case, response) == CaseFailure(
+        metric="classification",
+        expected="SUBSCRIPTION",
+        actual="BILLING",
     )
 
 
@@ -58,9 +66,35 @@ async def test_reports_expected_and_actual_priority_when_they_differ() -> None:
     response = await workflow.run(case.to_request(OPTIONS))
     mismatched_case = case.model_copy(update={"expected_priority": "LOW"})
 
-    assert priority_failure(mismatched_case, response) == (
-        "priority: expected LOW, got HIGH"
+    assert priority_failure(mismatched_case, response) == CaseFailure(
+        metric="priority",
+        expected="LOW",
+        actual="HIGH",
     )
+
+
+@pytest.mark.asyncio
+async def test_priority_failure_exposes_machine_readable_values() -> None:
+    # Given: 人工标准优先级与系统实际优先级不同。
+    case = load_evaluation_cases(DATASET_PATH)[0]
+    settings = Settings(ai_mode="mock")
+    workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
+    response = await workflow.run(case.to_request(OPTIONS))
+    mismatched_case = case.model_copy(update={"expected_priority": "LOW"})
+
+    # When: 生成这条优先级失败详情。
+    failure = priority_failure(mismatched_case, response)
+
+    # Then: 各字段可以被程序单独读取，不需要拆解英文句子。
+    assert failure is not None
+    assert failure.metric == "priority"
+    assert failure.expected == "LOW"
+    assert failure.actual == "HIGH"
+    assert failure.model_dump(mode="json") == {
+        "metric": "priority",
+        "expected": "LOW",
+        "actual": "HIGH",
+    }
 
 
 @pytest.mark.asyncio
@@ -71,8 +105,10 @@ async def test_reports_expected_and_actual_escalation_when_they_differ() -> None
     response = await workflow.run(case.to_request(OPTIONS))
     mismatched_case = case.model_copy(update={"expected_escalation": False})
 
-    assert escalation_failure(mismatched_case, response) == (
-        "escalation: expected False, got True"
+    assert escalation_failure(mismatched_case, response) == CaseFailure(
+        metric="escalation",
+        expected=False,
+        actual=True,
     )
 
 
@@ -85,7 +121,7 @@ async def test_case_failures_marks_the_case_failed_for_one_wrong_result() -> Non
     mismatched_case = case.model_copy(update={"expected_priority": "LOW"})
 
     assert case_failures(mismatched_case, response) == (
-        "priority: expected LOW, got HIGH",
+        CaseFailure(metric="priority", expected="LOW", actual="HIGH"),
     )
 
 
@@ -104,8 +140,16 @@ async def test_case_failures_reports_missing_citations_after_retrieval() -> None
     )
 
     assert case_failures(case, response_without_citations) == (
-        "citations: retrieved evidence was not cited in suggested reply",
-        "reply_constraint: must_cite_evidence",
+        CaseFailure(
+            metric="citation",
+            expected="retrieved_evidence_cited",
+            actual="missing_citation",
+        ),
+        CaseFailure(
+            metric="reply_constraint",
+            expected="must_cite_evidence",
+            actual="violated",
+        ),
     )
 
 
@@ -124,5 +168,9 @@ async def test_case_failures_rejects_an_invented_citation_without_evidence() -> 
     )
 
     assert case_failures(case, unsafe_response) == (
-        "no_evidence_safety: expected fallback without citations and with escalation",
+        CaseFailure(
+            metric="no_evidence_safety",
+            expected="safe_fallback",
+            actual="unsafe_response",
+        ),
     )

@@ -1,6 +1,7 @@
 from typing import assert_never
 
 from evaluation.models import (
+    CaseFailure,
     CaseEvaluationResult,
     EvaluationReport,
     ThresholdFailure,
@@ -105,8 +106,26 @@ def _render_failed_cases(
         if lines:
             lines.append("")
         lines.append(f"### {case.id} - {case.subject}")
-        lines.extend(f"- {failure}" for failure in case.failures)
+        lines.extend(_render_case_failure(failure) for failure in case.failures)
     return lines or ["无"]
+
+
+def _render_case_failure(failure: CaseFailure) -> str:
+    match failure.metric:
+        case "classification":
+            return f"- 分类：预期 {failure.expected}，实际 {failure.actual}"
+        case "priority":
+            return f"- 优先级：预期 {failure.expected}，实际 {failure.actual}"
+        case "escalation":
+            return f"- 人工升级：预期 {failure.expected}，实际 {failure.actual}"
+        case "citation":
+            return "- 引用：已检索到相关证据，但回复没有引用"
+        case "no_evidence_safety":
+            return "- 无证据安全：未使用无引用并升级人工复核的 fallback"
+        case "reply_constraint":
+            return f"- 回复约束：未满足 {failure.expected}"
+        case unreachable:
+            assert_never(unreachable)
 
 
 def _render_threshold_failure(failure: ThresholdFailure) -> str:

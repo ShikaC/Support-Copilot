@@ -20,6 +20,14 @@ ThresholdMetric = Literal[
     "no_evidence_safety_rate",
     "reply_constraint_pass_rate",
 ]
+CaseFailureMetric = Literal[
+    "classification",
+    "priority",
+    "escalation",
+    "citation",
+    "no_evidence_safety",
+    "reply_constraint",
+]
 
 
 class EvaluationModel(BaseModel):
@@ -139,6 +147,13 @@ class EvaluationThresholds(EvaluationModel):
     reply_constraint_pass_rate: EvaluationRate = 1.0
 
 
+class CaseFailure(EvaluationModel):
+    # 判断层保存稳定字段；中文、英文等显示文本由报告层决定。
+    metric: CaseFailureMetric
+    expected: str | bool
+    actual: str | bool
+
+
 class CaseEvaluationResult(EvaluationModel):
     id: str
     subject: str
@@ -162,8 +177,8 @@ class CaseEvaluationResult(EvaluationModel):
     reply_content: str
     warnings: tuple[str, ...]
     duration_ms: int = Field(ge=0)
-    failures: tuple[str, ...]
-    constraint_failures: tuple[str, ...]
+    failures: tuple[CaseFailure, ...]
+    constraint_failures: tuple[ReplyConstraint, ...]
 
 
 class EvaluationEnvironment(EvaluationModel):

@@ -147,8 +147,8 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
     assert (
         "### billing-details-002 - 支付争议需要补充什么资料" in markdown
     )
-    assert "- classification: expected BILLING, got ACCOUNT_ACCESS" in markdown
-    assert "- priority: expected HIGH, got LOW" in markdown
+    assert "- 分类：预期 BILLING，实际 ACCOUNT_ACCESS" in markdown
+    assert "- 优先级：预期 HIGH，实际 LOW" in markdown
     assert "### billing-refund-003 - 退款审核通过后多久到账" in markdown
     assert "billing-details-002、billing-refund-003" not in markdown
     assert report.cases[0].retrieved_evidence_ids == tuple(
