@@ -58,6 +58,16 @@ def test_failure_rendering_cases_cover_every_allowed_metric() -> None:
     assert tested_metrics == allowed_metrics
 
 
+def test_failure_rendering_cases_do_not_repeat_metrics() -> None:
+    # Given: 原始序列保留重复项，set 会把重复类型合并。
+    tested_metrics = tuple(
+        failure.metric for failure, _ in FAILURE_RENDERING_CASES
+    )
+
+    # When / Then: 数量相同才说明每种错误类型只出现一次。
+    assert len(tested_metrics) == len(set(tested_metrics))
+
+
 @pytest.mark.parametrize(
     ("failure", "expected_line"),
     FAILURE_RENDERING_CASES,
