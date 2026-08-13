@@ -214,9 +214,11 @@ cd services/support-copilot-ai
 
 评估报告会写入 `services/support-copilot-ai/evaluation/reports/`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)。
 
-### Python AI CI
+### 自动化 CI
 
-GitHub Actions 会在每次 `push` 和 Pull Request 时自动验证 Python AI 服务：
+GitHub Actions 会在每次 `push` 和 Pull Request 时分别验证 Python AI 服务和 Java 业务 API。
+
+Python AI CI：
 
 ```text
 按锁文件安装开发依赖
@@ -226,6 +228,17 @@ GitHub Actions 会在每次 `push` 和 Pull Request 时自动验证 Python AI �
 ```
 
 任意一步返回非零退出码，整个 `Python AI CI` 任务都会失败。工作流定义见 [`.github/workflows/python-ai-ci.yml`](.github/workflows/python-ai-ci.yml)。CI 只使用 mock 模式，不需要 OpenAI API Key，也不会调用真实模型。
+
+Java API CI：
+
+```text
+安装 Java 21
+-> 验证 Gradle Wrapper 并恢复依赖缓存
+-> 编译 Java 代码和测试
+-> 运行全部 Java 测试
+```
+
+Java 工作流定义见 [`.github/workflows/java-api-ci.yml`](.github/workflows/java-api-ci.yml)。它使用内存 H2 和测试 mock，不需要另外启动 MySQL、Python 或 React。
 
 ## 关键接口
 

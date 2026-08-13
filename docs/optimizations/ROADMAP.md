@@ -94,6 +94,8 @@ cd services/support-copilot-ai
 
 第 34 轮把该检查器、Python 完整测试和固定 mock 评估接入 GitHub Actions。工作流会在每次 `push` 和 Pull Request 时运行，使用只读仓库权限、Python 3.11、锁定依赖和固定 SHA 的官方 Actions。当前配置已经通过本地语法检查和干净环境验证；提交推送后仍需确认 GitHub 首次实际运行结果，并在后续配置分支保护。
 
+第 35 轮增加 Java API GitHub Actions 工作流。它在每次 `push` 和 Pull Request 时准备 Java 21，验证 Gradle Wrapper，缓存 Gradle 依赖，并通过项目固定的 Gradle 9.5.1 运行全部 Java 测试。当前配置已经通过 `actionlint`，并在清理构建产物后实际执行 13 条测试；提交推送后仍需确认 GitHub Linux 环境的第一次远程结果。React 自动验证和分支保护仍待后续完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

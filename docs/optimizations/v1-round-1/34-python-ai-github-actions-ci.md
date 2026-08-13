@@ -133,7 +133,7 @@ GitHub 不知道提交是否通过测试和评估
 
 ## 当前边界
 
-- 当前 CI 只覆盖 Python AI 服务，Java 和 React 仍需后续接入自动验证。
+- 后续状态：第 35 轮已经增加 Java API CI；React 仍需后续接入自动验证。
 - 只配置 CI 不会自动禁止失败代码进入 `master`，还需要在 GitHub 仓库中配置分支保护和必需检查。
 - 当前没有上传测试覆盖率或评估报告 artifact。
 - CI 尚未替代真实 live 模式验证；mock 评估结果不能代表真实模型或生产 RAG 效果。
