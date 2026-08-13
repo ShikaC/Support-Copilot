@@ -90,6 +90,8 @@ cd services/support-copilot-ai
 
 第 32 轮进一步增加了生产与开发 Python 锁文件。锁文件固定直接和间接依赖版本及发行文件 hash，并已在全新 Python 3.11 虚拟环境中完成安装、49 条测试和 18 条 mock 评估验证。
 
+第 33 轮增加了过期锁文件检查器。范围文件变更但锁文件未重新生成时，检查命令会列出过期文件并返回非零退出码；当前仍需开发者主动运行，尚未接入 CI。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

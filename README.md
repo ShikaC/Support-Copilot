@@ -80,6 +80,14 @@ python3 -m venv .venv
 
 以上命令会优先保留现有锁定版本；需要主动升级全部依赖时，再额外添加 `--upgrade`。
 
+提交 Python 依赖变更前，检查范围文件和锁文件是否同步：
+
+```bash
+.venv/bin/python -m scripts.check_dependency_locks
+```
+
+检查器只在临时目录重新生成并比较锁文件，不会修改仓库文件。检查失败时，先使用上面的生成命令更新两个锁文件，再重新运行测试和 mock 评估。
+
 启动默认 mock 模式：
 
 ```bash
