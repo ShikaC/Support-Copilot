@@ -105,6 +105,8 @@ cd services/support-copilot-ai
 
 第 39 轮增加 React 非 JSON `500` 错误测试，验证后端未返回结构化错误体时，前端仍会根据 HTTP 状态生成稳定的默认消息和 `HTTP_500` 错误代码，并把 `traceId` 和 `details` 安全置为空值。故障注入证明测试能够捕获默认代码变化；React 当前共 3 条单元测试。
 
+第 40 轮已将提交 `a188945fe975295efbcfd6b52735cfa812725b31` 推送到 GitHub，并完成 Python AI、Java API、React Web 三条 GitHub Actions 的首次远端运行，三条结果均为 `success`。运行记录见 [`40-remote-ci-validation.md`](v1-round-1/40-remote-ci-validation.md)。这只证明远端 CI 基线成立，不代表真实 live RAG 已完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
