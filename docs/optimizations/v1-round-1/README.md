@@ -52,6 +52,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 34. [使用 GitHub Actions 自动验证 Python AI 服务](./34-python-ai-github-actions-ci.md)
 35. [使用 GitHub Actions 自动验证 Java 业务 API](./35-java-api-github-actions-ci.md)
 36. [使用 GitHub Actions 自动验证 React 前端](./36-react-web-github-actions-ci.md)
+37. [验证 React 发送正确的分析请求](./37-react-analyze-ticket-unit-test.md)
 
 ## 优化后的主流程
 

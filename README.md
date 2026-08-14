@@ -189,6 +189,7 @@ export RETRIEVAL_TOP_K=3
 cd apps/support-copilot-web
 npm ci
 npm run lint
+npm run test
 npm run build
 ```
 
@@ -247,10 +248,11 @@ React Web CI：
 安装 Node.js 24 并恢复 npm 下载缓存
 -> 按 package-lock.json 安装依赖
 -> 运行前端静态检查
+-> 运行前端 API 单元测试
 -> 执行 TypeScript 检查和生产构建
 ```
 
-React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflows/react-web-ci.yml)。它不会复用开发者本机的 `node_modules`；`npm ci`、`npm run lint` 或 `npm run build` 任意一步失败，整个任务都会失败。
+React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflows/react-web-ci.yml)。它不会复用开发者本机的 `node_modules`；依赖安装、lint、单元测试或 build 任意一步失败，整个任务都会失败。
 
 ## 关键接口
 

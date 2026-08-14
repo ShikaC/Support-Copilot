@@ -98,6 +98,8 @@ cd services/support-copilot-ai
 
 第 36 轮增加 React Web GitHub Actions 工作流。它使用仍在维护的 Node.js 24，在每次 `push` 和 Pull Request 时执行锁定依赖安装、前端静态检查、TypeScript 检查和生产构建。当前配置已经通过 `actionlint`，并在不复用现有 `node_modules` 的临时目录中完成 `npm ci`、lint 和 build；提交推送后仍需确认 GitHub Linux 环境的第一次远程结果。三条 CI 的分支保护仍待后续配置。
 
+第 37 轮为 React API 边界增加 Vitest 单元测试，验证 `analyzeTicket` 会把选中的工单 ID 放入正确的 `POST /api/tickets/{id}/analyze` 请求，并把测试命令接入 React CI。测试已经通过故障注入证明能够捕获错误工单 ID；干净环境中的安装、lint、测试和 build 均通过。当前仍缺少组件测试和完整浏览器端到端测试。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
