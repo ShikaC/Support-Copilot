@@ -133,7 +133,7 @@ Wrapper 来源、Java 版本、编译和业务测试都进入验收链路
 
 ## 当前边界
 
-- React 前端尚未接入 CI。
-- 还没有把 `Java API CI` 和 `Python AI CI` 配置为 `master` 合并前的必需检查。
+- React 前端已在后续第 36 轮接入独立 CI。
+- 还没有把 `Java API CI`、`Python AI CI` 和 `React Web CI` 配置为 `master` 合并前的必需检查。
 - 当前工作流不上传测试报告 artifact 或覆盖率报告。
 - Java 测试仍使用内存 H2，不能替代未来 MySQL 集成测试。

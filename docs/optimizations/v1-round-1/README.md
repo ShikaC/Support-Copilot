@@ -1,6 +1,6 @@
 # V1 第一轮代码优化合集
 
-> 最近更新：2026-08-13
+> 最近更新：2026-08-14
 >
 > 范围：实现已经理解、完成设计并且可以被测试验证的 V1 可靠性改进；每轮优化完成后创建本地 Git 提交。
 
@@ -51,6 +51,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 33. [自动检测过期的 Python 锁文件](./33-detect-stale-python-locks.md)
 34. [使用 GitHub Actions 自动验证 Python AI 服务](./34-python-ai-github-actions-ci.md)
 35. [使用 GitHub Actions 自动验证 Java 业务 API](./35-java-api-github-actions-ci.md)
+36. [使用 GitHub Actions 自动验证 React 前端](./36-react-web-github-actions-ci.md)
 
 ## 优化后的主流程
 

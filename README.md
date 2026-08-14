@@ -50,7 +50,7 @@ RAG 理论课程、词汇表和学习记录保留在独立的 `CY-Agent` 学习�
 
 ## 环境要求
 
-- Node.js 20 或更高版本
+- Node.js 24（LTS）
 - Java 21
 - Python 3.11
 - npm
@@ -187,6 +187,7 @@ export RETRIEVAL_TOP_K=3
 
 ```bash
 cd apps/support-copilot-web
+npm ci
 npm run lint
 npm run build
 ```
@@ -216,7 +217,7 @@ cd services/support-copilot-ai
 
 ### 自动化 CI
 
-GitHub Actions 会在每次 `push` 和 Pull Request 时分别验证 Python AI 服务和 Java 业务 API。
+GitHub Actions 会在每次 `push` 和 Pull Request 时分别验证 Python AI 服务、Java 业务 API 和 React 前端。
 
 Python AI CI：
 
@@ -239,6 +240,17 @@ Java API CI：
 ```
 
 Java 工作流定义见 [`.github/workflows/java-api-ci.yml`](.github/workflows/java-api-ci.yml)。它使用内存 H2 和测试 mock，不需要另外启动 MySQL、Python 或 React。
+
+React Web CI：
+
+```text
+安装 Node.js 24 并恢复 npm 下载缓存
+-> 按 package-lock.json 安装依赖
+-> 运行前端静态检查
+-> 执行 TypeScript 检查和生产构建
+```
+
+React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflows/react-web-ci.yml)。它不会复用开发者本机的 `node_modules`；`npm ci`、`npm run lint` 或 `npm run build` 任意一步失败，整个任务都会失败。
 
 ## 关键接口
 
