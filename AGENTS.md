@@ -6,6 +6,7 @@
 - `docs/learning/TEACHING_PROTOCOL.md`
 - `docs/learning/V1_PROJECT_MAP.md`
 - `docs/learning/ONE_WEEK_INTERVIEW_SPRINT.md`
+- `docs/learning/LIVE_RAG_COMPLETION_CRITERIA.md`
 - `docs/optimizations/ROADMAP.md`
 
 ## 当前七天冲刺模式
@@ -21,6 +22,8 @@
 7. 推送、创建远端配置等外部写入仍需用户明确授权。
 
 不得因为加速而省略测试、故障演练、文档、提交或真实能力边界。
+
+mock 模式只用于开发、测试和 CI。项目最终完成条件包含可接入正式模型与 Embedding API 的真实 RAG 链路，以及至少一次经过脱敏记录的真实 live 成功验证；不能在 mock-only 状态结束项目。
 
 ## 深度教学顺序
 

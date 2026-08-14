@@ -240,4 +240,5 @@ CI 是 GitHub 上的自动验收流程。
 - 与实现相符的文档。
 - 独立本地 Git 提交。
 - 明确的 mock、live、fallback 和生产边界。
+- 真实 RAG 完成状态必须符合 `LIVE_RAG_COMPLETION_CRITERIA.md`，不能用 mock 结果替代 live 证据。
 - 不虚构的简历与面试表述。
