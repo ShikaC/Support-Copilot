@@ -61,6 +61,14 @@ V1 默认使用 H2 和本地知识数据，不需要 Docker、MySQL 或 Redis。
 
 需要三个终端。建议先启动 AI 服务和 Java API，再启动前端。
 
+启动前先在仓库根目录执行一次本地依赖检查：
+
+```bash
+./scripts/check-local-startup.sh --preflight
+```
+
+它只检查 Node.js、Java、Python、curl、Python 虚拟环境、Gradle Wrapper 和前端依赖是否准备好，不会启动服务。
+
 ### 1. AI 服务
 
 首次运行：
@@ -143,6 +151,14 @@ npm run dev
 浏览器访问：`http://localhost:5173`
 
 Vite 会把 `/api` 代理到 `http://localhost:8080`。如果 Java API 未启动，前端会进入有明确标识的演示数据模式。
+
+三个服务都启动后，在另一个终端执行真实 HTTP 健康检查：
+
+```bash
+./scripts/check-local-startup.sh --health
+```
+
+健康检查只会在 Python、Java 和 React 三个 HTTP 地址都可访问且返回预期状态时通过。也可以使用 `--all` 连续执行启动前检查和健康检查。
 
 ## OpenAI 实时模式
 

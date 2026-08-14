@@ -107,6 +107,8 @@ cd services/support-copilot-ai
 
 第 40 轮已将提交 `a188945fe975295efbcfd6b52735cfa812725b31` 推送到 GitHub，并完成 Python AI、Java API、React Web 三条 GitHub Actions 的首次远端运行，三条结果均为 `success`。运行记录见 [`40-remote-ci-validation.md`](v1-round-1/40-remote-ci-validation.md)。这只证明远端 CI 基线成立，不代表真实 live RAG 已完成。
 
+第 41 轮增加了 `scripts/check-local-startup.sh`，用于统一检查本地运行时、依赖安装状态和 Python/Java/React 健康端点；三服务实际启动、代理读取工单和停止 Python 的失败演练均已完成。该脚本只检查，不负责进程编排。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

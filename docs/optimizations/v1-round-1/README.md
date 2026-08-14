@@ -56,6 +56,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 38. [保留 Java 返回的结构化 409 错误](./38-react-structured-conflict-error-test.md)
 39. [为非 JSON 500 响应生成默认错误](./39-react-non-json-error-defaults-test.md)
 40. [完成三条 GitHub Actions 首次远端验证](./40-remote-ci-validation.md)
+41. [增加可复现本地启动检查](./41-reproducible-local-startup-check.md)
 
 ## 优化后的主流程
 
@@ -90,3 +91,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 检索参数现在保证 `Top K <= Top N`，尚未实现的 `enableRerank` 请求开关也已经移除。mock 与 live 都会先建立 `Top N` 候选池，再保留 `Top K` 证据；但两种模式使用的检索算法不同，live 向量检索仍需要独立集成测试和真实评估集验证。
 
 第 40 轮已在 GitHub 上针对提交 `a188945fe975295efbcfd6b52735cfa812725b31` 完成 Python AI、Java API 和 React Web 三条 CI 的首次远端验证，三条运行均为 `success`。这证明 CI 在远端环境可运行，但不替代真实 live RAG 验证。
+
+第 41 轮增加了仓库根目录的本地启动检查脚本，能够分别验证启动前依赖和启动后三个 HTTP 健康端点，并通过停止 Python 的故障演练确认失败服务会被单独报告。
