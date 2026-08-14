@@ -26,3 +26,35 @@ it('posts the selected ticket id to the analysis endpoint', async () => {
     headers: { 'Content-Type': 'application/json' },
   })
 })
+
+it('preserves structured conflict details from the API', async () => {
+  // Given: Java 返回带业务代码和版本信息的 409 响应。
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        code: 'TICKET_VERSION_CONFLICT',
+        message: '工单版本已变化',
+        traceId: 'trace-409',
+        details: { expectedVersion: 3, currentVersion: 4 },
+      }),
+      {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    ),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: 前端请求分析已经发生版本冲突的工单。
+  const analysisRequest = analyzeTicket('ticket-10042')
+
+  // Then: React 收到的错误必须保留 Java 提供的结构化字段。
+  await expect(analysisRequest).rejects.toMatchObject({
+    name: 'ApiError',
+    status: 409,
+    code: 'TICKET_VERSION_CONFLICT',
+    message: '工单版本已变化',
+    traceId: 'trace-409',
+    details: { expectedVersion: 3, currentVersion: 4 },
+  })
+})

@@ -100,6 +100,8 @@ cd services/support-copilot-ai
 
 第 37 轮为 React API 边界增加 Vitest 单元测试，验证 `analyzeTicket` 会把选中的工单 ID 放入正确的 `POST /api/tickets/{id}/analyze` 请求，并把测试命令接入 React CI。测试已经通过故障注入证明能够捕获错误工单 ID；干净环境中的安装、lint、测试和 build 均通过。当前仍缺少组件测试和完整浏览器端到端测试。
 
+第 38 轮增加 React 结构化 `409 Conflict` 单元测试，验证 Java 返回的 HTTP 状态、业务错误代码、消息、`traceId` 和工单版本详情会被完整转换为 `ApiError`。测试已经通过故障注入证明能够捕获业务错误代码丢失；React 当前共 2 条单元测试，仍不代表真实 Java 服务或完整浏览器流程已经验证。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
