@@ -5,6 +5,7 @@
 > 适用范围：当前仓库的 V1 本地端到端原型，及其迈向成熟项目的持续优化
 > 目标：把项目完善为企业级、可运行、可使用、可验证，并能服务于 AI 应用开发岗位求职的成熟 AI 应用作品
 > 重要边界：本文档是路线，不代表其中所有能力已经实现或已经由作者本人验证。
+> 当前七天执行表：[`docs/learning/ONE_WEEK_INTERVIEW_SPRINT.md`](../learning/ONE_WEEK_INTERVIEW_SPRINT.md)
 
 ---
 
