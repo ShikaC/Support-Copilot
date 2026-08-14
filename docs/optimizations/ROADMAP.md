@@ -102,6 +102,8 @@ cd services/support-copilot-ai
 
 第 38 轮增加 React 结构化 `409 Conflict` 单元测试，验证 Java 返回的 HTTP 状态、业务错误代码、消息、`traceId` 和工单版本详情会被完整转换为 `ApiError`。测试已经通过故障注入证明能够捕获业务错误代码丢失；React 当前共 2 条单元测试，仍不代表真实 Java 服务或完整浏览器流程已经验证。
 
+第 39 轮增加 React 非 JSON `500` 错误测试，验证后端未返回结构化错误体时，前端仍会根据 HTTP 状态生成稳定的默认消息和 `HTTP_500` 错误代码，并把 `traceId` 和 `details` 安全置为空值。故障注入证明测试能够捕获默认代码变化；React 当前共 3 条单元测试。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

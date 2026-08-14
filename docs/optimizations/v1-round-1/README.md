@@ -54,6 +54,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 36. [使用 GitHub Actions 自动验证 React 前端](./36-react-web-github-actions-ci.md)
 37. [验证 React 发送正确的分析请求](./37-react-analyze-ticket-unit-test.md)
 38. [保留 Java 返回的结构化 409 错误](./38-react-structured-conflict-error-test.md)
+39. [为非 JSON 500 响应生成默认错误](./39-react-non-json-error-defaults-test.md)
 
 ## 优化后的主流程
 

@@ -58,3 +58,27 @@ it('preserves structured conflict details from the API', async () => {
     details: { expectedVersion: 3, currentVersion: 4 },
   })
 })
+
+it('uses default fields when an API error body is not JSON', async () => {
+  // Given: Java 返回没有结构化 JSON 的 500 响应。
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response('upstream unavailable', {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: 前端请求分析时收到无法解析的错误体。
+  const analysisRequest = analyzeTicket('ticket-10042')
+
+  // Then: React 使用 HTTP 状态生成稳定的默认错误字段。
+  await expect(analysisRequest).rejects.toMatchObject({
+    name: 'ApiError',
+    status: 500,
+    code: 'HTTP_500',
+    message: 'API request failed: 500',
+    traceId: null,
+    details: {},
+  })
+})
