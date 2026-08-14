@@ -109,6 +109,8 @@ cd services/support-copilot-ai
 
 第 41 轮增加了 `scripts/check-local-startup.sh`，用于统一检查本地运行时、依赖安装状态和 Python/Java/React 健康端点；三服务实际启动、代理读取工单和停止 Python 的失败演练均已完成。该脚本只检查，不负责进程编排。
 
+第 42 轮增加了 `scripts/check-local-analysis-flow.sh`，通过 React 代理实际验证 mock 成功分析、Python 不可用时的 Java fallback，以及两种结果在 Java 分析历史中的持久化。版本冲突和浏览器组件级 E2E 仍待后续批次。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

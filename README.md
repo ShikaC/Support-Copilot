@@ -160,6 +160,22 @@ Vite 会把 `/api` 代理到 `http://localhost:8080`。如果 Java API 未启动
 
 健康检查只会在 Python、Java 和 React 三个 HTTP 地址都可访问且返回预期状态时通过。也可以使用 `--all` 连续执行启动前检查和健康检查。
 
+### 跨服务分析流程检查
+
+三个服务启动后，通过 React 代理验证一次成功分析：
+
+```bash
+./scripts/check-local-analysis-flow.sh --success
+```
+
+故障演练时，先停止 Python AI 服务，再执行 Java fallback 检查：
+
+```bash
+./scripts/check-local-analysis-flow.sh --fallback
+```
+
+检查完成后重新启动 Python。脚本会验证分析模式、状态、`traceId`、证据或人工复核警告，以及 Java 分析历史中的最新记录；它不会自动停止或启动任何服务。
+
 ## OpenAI 实时模式
 
 默认 `AI_MODE=mock` 不调用外部 API，适合开发、测试和面试环境预检。

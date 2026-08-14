@@ -57,6 +57,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 39. [为非 JSON 500 响应生成默认错误](./39-react-non-json-error-defaults-test.md)
 40. [完成三条 GitHub Actions 首次远端验证](./40-remote-ci-validation.md)
 41. [增加可复现本地启动检查](./41-reproducible-local-startup-check.md)
+42. [增加跨服务分析流程检查](./42-cross-service-analysis-flow-check.md)
 
 ## 优化后的主流程
 
@@ -93,3 +94,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 40 轮已在 GitHub 上针对提交 `a188945fe975295efbcfd6b52735cfa812725b31` 完成 Python AI、Java API 和 React Web 三条 CI 的首次远端验证，三条运行均为 `success`。这证明 CI 在远端环境可运行，但不替代真实 live RAG 验证。
 
 第 41 轮增加了仓库根目录的本地启动检查脚本，能够分别验证启动前依赖和启动后三个 HTTP 健康端点，并通过停止 Python 的故障演练确认失败服务会被单独报告。
+
+第 42 轮增加了跨服务分析流程检查，实际经过 React 代理验证 mock 成功分析和 Python 不可用时的 Java fallback，并确认两种结果均写入 Java 分析历史。
