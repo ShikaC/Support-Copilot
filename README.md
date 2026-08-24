@@ -223,10 +223,15 @@ export KNOWLEDGE_PROVENANCE_PATH='/absolute/path/to/authorized-knowledge.provena
 ```bash
 export OPENAI_BASE_URL='https://your-compatible-gateway.example/v1'
 export OPENAI_TIMEOUT_SECONDS=20
-export OPENAI_MAX_RETRIES=2
+export OPENAI_MAX_RETRIES=1
+export AI_PROCESSING_TIMEOUT_SECONDS=90
+export AI_SERVICE_TIMEOUT_MS=105000
+export SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS=120
 export RETRIEVAL_TOP_N=10
 export RETRIEVAL_TOP_K=3
 ```
+
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒并最多重试 1 次，Python 整体分析在 90 秒停止，Java 最长等待 105 秒，live 验收客户端最长等待 120 秒。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型；Python 总截止时间优先于 SDK 的后续重试，避免 Java 已降级后 Python 仍继续消耗调用预算。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
 
 在调用正式 API 前先执行只读预检；它不会发出外部请求：
 

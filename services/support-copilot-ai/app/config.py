@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -23,12 +23,23 @@ class Settings(BaseSettings):
     openai_base_url: str | None = None
     openai_chat_model: str | None = None
     openai_embedding_model: str | None = None
-    openai_timeout_seconds: float = 20.0
-    openai_max_retries: int = 2
+    openai_timeout_seconds: float = Field(default=20.0, gt=0)
+    openai_max_retries: int = Field(default=1, ge=0)
+    ai_processing_timeout_seconds: float = Field(default=90.0, gt=0)
     knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH
     knowledge_provenance_path: Path | None = None
     retrieval_top_n: int = 10
     retrieval_top_k: int = 3
+
+    @field_validator("openai_max_retries")
+    @classmethod
+    def validate_openai_max_retries(cls, value: int) -> int:
+        if value > 1:
+            raise PydanticCustomError(
+                "retry_budget_exceeded",
+                "OPENAI_MAX_RETRIES must be between 0 and 1",
+            )
+        return value
 
     @model_validator(mode="after")
     def validate_live_mode(self) -> "Settings":

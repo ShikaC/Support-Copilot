@@ -1,9 +1,13 @@
 import logging
+from typing import Never
 
 from _pytest.logging import LogCaptureFixture
 from fastapi.testclient import TestClient
+import pytest
 
-from app.main import app
+from app.analysis_runner import AnalysisProcessingTimeoutError
+from app.main import app, runner
+from app.models import AnalyzeRequest
 
 client = TestClient(app)
 
@@ -13,7 +17,7 @@ def request_payload(
     description: str,
     category: str,
     priority: str = "MEDIUM",
-) -> dict[str, object]:
+) -> dict[str, str | dict[str, str | int | bool]]:
     return {
         "traceId": "trace_test_001",
         "ticket": {
@@ -77,6 +81,44 @@ def test_analysis_log_keeps_request_trace_id(caplog: LogCaptureFixture) -> None:
     assert response.status_code == 200
     assert any(
         "analysis.completed" in record.message
+        and "trace_test_001" in record.message
+        for record in caplog.records
+    )
+
+
+def test_processing_timeout_returns_traceable_gateway_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: LogCaptureFixture,
+) -> None:
+    # Given: the shared analysis deadline expires for this request.
+    async def time_out(request: AnalyzeRequest) -> Never:
+        raise AnalysisProcessingTimeoutError(
+            trace_id=request.trace_id,
+            timeout_seconds=90,
+        )
+
+    monkeypatch.setattr(runner, "run", time_out)
+    caplog.set_level(logging.ERROR, logger="app.main")
+
+    # When: the timeout reaches the Python HTTP boundary.
+    response = client.post(
+        "/analyze",
+        json=request_payload(
+            "企业账号无法登录",
+            "管理员和成员都无法进入工作区。",
+            "ACCOUNT_ACCESS",
+        ),
+    )
+
+    # Then: Java can distinguish the 504 and correlate it with the original request.
+    assert response.status_code == 504
+    assert response.json()["detail"] == {
+        "code": "AI_PROCESSING_TIMEOUT",
+        "message": "AI analysis exceeded its processing deadline.",
+        "traceId": "trace_test_001",
+    }
+    assert any(
+        "analysis.processing_timeout" in record.message
         and "trace_test_001" in record.message
         for record in caplog.records
     )

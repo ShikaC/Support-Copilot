@@ -26,6 +26,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 - `KNOWLEDGE_PROVENANCE_PATH` 可以让服务校验 corpus 哈希，防止索引正文和来源证明漂移。
 - live 调用失败后可以进入明确标识的 fallback。
 - live 外发边界会先脱敏常见邮箱、手机号、18 位身份证号和支付卡号，Responses 请求显式设置 `store=false`。
+- live 超时遵循外部请求、Python 整体分析、Java 等待和验收客户端逐层增大的预算，并通过可取消异步调用阻止超时后的后续 AI 阶段。
 - 分析响应包含模式、模型、检索片段、引用、token 和耗时字段。
 
 但当前仍不能称为真实 RAG 已完成：

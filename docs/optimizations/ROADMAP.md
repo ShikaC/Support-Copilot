@@ -123,6 +123,8 @@ cd services/support-copilot-ai
 
 第 48 轮在 live Embedding 和 Responses 外发边界增加确定性脱敏，覆盖常见邮箱、中国大陆手机号、18 位身份证号和通过 Luhn 校验的支付卡号；Responses 请求显式发送 `store=false`。本地 OpenAI 兼容 HTTP 服务已验证 live 成功和受控 503 fallback，且捕获的外发请求不含测试原值。该结果不等于正式 API live 成功，完整 DLP、组织级数据保留控制和供应商合规评估仍未完成。
 
+第 49 轮建立 `外部单次请求 < Python 整体分析 < Java 等待 < live 验收客户端` 的截止时间顺序，将 OpenAI 自动重试限制为 1 次，并把 live 向量建库和查询改成可取消的异步调用。预检会拒绝倒置预算；本地慢 Embedding 故障演练验证 Python 504、Java fallback、分析历史持久化和同一 `traceId`。客户端取消不能保证供应商停止已经接收的计算，正式 API 成功记录和费用限额仍是层级 3 的外部前提。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

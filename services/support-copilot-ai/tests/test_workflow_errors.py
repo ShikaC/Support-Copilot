@@ -1,10 +1,16 @@
+import logging
 from typing import Never
 
+from _pytest.logging import LogCaptureFixture
+import httpx
 import pytest
-from openai import OpenAIError
+from openai import APITimeoutError, OpenAIError
 
 from app.config import Settings
-from app.errors import ExternalAiServiceError
+from app.errors import (
+    ExternalAiServiceError,
+    StructuredGenerationResponseTimeoutError,
+)
 from app.knowledge import KnowledgeRetriever
 from app.live_vector_index import RetrievalWindow
 from app.models import (
@@ -55,7 +61,11 @@ async def no_retrieval_hits(
 
 
 @pytest.mark.asyncio
-async def test_recoverable_ai_error_returns_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_recoverable_ai_error_returns_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: LogCaptureFixture,
+) -> None:
+    # Given: structured generation reaches a recoverable response timeout.
     settings = live_settings()
     retriever = KnowledgeRetriever(settings)
     workflow = AnalysisWorkflow(settings, retriever)
@@ -67,16 +77,23 @@ async def test_recoverable_ai_error_returns_fallback(monkeypatch: pytest.MonkeyP
         prompt_version: PromptVersion,
     ) -> Never:
         assert prompt_version == "ticket-analysis-v1"
-        raise ExternalAiServiceError(operation="structured analysis")
+        raise StructuredGenerationResponseTimeoutError
 
     monkeypatch.setattr(retriever, "search", no_retrieval_hits)
     monkeypatch.setattr(OpenAIProvider, "analyze", unavailable_provider)
+    caplog.set_level(logging.WARNING, logger="app.workflow")
 
+    # When: the workflow handles the named external failure.
     result = await workflow.run(analyze_request())
 
+    # Then: fallback is explicit and the log preserves the named failure type.
     assert result.status == "FALLBACK"
     assert result.mode == "fallback"
     assert result.decision.escalation_required is True
+    assert any(
+        "error_type=StructuredGenerationResponseTimeoutError" in record.message
+        for record in caplog.records
+    )
 
 
 @pytest.mark.asyncio
@@ -118,7 +135,7 @@ async def test_live_retrieval_converts_openai_error(
 
     monkeypatch.setattr(retriever._live_index, "search", unavailable_embeddings)
 
-    with pytest.raises(ExternalAiServiceError, match="knowledge retrieval"):
+    with pytest.raises(ExternalAiServiceError, match="embedding"):
         await retriever.search(
             analyze_request().ticket,
             "企业账号无法登录",
@@ -140,12 +157,77 @@ async def test_provider_converts_openai_error(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(provider._client.responses, "parse", unavailable_model)
 
-    with pytest.raises(ExternalAiServiceError, match="structured analysis"):
+    with pytest.raises(ExternalAiServiceError, match="structured_generation"):
         await provider.analyze(
             analyze_request().ticket,
             [],
             "ticket-analysis-v1",
         )
+
+
+@pytest.mark.asyncio
+async def test_embedding_timeout_preserves_response_timeout_kind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given: the embedding endpoint accepts a request but exceeds its response timeout.
+    settings = live_settings()
+    retriever = KnowledgeRetriever(settings)
+
+    async def time_out_embeddings(
+        ticket: TicketInput,
+        query: str,
+        window: RetrievalWindow,
+    ) -> Never:
+        try:
+            raise httpx.ReadTimeout("embedding response timed out")
+        except httpx.ReadTimeout as exc:
+            raise APITimeoutError(request=httpx.Request("POST", "https://example.test")) from exc
+
+    monkeypatch.setattr(retriever._live_index, "search", time_out_embeddings)
+
+    # When: the retrieval boundary converts the SDK timeout.
+    with pytest.raises(ExternalAiServiceError) as error:
+        await retriever.search(
+            analyze_request().ticket,
+            "企业账号无法登录",
+            top_n=10,
+            top_k=3,
+            live=True,
+        )
+
+    # Then: operators can identify both the embedding stage and timeout kind.
+    assert error.value.operation == "embedding"
+    assert error.value.failure_kind == "response_timeout"
+
+
+@pytest.mark.asyncio
+async def test_generation_timeout_preserves_connection_timeout_kind(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given: the structured-generation client cannot establish its connection in time.
+    provider = OpenAIProvider(live_settings())
+
+    async def time_out_connection(
+        **kwargs: str | bool | type[ModelDraft] | None,
+    ) -> Never:
+        try:
+            raise httpx.ConnectTimeout("generation connection timed out")
+        except httpx.ConnectTimeout as exc:
+            raise APITimeoutError(request=httpx.Request("POST", "https://example.test")) from exc
+
+    monkeypatch.setattr(provider._client.responses, "parse", time_out_connection)
+
+    # When: the model boundary converts the SDK timeout.
+    with pytest.raises(ExternalAiServiceError) as error:
+        await provider.analyze(
+            analyze_request().ticket,
+            [],
+            "ticket-analysis-v1",
+        )
+
+    # Then: operators can identify generation and connection setup as the cause.
+    assert error.value.operation == "structured_generation"
+    assert error.value.failure_kind == "connection_timeout"
 
 
 @pytest.mark.asyncio
@@ -203,7 +285,7 @@ async def test_provider_redacts_sensitive_data_before_sdk_call(
     monkeypatch.setattr(provider._client.responses, "parse", capture_model_request)
 
     # When: the provider reaches the external SDK boundary.
-    with pytest.raises(ExternalAiServiceError, match="structured analysis"):
+    with pytest.raises(ExternalAiServiceError, match="structured_generation"):
         await provider.analyze(ticket, evidence, "ticket-analysis-v1")
 
     # Then: the request is non-persistent and contains only redaction markers.

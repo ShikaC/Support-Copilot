@@ -1,8 +1,12 @@
-from openai import AsyncOpenAI, OpenAIError
+from openai import APITimeoutError, AsyncOpenAI, OpenAIError
 
 from app.config import Settings
 from app.data_redaction import redact_sensitive_text
-from app.errors import ExternalAiServiceError, InvalidModelResponseError
+from app.errors import (
+    InvalidModelResponseError,
+    StructuredGenerationApiError,
+    structured_generation_timeout_error,
+)
 from app.models import ModelDraft, PromptVersion, RetrievalHit, TicketInput
 from app.prompts import instructions_for
 
@@ -43,9 +47,11 @@ class OpenAIProvider:
                 store=False,
                 text_format=ModelDraft,
             )
+        except APITimeoutError as exc:
+            raise structured_generation_timeout_error(exc) from exc
         except OpenAIError as exc:
             # 只有 OpenAI SDK 明确报告的外部故障才允许进入工作流 fallback。
-            raise ExternalAiServiceError(operation="structured analysis") from exc
+            raise StructuredGenerationApiError from exc
 
         if response.output_parsed is None:
             raise InvalidModelResponseError

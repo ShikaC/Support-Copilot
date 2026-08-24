@@ -5,6 +5,7 @@ from pathlib import Path
 
 import anyio
 
+from app.analysis_runner import AnalysisRunner
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
 from app.models import AnalyzeOptions
@@ -25,7 +26,8 @@ async def run_evaluation() -> int:
     settings = Settings(ai_mode="mock")
     cases = load_evaluation_cases(DATASET_PATH)
     workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
-    responses = await analyze_cases(cases, workflow.run, OPTIONS)
+    runner = AnalysisRunner(settings, workflow)
+    responses = await analyze_cases(cases, runner.run, OPTIONS)
     report = build_evaluation_report(
         cases=cases,
         responses=responses,

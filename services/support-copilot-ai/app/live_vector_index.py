@@ -35,10 +35,9 @@ class LiveVectorIndex:
         window: RetrievalWindow,
     ) -> list[RetrievalHit]:
         store = await self._get_vector_store()
-        results = await anyio.to_thread.run_sync(
-            store.similarity_search_with_score,
+        results = await store.asimilarity_search_with_score(
             redact_sensitive_text(query),
-            min(window.top_n, len(self._chunks)),
+            k=min(window.top_n, len(self._chunks)),
         )
         category = ticket.current_category
         ranked = sorted(
@@ -86,8 +85,7 @@ class LiveVectorIndex:
                 request_timeout=self._settings.openai_timeout_seconds,
             )
             documents = [self._as_document(chunk) for chunk in self._chunks]
-            self._vector_store = await anyio.to_thread.run_sync(
-                InMemoryVectorStore.from_documents,
+            self._vector_store = await InMemoryVectorStore.afrom_documents(
                 documents,
                 embeddings,
             )

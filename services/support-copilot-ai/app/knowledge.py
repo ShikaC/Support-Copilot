@@ -1,9 +1,12 @@
 import re
 
-from openai import OpenAIError
+from openai import APITimeoutError, OpenAIError
 
 from app.config import Settings
-from app.errors import ExternalAiServiceError
+from app.errors import (
+    EmbeddingApiError,
+    embedding_timeout_error,
+)
 from app.knowledge_source import KnowledgeChunk, load_knowledge_chunks
 from app.live_vector_index import LiveVectorIndex, RetrievalWindow
 from app.models import RetrievalHit, TicketInput
@@ -38,8 +41,10 @@ class KnowledgeRetriever:
                     query,
                     RetrievalWindow(top_n=top_n, top_k=top_k),
                 )
+            except APITimeoutError as exc:
+                raise embedding_timeout_error(exc) from exc
             except OpenAIError as exc:
-                raise ExternalAiServiceError(operation="knowledge retrieval") from exc
+                raise EmbeddingApiError from exc
         return self._local_search(ticket, query, top_n, top_k)
 
     def _local_search(

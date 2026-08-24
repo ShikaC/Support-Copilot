@@ -9,7 +9,8 @@ JAVA_BASE_URL="${SUPPORT_COPILOT_JAVA_BASE_URL:-http://127.0.0.1:8080}"
 WEB_BASE_URL="${SUPPORT_COPILOT_WEB_BASE_URL:-http://127.0.0.1:5173}"
 TICKET_ID="${SUPPORT_COPILOT_LIVE_TICKET_ID:-ticket-10041}"
 TRACE_ID="${SUPPORT_COPILOT_TRACE_ID:-live-rag-$(date -u +%Y%m%d%H%M%S)}"
-HTTP_TIMEOUT_SECONDS="${SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS:-60}"
+HTTP_TIMEOUT_SECONDS="${SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS:-120}"
+JAVA_TIMEOUT_MS="${AI_SERVICE_TIMEOUT_MS:-105000}"
 VALIDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 REPORT_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 EVIDENCE_PATH="${SUPPORT_COPILOT_LIVE_EVIDENCE_PATH:-$AI_DIR/evaluation/reports/live-$REPORT_STAMP.md}"
@@ -70,14 +71,17 @@ load_live_config() {
     cd "$AI_DIR"
     "$python" -c '
 import json
+import sys
 from hashlib import sha256
 
 from app.config import DEFAULT_KNOWLEDGE_PATH, Settings
 from app.knowledge_source import KnowledgeProvenance, load_knowledge_chunks
+from app.timeout_budget import validate_timeout_budget
 
 settings = Settings()
 if not settings.live_ready or settings.effective_mode != "live":
     raise SystemExit(1)
+validate_timeout_budget(settings, int(sys.argv[1]), int(sys.argv[2]))
 knowledge_path = settings.knowledge_path
 provenance_path = settings.knowledge_provenance_path
 knowledge_chunks = load_knowledge_chunks(knowledge_path, provenance_path)
@@ -99,6 +103,11 @@ print(
         {
             "chatModel": settings.openai_chat_model,
             "embeddingModel": settings.openai_embedding_model,
+            "externalTimeoutSeconds": settings.openai_timeout_seconds,
+            "externalMaxRetries": settings.openai_max_retries,
+            "processingTimeoutSeconds": settings.ai_processing_timeout_seconds,
+            "javaTimeoutMs": int(sys.argv[1]),
+            "clientTimeoutSeconds": int(sys.argv[2]),
             "endpointType": endpoint_type,
             "knowledgeSource": (
                 "repository-default"
@@ -123,7 +132,7 @@ print(
         separators=(",", ":"),
     )
 )
-' 2>/dev/null
+' "$JAVA_TIMEOUT_MS" "$HTTP_TIMEOUT_SECONDS" 2>/dev/null
   )"; then
     fail "live configuration or knowledge source is not ready"
     return 1
@@ -150,6 +159,13 @@ print(
     f"knowledgeSource={config['"'"'knowledgeSource'"'"']} "
     f"knowledgeFormat={config['"'"'knowledgeFormat'"'"']} "
     f"knowledgeChunks={config['"'"'knowledgeChunks'"'"']}"
+)
+print(
+    f"Timeout budget: external={config['"'"'externalTimeoutSeconds'"'"']}s "
+    f"retries={config['"'"'externalMaxRetries'"'"']} "
+    f"python={config['"'"'processingTimeoutSeconds'"'"']}s "
+    f"java={config['"'"'javaTimeoutMs'"'"']}ms "
+    f"client={config['"'"'clientTimeoutSeconds'"'"']}s"
 )
 ' <<<"$CONFIG_JSON"
 }
@@ -283,6 +299,11 @@ content = "\n".join(
         f"- Endpoint type: `{config['"'"'endpointType'"'"']}`",
         f"- Chat model: `{config['"'"'chatModel'"'"']}`",
         f"- Embedding model: `{config['"'"'embeddingModel'"'"']}`",
+        f"- External request timeout: `{config['"'"'externalTimeoutSeconds'"'"']} s`",
+        f"- External maximum retries: `{config['"'"'externalMaxRetries'"'"']}`",
+        f"- Python processing timeout: `{config['"'"'processingTimeoutSeconds'"'"']} s`",
+        f"- Java AI service timeout: `{config['"'"'javaTimeoutMs'"'"']} ms`",
+        f"- Verification client timeout: `{config['"'"'clientTimeoutSeconds'"'"']} s`",
         f"- Knowledge source: `{config['"'"'knowledgeSource'"'"']}`",
         f"- Knowledge format: `{config['"'"'knowledgeFormat'"'"']}`",
         f"- Knowledge source documents: `{config['"'"'knowledgeDocuments'"'"'] or '"'"'not-recorded'"'"'}`",
