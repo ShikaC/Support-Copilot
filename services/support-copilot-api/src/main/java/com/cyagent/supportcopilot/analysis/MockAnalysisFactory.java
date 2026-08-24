@@ -20,6 +20,10 @@ import com.cyagent.supportcopilot.ticket.Ticket;
 public class MockAnalysisFactory {
 
 	public AnalysisResponse create(Ticket ticket, String mode) {
+		return create(ticket, mode, "trace_" + compactUuid());
+	}
+
+	public AnalysisResponse create(Ticket ticket, String mode, String traceId) {
 		var category = ticket.getCategory();
 		var lowEvidence = "DATA_RECOVERY".equals(category);
 		var serviceFallback = "fallback".equals(mode);
@@ -31,7 +35,7 @@ public class MockAnalysisFactory {
 
 		return new AnalysisResponse(
 			"run_" + compactUuid(),
-			"trace_" + compactUuid(),
+			traceId,
 			fallback ? "FALLBACK" : "SUCCEEDED",
 			effectiveMode,
 			"configured-chat-model",

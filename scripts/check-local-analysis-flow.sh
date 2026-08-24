@@ -6,6 +6,7 @@ WEB_BASE_URL="${SUPPORT_COPILOT_WEB_BASE_URL:-http://127.0.0.1:5173}"
 JAVA_BASE_URL="${SUPPORT_COPILOT_JAVA_BASE_URL:-http://127.0.0.1:8080}"
 TICKET_ID="${SUPPORT_COPILOT_TICKET_ID:-ticket-10042}"
 HTTP_TIMEOUT_SECONDS="${SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS:-10}"
+TRACE_ID="${SUPPORT_COPILOT_TRACE_ID:-flow-check-trace}"
 
 usage() {
   cat <<'EOF'
@@ -17,11 +18,6 @@ Usage: ./scripts/check-local-analysis-flow.sh --success|--fallback
 The script never starts or stops services. Run --fallback only after stopping
 the Python AI service yourself, then restart it after the check.
 EOF
-}
-
-request_analysis() {
-  curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
-    -X POST "$WEB_BASE_URL/api/tickets/$TICKET_ID/analyze"
 }
 
 assert_analysis() {
@@ -43,6 +39,12 @@ if mode != expected_mode or status != expected_status:
     )
 if not body["traceId"]:
     raise SystemExit("analysis response did not preserve traceId")
+expected_trace_id = sys.argv[3]
+actual_trace_id = body["traceId"]
+if actual_trace_id != expected_trace_id:
+    raise SystemExit(
+        f"traceId changed across services: expected={expected_trace_id} actual={actual_trace_id}"
+    )
 
 hits = len(body["retrieval"]["hits"])
 citations = len(body["suggestedReply"]["citations"])
@@ -56,9 +58,9 @@ if expected_mode == "fallback" and warnings == 0:
 print(
     f"analysis: mode={mode} status={status} "
     f"category={category} "
-    f"hits={hits} citations={citations} warnings={warnings} traceId=present"
+    f"hits={hits} citations={citations} warnings={warnings} traceId={actual_trace_id}"
 )
-' "$expected_mode" "$expected_status" <<<"$response"
+' "$expected_mode" "$expected_status" "$TRACE_ID" <<<"$response"
 }
 
 assert_persisted_latest() {
@@ -94,7 +96,10 @@ run_flow() {
   local expected_status="$2"
   local response
 
-  response="$(request_analysis)"
+  response="$(curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
+    -X POST \
+    -H "X-Trace-Id: $TRACE_ID" \
+    "$WEB_BASE_URL/api/tickets/$TICKET_ID/analyze")"
   assert_analysis "$expected_mode" "$expected_status" "$response"
   assert_persisted_latest "$expected_mode" "$expected_status"
 }

@@ -58,6 +58,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 40. [完成三条 GitHub Actions 首次远端验证](./40-remote-ci-validation.md)
 41. [增加可复现本地启动检查](./41-reproducible-local-startup-check.md)
 42. [增加跨服务分析流程检查](./42-cross-service-analysis-flow-check.md)
+43. [贯通跨服务 traceId 和错误日志](./43-cross-service-trace-observability.md)
 
 ## 优化后的主流程
 
@@ -96,3 +97,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 41 轮增加了仓库根目录的本地启动检查脚本，能够分别验证启动前依赖和启动后三个 HTTP 健康端点，并通过停止 Python 的故障演练确认失败服务会被单独报告。
 
 第 42 轮增加了跨服务分析流程检查，实际经过 React 代理验证 mock 成功分析和 Python 不可用时的 Java fallback，并确认两种结果均写入 Java 分析历史。
+
+第 43 轮增加 Java 请求追踪过滤器，让入口 `X-Trace-Id` 或自动生成的追踪号进入 MDC、Python 请求体、响应头、分析响应和 fallback 日志；Python 也记录成功、外部故障和降级事件。当前仍是本地日志验证，没有接入 OpenTelemetry 或集中式日志系统。

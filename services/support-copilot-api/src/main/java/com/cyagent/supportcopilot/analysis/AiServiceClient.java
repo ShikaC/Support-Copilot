@@ -2,7 +2,6 @@ package com.cyagent.supportcopilot.analysis;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -35,11 +34,11 @@ public class AiServiceClient {
 			.build();
 	}
 
-	public AnalysisResponse analyze(Ticket ticket) {
+	public AnalysisResponse analyze(Ticket ticket, String traceId) {
 		// 这个 DTO 是 Java 业务 API 与 Python AI/RAG 服务之间的契约。
 		// 修改这里时，必须同时确认 services/support-copilot-ai/app/models.py 仍然兼容。
 		var request = new AnalyzeRequest(
-			"trace_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12),
+			traceId,
 			new TicketInput(
 				ticket.getId(),
 				ticket.getSubject(),

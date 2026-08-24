@@ -1,3 +1,6 @@
+import logging
+
+from _pytest.logging import LogCaptureFixture
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -56,6 +59,27 @@ def test_billing_analysis_returns_evidence_and_escalation() -> None:
     assert body["decision"]["escalationRequired"] is True
     assert len(body["retrieval"]["hits"]) >= 2
     assert body["suggestedReply"]["citations"]
+
+
+def test_analysis_log_keeps_request_trace_id(caplog: LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO, logger="app.workflow")
+
+    response = client.post(
+        "/analyze",
+        json=request_payload(
+            "本月出现重复扣款",
+            "账单中有两笔相同金额，请尽快核对。",
+            "BILLING",
+            "HIGH",
+        ),
+    )
+
+    assert response.status_code == 200
+    assert any(
+        "analysis.completed" in record.message
+        and "trace_test_001" in record.message
+        for record in caplog.records
+    )
 
 
 def test_missing_recovery_evidence_returns_fallback() -> None:

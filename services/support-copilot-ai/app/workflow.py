@@ -74,7 +74,7 @@ class AnalysisWorkflow:
             reply = self._reply(draft, hits, evidence_missing)
             total_ms = self._elapsed_ms(started)
 
-            return AnalyzeResponse(
+            response = AnalyzeResponse(
                 id=self._id("run"),
                 trace_id=request.trace_id,
                 status="FALLBACK" if evidence_missing else "SUCCEEDED",
@@ -109,12 +109,24 @@ class AnalysisWorkflow:
                 ),
                 created_at=datetime.now(UTC),
             )
+            logger.info(
+                "analysis.completed trace_id=%s mode=%s status=%s hit_count=%d",
+                request.trace_id,
+                response.mode,
+                response.status,
+                len(hits),
+            )
+            return response
         # 只有经过外部依赖边界确认的可恢复错误才会降级。
         # RuntimeError、AttributeError 等程序缺陷会继续抛出并留下真实错误信息。
         except RecoverableAiError as exc:
             if not live:
                 raise
-            logger.warning("Live analysis failed, switching to fallback: %s", exc)
+            logger.warning(
+                "analysis.external_failure trace_id=%s error_type=%s",
+                request.trace_id,
+                type(exc).__name__,
+            )
             return await self._fallback_after_error(request, started)
 
     async def _fallback_after_error(
@@ -132,7 +144,7 @@ class AnalysisWorkflow:
         )
         draft = self._mock_draft(request, hits)
         decision = self._decision(draft.category, len(hits) == 0, force_escalation=True)
-        return AnalyzeResponse(
+        response = AnalyzeResponse(
             id=self._id("run"),
             trace_id=request.trace_id,
             status="FALLBACK",
@@ -154,6 +166,14 @@ class AnalysisWorkflow:
             usage=Usage(duration_ms=self._elapsed_ms(started)),
             created_at=datetime.now(UTC),
         )
+        logger.warning(
+            "analysis.fallback trace_id=%s mode=%s status=%s hit_count=%d reason=external_ai_failure",
+            request.trace_id,
+            response.mode,
+            response.status,
+            len(hits),
+        )
+        return response
 
     def _mock_draft(
         self,

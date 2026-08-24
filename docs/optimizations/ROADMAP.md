@@ -111,6 +111,8 @@ cd services/support-copilot-ai
 
 第 42 轮增加了 `scripts/check-local-analysis-flow.sh`，通过 React 代理实际验证 mock 成功分析、Python 不可用时的 Java fallback，以及两种结果在 Java 分析历史中的持久化。版本冲突和浏览器组件级 E2E 仍待后续批次。
 
+第 43 轮增加 Java `TraceIdFilter`，统一生成或接收安全的 `X-Trace-Id`，并将其贯通 Java MDC、Python 请求体、分析响应、响应头和 fallback 日志；成功与 Python 不可用两条本地 HTTP 流程均已用固定追踪号验证。当前没有分布式追踪后端，真实 live RAG 仍需正式 API 成功记录。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

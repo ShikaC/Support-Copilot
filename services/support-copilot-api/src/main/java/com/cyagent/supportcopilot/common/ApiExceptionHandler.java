@@ -48,7 +48,7 @@ public class ApiExceptionHandler {
 			.body(new ApiError(
 				"VERSION_CONFLICT",
 				exception.getMessage(),
-				request.getHeader("X-Trace-Id"),
+				TraceId.from(request),
 				Instant.now(),
 				details
 			));
@@ -66,14 +66,14 @@ public class ApiExceptionHandler {
 			.body(new ApiError(
 				"TICKET_STATE_CONFLICT",
 				exception.getMessage(),
-				request.getHeader("X-Trace-Id"),
+				TraceId.from(request),
 				Instant.now(),
 				details
 			));
 	}
 
 	private ApiError error(String code, String message, HttpServletRequest request) {
-		return new ApiError(code, message, request.getHeader("X-Trace-Id"), Instant.now(), Map.of());
+		return new ApiError(code, message, TraceId.from(request), Instant.now(), Map.of());
 	}
 
 	public record ApiError(

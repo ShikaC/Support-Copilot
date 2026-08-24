@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.common.TraceId;
 
 @Service
 public class AnalysisService {
@@ -47,19 +48,20 @@ public class AnalysisService {
 		var ticket = ticketRepository.findById(ticketId)
 			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + ticketId));
 		var sourceTicketVersion = ticket.getVersion();
+		var traceId = TraceId.currentOrCreate();
 
 		// AI 是辅助能力，不是业务事实的来源。
 		// 工单已经保存在 Java/H2 中；如果 Python 服务失败，
 		// 系统会返回 fallback 分析，而不是让整个流程不可用。
 		AnalysisResponse response;
 		try {
-			response = aiServiceClient.analyze(ticket);
+			response = aiServiceClient.analyze(ticket, traceId);
 			if (response == null) {
 				throw new IllegalStateException("AI service returned an empty response");
 			}
 		} catch (RuntimeException exception) {
 			log.warn("AI service unavailable for ticket {}, using fallback: {}", ticketId, exception.getMessage());
-			response = mockAnalysisFactory.create(ticket, "fallback");
+			response = mockAnalysisFactory.create(ticket, "fallback", traceId);
 		}
 
 		analysisPersistenceService.persist(ticketId, sourceTicketVersion, response);

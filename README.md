@@ -176,6 +176,14 @@ Vite 会把 `/api` 代理到 `http://localhost:8080`。如果 Java API 未启动
 
 检查完成后重新启动 Python。脚本会验证分析模式、状态、`traceId`、证据或人工复核警告，以及 Java 分析历史中的最新记录；它不会自动停止或启动任何服务。
 
+也可以指定一个可审计的追踪号，检查它是否贯穿 React 代理、Java 响应和 Python 日志：
+
+```bash
+SUPPORT_COPILOT_TRACE_ID=interview-flow-01 ./scripts/check-local-analysis-flow.sh --success
+```
+
+Java 会在没有请求头时生成 `X-Trace-Id`，并将同一个值写入响应头、分析响应和日志上下文；Python 日志会记录该值以及分析模式和状态。
+
 ## OpenAI 实时模式
 
 默认 `AI_MODE=mock` 不调用外部 API，适合开发、测试和面试环境预检。
