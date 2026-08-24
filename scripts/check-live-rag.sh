@@ -70,12 +70,16 @@ load_live_config() {
     cd "$AI_DIR"
     "$python" -c '
 import json
+from hashlib import sha256
 
-from app.config import Settings
+from app.config import DEFAULT_KNOWLEDGE_PATH, Settings
+from app.knowledge_source import load_knowledge_chunks
 
 settings = Settings()
 if not settings.live_ready or settings.effective_mode != "live":
     raise SystemExit(1)
+knowledge_path = settings.knowledge_path
+knowledge_chunks = load_knowledge_chunks(knowledge_path)
 endpoint_type = (
     "official"
     if not settings.openai_base_url
@@ -88,13 +92,20 @@ print(
             "chatModel": settings.openai_chat_model,
             "embeddingModel": settings.openai_embedding_model,
             "endpointType": endpoint_type,
+            "knowledgeSource": (
+                "repository-default"
+                if knowledge_path.resolve() == DEFAULT_KNOWLEDGE_PATH.resolve()
+                else "configured-external"
+            ),
+            "knowledgeChunks": len(knowledge_chunks),
+            "knowledgeSha256": sha256(knowledge_path.read_bytes()).hexdigest(),
         },
         separators=(",", ":"),
     )
 )
 ' 2>/dev/null
   )"; then
-    fail "live configuration is not ready; set AI_MODE=live and all three OpenAI model/API variables"
+    fail "live configuration or knowledge source is not ready"
     return 1
   fi
 }
@@ -115,7 +126,9 @@ config = json.loads(sys.stdin.read())
 print(
     f"Live configuration: chatModel={config['"'"'chatModel'"'"']} "
     f"embeddingModel={config['"'"'embeddingModel'"'"']} "
-    f"endpoint={config['"'"'endpointType'"'"']}"
+    f"endpoint={config['"'"'endpointType'"'"']} "
+    f"knowledgeSource={config['"'"'knowledgeSource'"'"']} "
+    f"knowledgeChunks={config['"'"'knowledgeChunks'"'"']}"
 )
 ' <<<"$CONFIG_JSON"
 }
@@ -249,6 +262,9 @@ content = "\n".join(
         f"- Endpoint type: `{config['"'"'endpointType'"'"']}`",
         f"- Chat model: `{config['"'"'chatModel'"'"']}`",
         f"- Embedding model: `{config['"'"'embeddingModel'"'"']}`",
+        f"- Knowledge source: `{config['"'"'knowledgeSource'"'"']}`",
+        f"- Knowledge chunks: `{config['"'"'knowledgeChunks'"'"']}`",
+        f"- Knowledge SHA-256: `{config['"'"'knowledgeSha256'"'"']}`",
         f"- Ticket ID: `{ticket_id}`",
         f"- Trace ID: `{summary['"'"'traceId'"'"']}`",
         f"- Mode/status: `{summary['"'"'mode'"'"']}` / `{summary['"'"'status'"'"']}`",

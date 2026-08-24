@@ -1,8 +1,12 @@
 from functools import lru_cache
-from typing import Literal
+from pathlib import Path
+from typing import Final, Literal
 
 from pydantic import Field, model_validator
+from pydantic_core import PydanticCustomError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_KNOWLEDGE_PATH: Final = Path(__file__).parent / "data" / "knowledge.json"
 
 
 class Settings(BaseSettings):
@@ -20,15 +24,17 @@ class Settings(BaseSettings):
     openai_embedding_model: str | None = None
     openai_timeout_seconds: float = 20.0
     openai_max_retries: int = 2
+    knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH
     retrieval_top_n: int = 10
     retrieval_top_k: int = 3
 
     @model_validator(mode="after")
     def validate_live_mode(self) -> "Settings":
         if self.ai_mode == "live" and not self.live_ready:
-            raise ValueError(
+            raise PydanticCustomError(
+                "live_configuration_incomplete",
                 "AI_MODE=live requires OPENAI_API_KEY, OPENAI_CHAT_MODEL, "
-                "and OPENAI_EMBEDDING_MODEL"
+                "and OPENAI_EMBEDDING_MODEL",
             )
         return self
 

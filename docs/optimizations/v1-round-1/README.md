@@ -61,6 +61,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 43. [贯通跨服务 traceId 和错误日志](./43-cross-service-trace-observability.md)
 44. [增加真实 RAG 验收与脱敏证据门禁](./44-live-rag-acceptance-gate.md)
 45. [固化当前 Mock 评估基线](./45-current-mock-evaluation-baseline.md)
+46. [支持经过校验的外部知识源](./46-configurable-knowledge-source.md)
 
 ## 优化后的主流程
 
@@ -105,3 +106,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 44 轮增加 `scripts/check-live-rag.sh`，在正式调用前检查 live 配置和干净提交，并在真实请求后要求向量证据、引用、正数 token、跨服务 `traceId` 与 Java 持久化全部成立，再生成脱敏证据记录。当前环境没有 API 凭据，因此只完成阻塞与防误报验证，尚未产生 live 成功记录。
 
 第 45 轮在干净提交上重新运行 Python 全量测试和 18 条固定 mock 评估，将提交 SHA、输入哈希、分析配置、指标、门槛和能力边界固化为可复核基线。该记录只证明当前固定 mock 案例通过，不能替代真实 live RAG 证据。
+
+第 46 轮增加 `KNOWLEDGE_PATH`，允许 Python 加载仓库外的授权知识 JSON，并在启动时拒绝空字段、未知字段和重复片段 ID。live 预检会记录知识来源类型、片段数量和 SHA-256，但不会记录本地路径或知识正文；完整原始文档导入和增量索引仍未实现。

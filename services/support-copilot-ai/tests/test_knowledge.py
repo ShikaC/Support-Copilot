@@ -1,8 +1,133 @@
+import json
+from pathlib import Path
+
 import pytest
+from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import InMemoryVectorStore
 
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
+from app.knowledge_source import KnowledgeSourceInvalidError
 from app.models import Priority, TicketInput
+
+
+class DeterministicTestEmbeddings(Embeddings):
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] for _ in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0, 0.0]
+
+
+@pytest.fixture
+def external_knowledge_path(tmp_path: Path) -> Path:
+    knowledge_path = tmp_path / "authorized-knowledge.json"
+    knowledge_path.write_text(
+        json.dumps(
+            [
+                {
+                    "chunk_id": "external-login-runbook",
+                    "document_id": "external-identity-guide",
+                    "document_title": "Identity support runbook",
+                    "section": "Error ACME-LOGIN-42",
+                    "content": "Escalate ACME-LOGIN-42 with the tenant identifier.",
+                    "source_uri": "https://support.example.test/identity/login-42",
+                    "categories": ["ACCOUNT_ACCESS"],
+                    "keywords": ["ACME-LOGIN-42", "tenant identifier"],
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return knowledge_path
+
+
+@pytest.mark.asyncio
+async def test_configured_knowledge_file_drives_retrieval(
+    external_knowledge_path: Path,
+) -> None:
+    # Given: an authorized knowledge file outside the repository's demo data path.
+    retriever = KnowledgeRetriever(
+        Settings(ai_mode="mock", knowledge_path=external_knowledge_path)
+    )
+    ticket = TicketInput(
+        id="ticket-external-knowledge",
+        subject="ACME-LOGIN-42",
+        description="The tenant cannot sign in.",
+        currentCategory="ACCOUNT_ACCESS",
+        currentPriority=Priority.HIGH,
+    )
+
+    # When: retrieval runs against the configured source.
+    hits = await retriever.search(
+        ticket,
+        "ACME-LOGIN-42 tenant identifier",
+        top_n=10,
+        top_k=3,
+        live=False,
+    )
+
+    # Then: repository demo chunks are not used.
+    assert retriever.chunk_count == 1
+    assert [hit.chunk_id for hit in hits] == ["external-login-runbook"]
+
+
+@pytest.mark.asyncio
+async def test_external_knowledge_reaches_vector_retrieval(
+    external_knowledge_path: Path,
+) -> None:
+    # Given: the configured external chunk is indexed by a real in-memory vector store.
+    retriever = KnowledgeRetriever(
+        Settings(ai_mode="mock", knowledge_path=external_knowledge_path)
+    )
+    retriever._vector_store = InMemoryVectorStore.from_documents(
+        [retriever._as_document(chunk) for chunk in retriever._chunks],
+        DeterministicTestEmbeddings(),
+    )
+    ticket = TicketInput(
+        id="ticket-external-vector",
+        subject="ACME-LOGIN-42",
+        description="The tenant cannot sign in.",
+        currentCategory="ACCOUNT_ACCESS",
+        currentPriority=Priority.HIGH,
+    )
+
+    # When: the live retrieval branch executes without a paid API call.
+    hits = await retriever.search(
+        ticket,
+        "ACME-LOGIN-42 tenant identifier",
+        top_n=10,
+        top_k=3,
+        live=True,
+    )
+
+    # Then: vector retrieval returns evidence from the external source.
+    assert [hit.chunk_id for hit in hits] == ["external-login-runbook"]
+    assert hits[0].retrieval_method == "VECTOR"
+
+
+def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
+    # Given: an external source with two records that claim the same stable ID.
+    knowledge_path = tmp_path / "duplicate-knowledge.json"
+    chunk = {
+        "chunk_id": "duplicate-id",
+        "document_id": "external-guide",
+        "document_title": "External guide",
+        "section": "Login",
+        "content": "Escalate the login incident.",
+        "source_uri": "https://support.example.test/login",
+        "categories": ["ACCOUNT_ACCESS"],
+        "keywords": ["login"],
+    }
+    knowledge_path.write_text(json.dumps([chunk, chunk]), encoding="utf-8")
+
+    # When / Then: the trust boundary rejects ambiguous evidence identifiers.
+    with pytest.raises(
+        KnowledgeSourceInvalidError,
+        match="Knowledge source is invalid",
+    ) as exc_info:
+        KnowledgeRetriever(Settings(ai_mode="mock", knowledge_path=knowledge_path))
+    assert exc_info.value.__cause__ is None
 
 
 @pytest.mark.asyncio

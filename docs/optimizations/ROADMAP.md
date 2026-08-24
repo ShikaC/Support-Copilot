@@ -117,6 +117,8 @@ cd services/support-copilot-ai
 
 第 45 轮在干净提交 `d0989834bab0d76b3966e5288e0e75d7d37f2815` 上重新执行 Python 全量测试和 18 条固定 mock 评估，并将提交 SHA、数据集与知识库哈希、配置、指标、门槛和能力边界固化到 [`docs/verification/mock-evaluation-2026-08-24.md`](../verification/mock-evaluation-2026-08-24.md)。该基线只证明确定性 mock 工作流满足当前固定案例，真实 live RAG 仍需正式 API 成功记录。
 
+第 46 轮增加可配置 `KNOWLEDGE_PATH` 和 Pydantic 知识文件边界，使 Python 能加载仓库外的授权预切分 JSON，并拒绝空字段、未知字段和重复片段 ID。向量集成测试发现并修复了生产依赖缺少 NumPy、导致 `InMemoryVectorStore` 无法计算相似度的 live 阻塞。live 验收会绑定知识来源类型、片段数量和 SHA-256，同时省略本地路径与正文。该能力不等于完整知识导入平台，原始文档切分、增量更新、审批和持久化索引仍待后续演进。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

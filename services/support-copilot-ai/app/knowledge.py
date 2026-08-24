@@ -1,9 +1,6 @@
-import asyncio
-import json
 import re
-from dataclasses import dataclass
-from pathlib import Path
 
+import anyio
 from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import OpenAIEmbeddings
@@ -11,27 +8,16 @@ from openai import OpenAIError
 
 from app.config import Settings
 from app.errors import ExternalAiServiceError
+from app.knowledge_source import KnowledgeChunk, load_knowledge_chunks
 from app.models import RetrievalHit, TicketInput
-
-
-@dataclass(frozen=True)
-class KnowledgeChunk:
-    chunk_id: str
-    document_id: str
-    document_title: str
-    section: str
-    content: str
-    source_uri: str
-    categories: tuple[str, ...]
-    keywords: tuple[str, ...]
 
 
 class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._chunks = self._load_chunks()
+        self._chunks = load_knowledge_chunks(settings.knowledge_path)
         self._vector_store: InMemoryVectorStore | None = None
-        self._vector_lock = asyncio.Lock()
+        self._vector_lock = anyio.Lock()
 
     @property
     def chunk_count(self) -> int:
@@ -62,11 +48,10 @@ class KnowledgeRetriever:
         top_k: int,
     ) -> list[RetrievalHit]:
         store = await self._get_vector_store()
-        results = await asyncio.to_thread(
+        results = await anyio.to_thread.run_sync(
             store.similarity_search_with_score,
             query,
-            # top_n 控制第一轮召回的候选数量，先尽量避免漏掉相关资料。
-            k=min(top_n, len(self._chunks)),
+            min(top_n, len(self._chunks)),
         )
         category = ticket.current_category
         # top_k 控制最终保留的证据数量，只有这些片段会进入后续回复生成。
@@ -105,7 +90,7 @@ class KnowledgeRetriever:
                 request_timeout=self._settings.openai_timeout_seconds,
             )
             documents = [self._as_document(chunk) for chunk in self._chunks]
-            self._vector_store = await asyncio.to_thread(
+            self._vector_store = await anyio.to_thread.run_sync(
                 InMemoryVectorStore.from_documents,
                 documents,
                 embeddings,
@@ -258,20 +243,3 @@ class KnowledgeRetriever:
             rerank_score=round(final_score, 4),
             used_as_evidence=True,
         )
-
-    def _load_chunks(self) -> list[KnowledgeChunk]:
-        path = Path(__file__).parent / "data" / "knowledge.json"
-        raw_chunks = json.loads(path.read_text(encoding="utf-8"))
-        return [
-            KnowledgeChunk(
-                chunk_id=item["chunk_id"],
-                document_id=item["document_id"],
-                document_title=item["document_title"],
-                section=item["section"],
-                content=item["content"],
-                source_uri=item["source_uri"],
-                categories=tuple(item["categories"]),
-                keywords=tuple(item["keywords"]),
-            )
-            for item in raw_chunks
-        ]

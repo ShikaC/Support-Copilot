@@ -21,6 +21,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 - `Settings` 可以读取 API Key、Base URL、聊天模型和 Embedding 模型。
 - `OpenAIProvider` 使用 OpenAI Responses API 请求结构化 `ModelDraft`。
 - `KnowledgeRetriever` 使用 `OpenAIEmbeddings` 和 LangChain `InMemoryVectorStore`。
+- `KNOWLEDGE_PATH` 可以指向仓库外的授权知识 JSON，启动时会校验字段、空值和重复片段 ID。
 - live 调用失败后可以进入明确标识的 fallback。
 - 分析响应包含模式、模型、检索片段、引用、token 和耗时字段。
 
@@ -29,7 +30,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 - 仓库没有一次正式 API 成功调用的脱敏记录。
 - live 路径尚未在当前环境完成真实端到端验证。
 - 向量库当前只存在于 Python 进程内存，服务重启后需要重新生成。
-- 当前知识数据来自本地 JSON，尚未形成独立的增量导入流程。
+- 当前可以加载外部预切分 JSON，但尚未形成原始文档切分、增量导入和审批发布流程。
 - live 检索和生成质量尚未用真实调用结果与固定评估集对照。
 
 准确表述应是：**已有可配置的 live RAG 代码骨架，但尚未完成真实 API 验证。**
@@ -120,6 +121,7 @@ Python health: mode=live、liveReady=true
 - 是否使用官方端点或兼容 Base URL。
 - 脱敏后的输入工单编号和 `traceId`。
 - 检索到的知识片段 ID、来源和顺序。
+- 知识来源类型、片段数量和知识文件 SHA-256，不记录本地路径或正文。
 - 响应中的 `mode`、分类、引用和人工升级结果。
 - 调用耗时和 token 用量。
 - 是否发生 fallback。

@@ -196,8 +196,13 @@ export AI_MODE=live
 export OPENAI_API_KEY='your-api-key'
 export OPENAI_CHAT_MODEL='your-chat-model'
 export OPENAI_EMBEDDING_MODEL='your-embedding-model'
+export KNOWLEDGE_PATH='/absolute/path/to/authorized-knowledge.json'
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
+
+`KNOWLEDGE_PATH` 不设置时继续使用仓库内的演示知识文件。设置后，Python 会在启动时读取仓库外的授权知识文件，并要求它是 JSON 数组；每个片段必须包含唯一的 `chunk_id`、`document_id`、`document_title`、`section`、`content`、`source_uri`、`categories` 和 `keywords`。可参考 [默认知识文件](services/support-copilot-ai/app/data/knowledge.json) 的结构。无效字段、空字段、未知字段和重复片段 ID 会直接阻止服务启动，原始知识正文不会写入校验错误。
+
+外部知识文件只应包含公开、已获授权或完成脱敏的数据，建议放在仓库外并使用绝对路径，不能把真实客户隐私或内部凭据提交到 Git。
 
 可选配置：
 
@@ -221,7 +226,7 @@ export RETRIEVAL_TOP_K=3
 ./scripts/check-live-rag.sh --success
 ```
 
-`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，并在 `services/support-copilot-ai/evaluation/reports/` 生成脱敏 Markdown 记录。该目录默认被 Git 忽略；真实成功后必须先人工确认记录中没有密钥或客户数据，再选择性强制加入 Git。
+`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，并在 `services/support-copilot-ai/evaluation/reports/` 生成脱敏 Markdown 记录。记录包含知识来源类型、片段数量和 SHA-256，但不包含本地路径或知识正文。该目录默认被 Git 忽略；真实成功后必须先人工确认记录中没有密钥或客户数据，再选择性强制加入 Git。
 
 不要把 API Key 写入代码或提交到 Git。ChatGPT 产品订阅不等同于 OpenAI API Key。
 
