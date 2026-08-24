@@ -60,6 +60,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 42. [增加跨服务分析流程检查](./42-cross-service-analysis-flow-check.md)
 43. [贯通跨服务 traceId 和错误日志](./43-cross-service-trace-observability.md)
 44. [增加真实 RAG 验收与脱敏证据门禁](./44-live-rag-acceptance-gate.md)
+45. [固化当前 Mock 评估基线](./45-current-mock-evaluation-baseline.md)
 
 ## 优化后的主流程
 
@@ -102,3 +103,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 43 轮增加 Java 请求追踪过滤器，让入口 `X-Trace-Id` 或自动生成的追踪号进入 MDC、Python 请求体、响应头、分析响应和 fallback 日志；Python 也记录成功、外部故障和降级事件。当前仍是本地日志验证，没有接入 OpenTelemetry 或集中式日志系统。
 
 第 44 轮增加 `scripts/check-live-rag.sh`，在正式调用前检查 live 配置和干净提交，并在真实请求后要求向量证据、引用、正数 token、跨服务 `traceId` 与 Java 持久化全部成立，再生成脱敏证据记录。当前环境没有 API 凭据，因此只完成阻塞与防误报验证，尚未产生 live 成功记录。
+
+第 45 轮在干净提交上重新运行 Python 全量测试和 18 条固定 mock 评估，将提交 SHA、输入哈希、分析配置、指标、门槛和能力边界固化为可复核基线。该记录只证明当前固定 mock 案例通过，不能替代真实 live RAG 证据。

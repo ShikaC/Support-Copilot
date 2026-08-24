@@ -268,7 +268,7 @@ cd services/support-copilot-ai
 .venv/bin/python -m evaluation.run_mock_evaluation
 ```
 
-评估报告会写入 `services/support-copilot-ai/evaluation/reports/`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)。
+评估报告会写入 `services/support-copilot-ai/evaluation/reports/`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)，当前提交对应的可复核结果见 [2026-08-24 Mock 评估基线](docs/verification/mock-evaluation-2026-08-24.md)。
 
 ### 自动化 CI
 
