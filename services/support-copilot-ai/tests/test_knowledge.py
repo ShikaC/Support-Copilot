@@ -7,7 +7,7 @@ from langchain_core.vectorstores import InMemoryVectorStore
 
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
-from app.knowledge_source import KnowledgeSourceInvalidError
+from app.knowledge_source import KnowledgeSourceInvalidError, load_knowledge_chunks
 from app.models import Priority, TicketInput
 
 
@@ -34,6 +34,9 @@ def external_knowledge_path(tmp_path: Path) -> Path:
                     "source_uri": "https://support.example.test/identity/login-42",
                     "categories": ["ACCOUNT_ACCESS"],
                     "keywords": ["ACME-LOGIN-42", "tenant identifier"],
+                    "document_version": "2026.08",
+                    "status": "PUBLISHED",
+                    "updated_at": "2026-08-24",
                 }
             ]
         ),
@@ -118,6 +121,9 @@ def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
         "source_uri": "https://support.example.test/login",
         "categories": ["ACCOUNT_ACCESS"],
         "keywords": ["login"],
+        "document_version": "2026.08",
+        "status": "PUBLISHED",
+        "updated_at": "2026-08-24",
     }
     knowledge_path.write_text(json.dumps([chunk, chunk]), encoding="utf-8")
 
@@ -128,6 +134,21 @@ def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
     ) as exc_info:
         KnowledgeRetriever(Settings(ai_mode="mock", knowledge_path=knowledge_path))
     assert exc_info.value.__cause__ is None
+
+
+def test_missing_provenance_uses_typed_source_error(
+    external_knowledge_path: Path,
+    tmp_path: Path,
+) -> None:
+    # Given: a valid corpus configured with a provenance file that does not exist.
+    missing_provenance = tmp_path / "missing.provenance.json"
+
+    # When / Then: startup exposes the stable source error boundary.
+    with pytest.raises(KnowledgeSourceInvalidError) as exc_info:
+        load_knowledge_chunks(external_knowledge_path, missing_provenance)
+    assert exc_info.value.path == missing_provenance
+    assert exc_info.value.__cause__ is None
+    exc_info.value.__traceback__ = None
 
 
 @pytest.mark.asyncio

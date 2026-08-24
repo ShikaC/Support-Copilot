@@ -15,7 +15,10 @@ from app.models import RetrievalHit, TicketInput
 class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._chunks = load_knowledge_chunks(settings.knowledge_path)
+        self._chunks = load_knowledge_chunks(
+            settings.knowledge_path,
+            settings.knowledge_provenance_path,
+        )
         self._vector_store: InMemoryVectorStore | None = None
         self._vector_lock = anyio.Lock()
 

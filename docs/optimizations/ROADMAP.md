@@ -119,6 +119,8 @@ cd services/support-copilot-ai
 
 第 46 轮增加可配置 `KNOWLEDGE_PATH` 和 Pydantic 知识文件边界，使 Python 能加载仓库外的授权预切分 JSON，并拒绝空字段、未知字段和重复片段 ID。向量集成测试发现并修复了生产依赖缺少 NumPy、导致 `InMemoryVectorStore` 无法计算相似度的 live 阻塞。live 验收会绑定知识来源类型、片段数量和 SHA-256，同时省略本地路径与正文。该能力不等于完整知识导入平台，原始文档切分、增量更新、审批和持久化索引仍待后续演进。
 
+第 47 轮增加原始 Markdown 和文本型 PDF 的知识构建命令。外部清单明确文档 ID、来源、分类、关键词、版本、状态和更新时间，构建过程按标题或页码分节并确定性切块，同时生成不含正文的 provenance。服务可校验 corpus 与 provenance 哈希，live 门禁会记录索引版本、源文档数量和清单哈希。扫描件 OCR、增量更新、审批发布和持久化向量索引仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

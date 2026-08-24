@@ -73,13 +73,21 @@ import json
 from hashlib import sha256
 
 from app.config import DEFAULT_KNOWLEDGE_PATH, Settings
-from app.knowledge_source import load_knowledge_chunks
+from app.knowledge_source import KnowledgeProvenance, load_knowledge_chunks
 
 settings = Settings()
 if not settings.live_ready or settings.effective_mode != "live":
     raise SystemExit(1)
 knowledge_path = settings.knowledge_path
-knowledge_chunks = load_knowledge_chunks(knowledge_path)
+provenance_path = settings.knowledge_provenance_path
+knowledge_chunks = load_knowledge_chunks(knowledge_path, provenance_path)
+provenance = (
+    KnowledgeProvenance.model_validate_json(
+        provenance_path.read_text(encoding="utf-8")
+    )
+    if provenance_path is not None
+    else None
+)
 endpoint_type = (
     "official"
     if not settings.openai_base_url
@@ -99,6 +107,18 @@ print(
             ),
             "knowledgeChunks": len(knowledge_chunks),
             "knowledgeSha256": sha256(knowledge_path.read_bytes()).hexdigest(),
+            "knowledgeFormat": (
+                "generated-corpus" if provenance is not None else "pre-chunked-json"
+            ),
+            "knowledgeDocuments": (
+                len(provenance.documents) if provenance is not None else None
+            ),
+            "knowledgeIndexVersion": (
+                provenance.index_version if provenance is not None else None
+            ),
+            "knowledgeManifestSha256": (
+                provenance.manifest_sha256 if provenance is not None else None
+            ),
         },
         separators=(",", ":"),
     )
@@ -128,6 +148,7 @@ print(
     f"embeddingModel={config['"'"'embeddingModel'"'"']} "
     f"endpoint={config['"'"'endpointType'"'"']} "
     f"knowledgeSource={config['"'"'knowledgeSource'"'"']} "
+    f"knowledgeFormat={config['"'"'knowledgeFormat'"'"']} "
     f"knowledgeChunks={config['"'"'knowledgeChunks'"'"']}"
 )
 ' <<<"$CONFIG_JSON"
@@ -263,6 +284,10 @@ content = "\n".join(
         f"- Chat model: `{config['"'"'chatModel'"'"']}`",
         f"- Embedding model: `{config['"'"'embeddingModel'"'"']}`",
         f"- Knowledge source: `{config['"'"'knowledgeSource'"'"']}`",
+        f"- Knowledge format: `{config['"'"'knowledgeFormat'"'"']}`",
+        f"- Knowledge source documents: `{config['"'"'knowledgeDocuments'"'"'] or '"'"'not-recorded'"'"'}`",
+        f"- Knowledge index version: `{config['"'"'knowledgeIndexVersion'"'"'] or '"'"'not-recorded'"'"'}`",
+        f"- Knowledge manifest SHA-256: `{config['"'"'knowledgeManifestSha256'"'"'] or '"'"'not-recorded'"'"'}`",
         f"- Knowledge chunks: `{config['"'"'knowledgeChunks'"'"']}`",
         f"- Knowledge SHA-256: `{config['"'"'knowledgeSha256'"'"']}`",
         f"- Ticket ID: `{ticket_id}`",

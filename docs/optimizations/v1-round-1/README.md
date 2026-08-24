@@ -62,6 +62,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 44. [增加真实 RAG 验收与脱敏证据门禁](./44-live-rag-acceptance-gate.md)
 45. [固化当前 Mock 评估基线](./45-current-mock-evaluation-baseline.md)
 46. [支持经过校验的外部知识源](./46-configurable-knowledge-source.md)
+47. [从 Markdown 和 PDF 构建可追踪知识](./47-source-document-ingestion.md)
 
 ## 优化后的主流程
 
@@ -108,3 +109,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 45 轮在干净提交上重新运行 Python 全量测试和 18 条固定 mock 评估，将提交 SHA、输入哈希、分析配置、指标、门槛和能力边界固化为可复核基线。该记录只证明当前固定 mock 案例通过，不能替代真实 live RAG 证据。
 
 第 46 轮增加 `KNOWLEDGE_PATH`，允许 Python 加载仓库外的授权知识 JSON，并在启动时拒绝空字段、未知字段和重复片段 ID。live 预检会记录知识来源类型、片段数量和 SHA-256，但不会记录本地路径或知识正文；完整原始文档导入和增量索引仍未实现。
+
+第 47 轮增加原始 Markdown 和文本型 PDF 导入。构建命令生成可直接配置给 Python 的知识 JSON 和不含正文的 provenance；服务启动与 live 门禁会校验两者哈希一致。扫描件 OCR、增量索引和审批发布仍未实现。

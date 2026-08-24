@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         extra="ignore",
     )
 
@@ -25,6 +26,7 @@ class Settings(BaseSettings):
     openai_timeout_seconds: float = 20.0
     openai_max_retries: int = 2
     knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH
+    knowledge_provenance_path: Path | None = None
     retrieval_top_n: int = 10
     retrieval_top_k: int = 3
 

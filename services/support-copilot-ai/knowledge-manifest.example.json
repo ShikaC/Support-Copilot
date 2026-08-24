@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "chunking": {
+    "chunk_size": 800,
+    "chunk_overlap": 100
+  },
+  "documents": [
+    {
+      "path": "documents/identity-runbook.md",
+      "document_id": "identity-runbook",
+      "document_title": "Identity support runbook",
+      "source_uri": "https://support.example.test/identity",
+      "categories": ["ACCOUNT_ACCESS"],
+      "keywords": ["SSO", "identity provider"],
+      "document_version": "2026.08",
+      "status": "PUBLISHED",
+      "updated_at": "2026-08-24"
+    }
+  ]
+}
