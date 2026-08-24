@@ -209,6 +209,20 @@ export RETRIEVAL_TOP_N=10
 export RETRIEVAL_TOP_K=3
 ```
 
+在调用正式 API 前先执行只读预检；它不会发出外部请求：
+
+```bash
+./scripts/check-live-rag.sh --preflight
+```
+
+确认 Python 以 live 模式启动，并且 Java、React 都已启动后，执行真实跨服务验收：
+
+```bash
+./scripts/check-live-rag.sh --success
+```
+
+`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，并在 `services/support-copilot-ai/evaluation/reports/` 生成脱敏 Markdown 记录。该目录默认被 Git 忽略；真实成功后必须先人工确认记录中没有密钥或客户数据，再选择性强制加入 Git。
+
 不要把 API Key 写入代码或提交到 Git。ChatGPT 产品订阅不等同于 OpenAI API Key。
 
 运行模式含义：

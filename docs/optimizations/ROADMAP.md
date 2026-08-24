@@ -113,6 +113,8 @@ cd services/support-copilot-ai
 
 第 43 轮增加 Java `TraceIdFilter`，统一生成或接收安全的 `X-Trace-Id`，并将其贯通 Java MDC、Python 请求体、分析响应、响应头和 fallback 日志；成功与 Python 不可用两条本地 HTTP 流程均已用固定追踪号验证。当前没有分布式追踪后端，真实 live RAG 仍需正式 API 成功记录。
 
+第 44 轮增加 `scripts/check-live-rag.sh`，把 live 配置、干净 Git 提交、Python live 健康状态、VECTOR 检索、引用、token、追踪号、Java 持久化和脱敏证据记录组成一个严格验收门禁。当前环境未配置正式 API 凭据，门禁已证明会拒绝缺失配置和 mock 模式，但真实 live 成功仍是明确阻塞项。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
