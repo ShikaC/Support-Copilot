@@ -121,6 +121,8 @@ cd services/support-copilot-ai
 
 第 47 轮增加原始 Markdown 和文本型 PDF 的知识构建命令。外部清单明确文档 ID、来源、分类、关键词、版本、状态和更新时间，构建过程按标题或页码分节并确定性切块，同时生成不含正文的 provenance。服务可校验 corpus 与 provenance 哈希，live 门禁会记录索引版本、源文档数量和清单哈希。扫描件 OCR、增量更新、审批发布和持久化向量索引仍未完成。
 
+第 48 轮在 live Embedding 和 Responses 外发边界增加确定性脱敏，覆盖常见邮箱、中国大陆手机号、18 位身份证号和通过 Luhn 校验的支付卡号；Responses 请求显式发送 `store=false`。本地 OpenAI 兼容 HTTP 服务已验证 live 成功和受控 503 fallback，且捕获的外发请求不含测试原值。该结果不等于正式 API live 成功，完整 DLP、组织级数据保留控制和供应商合规评估仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

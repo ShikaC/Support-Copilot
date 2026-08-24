@@ -20,11 +20,12 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 
 - `Settings` 可以读取 API Key、Base URL、聊天模型和 Embedding 模型。
 - `OpenAIProvider` 使用 OpenAI Responses API 请求结构化 `ModelDraft`。
-- `KnowledgeRetriever` 使用 `OpenAIEmbeddings` 和 LangChain `InMemoryVectorStore`。
+- live 向量适配器使用 `OpenAIEmbeddings` 和 LangChain `InMemoryVectorStore`。
 - `KNOWLEDGE_PATH` 可以指向仓库外的授权知识 JSON，启动时会校验字段、空值和重复片段 ID。
 - 原始 Markdown 和自带文本层的 PDF 可以通过清单确定性切分为知识 JSON，并生成不含正文的 provenance。
 - `KNOWLEDGE_PROVENANCE_PATH` 可以让服务校验 corpus 哈希，防止索引正文和来源证明漂移。
 - live 调用失败后可以进入明确标识的 fallback。
+- live 外发边界会先脱敏常见邮箱、手机号、18 位身份证号和支付卡号，Responses 请求显式设置 `store=false`。
 - 分析响应包含模式、模型、检索片段、引用、token 和耗时字段。
 
 但当前仍不能称为真实 RAG 已完成：

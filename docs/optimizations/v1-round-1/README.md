@@ -63,6 +63,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 45. [固化当前 Mock 评估基线](./45-current-mock-evaluation-baseline.md)
 46. [支持经过校验的外部知识源](./46-configurable-knowledge-source.md)
 47. [从 Markdown 和 PDF 构建可追踪知识](./47-source-document-ingestion.md)
+48. [限制 live 外发敏感数据](./48-live-external-data-redaction.md)
 
 ## 优化后的主流程
 
@@ -111,3 +112,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 46 轮增加 `KNOWLEDGE_PATH`，允许 Python 加载仓库外的授权知识 JSON，并在启动时拒绝空字段、未知字段和重复片段 ID。live 预检会记录知识来源类型、片段数量和 SHA-256，但不会记录本地路径或知识正文；完整原始文档导入和增量索引仍未实现。
 
 第 47 轮增加原始 Markdown 和文本型 PDF 导入。构建命令生成可直接配置给 Python 的知识 JSON 和不含正文的 provenance；服务启动与 live 门禁会校验两者哈希一致。扫描件 OCR、增量索引和审批发布仍未实现。
+
+第 48 轮在 Embedding 与 Responses 两个外部边界增加确定性脱敏，覆盖常见邮箱、中国大陆手机号、18 位身份证号和通过 Luhn 校验的支付卡号，并为 Responses 显式设置 `store=false`。本地 OpenAI 兼容 HTTP 服务已验证 live 成功与 503 fallback；正式 API 成功记录、完整 DLP 和供应商合规评估仍未完成。

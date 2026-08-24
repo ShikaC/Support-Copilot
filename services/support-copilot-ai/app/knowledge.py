@@ -1,26 +1,21 @@
 import re
 
-import anyio
-from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import OpenAIEmbeddings
 from openai import OpenAIError
 
 from app.config import Settings
 from app.errors import ExternalAiServiceError
 from app.knowledge_source import KnowledgeChunk, load_knowledge_chunks
+from app.live_vector_index import LiveVectorIndex, RetrievalWindow
 from app.models import RetrievalHit, TicketInput
 
 
 class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
-        self._settings = settings
         self._chunks = load_knowledge_chunks(
             settings.knowledge_path,
             settings.knowledge_provenance_path,
         )
-        self._vector_store: InMemoryVectorStore | None = None
-        self._vector_lock = anyio.Lock()
+        self._live_index = LiveVectorIndex(settings, tuple(self._chunks))
 
     @property
     def chunk_count(self) -> int:
@@ -38,67 +33,14 @@ class KnowledgeRetriever:
         # live 模式会构建 embedding，并使用向量检索。
         if live:
             try:
-                return await self._vector_search(ticket, query, top_n, top_k)
+                return await self._live_index.search(
+                    ticket,
+                    query,
+                    RetrievalWindow(top_n=top_n, top_k=top_k),
+                )
             except OpenAIError as exc:
                 raise ExternalAiServiceError(operation="knowledge retrieval") from exc
         return self._local_search(ticket, query, top_n, top_k)
-
-    async def _vector_search(
-        self,
-        ticket: TicketInput,
-        query: str,
-        top_n: int,
-        top_k: int,
-    ) -> list[RetrievalHit]:
-        store = await self._get_vector_store()
-        results = await anyio.to_thread.run_sync(
-            store.similarity_search_with_score,
-            query,
-            min(top_n, len(self._chunks)),
-        )
-        category = ticket.current_category
-        # top_k 控制最终保留的证据数量，只有这些片段会进入后续回复生成。
-        ranked = sorted(
-            results,
-            key=lambda item: (
-                category not in item[0].metadata.get("categories", []),
-                -float(item[1]),
-            ),
-        )[:top_k]
-
-        return [
-            self._hit_from_document(
-                document,
-                score=float(score),
-                initial_rank=index,
-                final_rank=index,
-                method="VECTOR",
-            )
-            for index, (document, score) in enumerate(ranked, start=1)
-        ]
-
-    async def _get_vector_store(self) -> InMemoryVectorStore:
-        if self._vector_store is not None:
-            return self._vector_store
-
-        async with self._vector_lock:
-            if self._vector_store is not None:
-                return self._vector_store
-
-            embeddings = OpenAIEmbeddings(
-                api_key=self._settings.openai_api_key,
-                base_url=self._settings.openai_base_url,
-                model=self._settings.openai_embedding_model,
-                max_retries=self._settings.openai_max_retries,
-                request_timeout=self._settings.openai_timeout_seconds,
-            )
-            documents = [self._as_document(chunk) for chunk in self._chunks]
-            self._vector_store = await anyio.to_thread.run_sync(
-                InMemoryVectorStore.from_documents,
-                documents,
-                embeddings,
-            )
-            return self._vector_store
 
     def _local_search(
         self,
@@ -185,43 +127,6 @@ class KnowledgeRetriever:
 
     def _normalize(self, value: str) -> str:
         return re.sub(r"\s+", " ", value.lower()).strip()
-
-    def _as_document(self, chunk: KnowledgeChunk) -> Document:
-        return Document(
-            page_content=chunk.content,
-            metadata={
-                "chunk_id": chunk.chunk_id,
-                "document_id": chunk.document_id,
-                "document_title": chunk.document_title,
-                "section": chunk.section,
-                "source_uri": chunk.source_uri,
-                "categories": list(chunk.categories),
-            },
-        )
-
-    def _hit_from_document(
-        self,
-        document: Document,
-        score: float,
-        initial_rank: int,
-        final_rank: int,
-        method: str,
-    ) -> RetrievalHit:
-        metadata = document.metadata
-        return RetrievalHit(
-            chunk_id=str(metadata["chunk_id"]),
-            document_id=str(metadata["document_id"]),
-            document_title=str(metadata["document_title"]),
-            section=str(metadata["section"]),
-            content=document.page_content,
-            source_uri=str(metadata["source_uri"]),
-            retrieval_method=method,
-            initial_rank=initial_rank,
-            initial_score=round(score, 4),
-            rerank_position=final_rank,
-            rerank_score=round(score, 4),
-            used_as_evidence=True,
-        )
 
     def _hit_from_chunk(
         self,

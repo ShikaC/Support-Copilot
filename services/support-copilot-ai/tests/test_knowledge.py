@@ -83,8 +83,8 @@ async def test_external_knowledge_reaches_vector_retrieval(
     retriever = KnowledgeRetriever(
         Settings(ai_mode="mock", knowledge_path=external_knowledge_path)
     )
-    retriever._vector_store = InMemoryVectorStore.from_documents(
-        [retriever._as_document(chunk) for chunk in retriever._chunks],
+    retriever._live_index._vector_store = InMemoryVectorStore.from_documents(
+        [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
         DeterministicTestEmbeddings(),
     )
     ticket = TicketInput(
