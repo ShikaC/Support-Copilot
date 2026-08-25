@@ -50,8 +50,14 @@ class AnalysisWorkflow:
             )
             retrieval_ms = self._elapsed_ms(retrieval_started)
 
+            evidence_missing = len(hits) == 0
             generation_started = time.perf_counter()
-            if live:
+            if evidence_missing:
+                # 没有证据时不把空上下文交给模型，避免模型先生成再被动标记 fallback。
+                draft = self._local_policy.draft(request, hits)
+                input_tokens, output_tokens = 0, 0
+                mode = "fallback"
+            elif live:
                 if self._provider is None:
                     raise LiveProviderConfigurationError
                 draft, input_tokens, output_tokens = await self._provider.analyze(
@@ -64,12 +70,14 @@ class AnalysisWorkflow:
                 input_tokens, output_tokens = 0, 0
             generation_ms = self._elapsed_ms(generation_started)
 
-            evidence_missing = len(hits) == 0
-            if evidence_missing:
-                mode = "fallback"
             decision = self._local_policy.decision(draft.category, evidence_missing)
             reply = self._local_policy.reply(draft, hits, evidence_missing)
             total_ms = self._elapsed_ms(started)
+            model_name = (
+                self._settings.openai_chat_model
+                if live and not evidence_missing
+                else "deterministic-demo"
+            ) or "deterministic-demo"
 
             response = AnalyzeResponse(
                 id=self._id("run"),
@@ -79,11 +87,7 @@ class AnalysisWorkflow:
                 fallback_reason=(
                     FallbackReason.INSUFFICIENT_EVIDENCE if evidence_missing else None
                 ),
-                model_name=(
-                    self._settings.openai_chat_model or "configured-chat-model"
-                    if live
-                    else "deterministic-demo"
-                ),
+                model_name=model_name,
                 prompt_version=request.options.prompt_version,
                 classification=Classification(
                     intent=draft.intent,
@@ -161,7 +165,7 @@ class AnalysisWorkflow:
             status="FALLBACK",
             mode="fallback",
             fallback_reason=fallback_reason,
-            model_name=self._settings.openai_chat_model or "configured-chat-model",
+            model_name="deterministic-demo-fallback",
             prompt_version=request.options.prompt_version,
             classification=Classification(
                 intent=draft.intent,

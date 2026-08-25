@@ -119,7 +119,9 @@ def _render_case_failure(failure: CaseFailure) -> str:
         case "escalation":
             return f"- 人工升级：预期 {failure.expected}，实际 {failure.actual}"
         case "citation":
-            return "- 引用：已检索到相关证据，但回复没有引用"
+            return (
+                "- 引用：引用缺失，或引用没有映射到本次返回的相关知识片段"
+            )
         case "no_evidence_safety":
             return "- 无证据安全：未使用无引用并升级人工复核的 fallback"
         case "reply_constraint":

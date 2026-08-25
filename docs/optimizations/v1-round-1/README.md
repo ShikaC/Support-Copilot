@@ -70,6 +70,8 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 52. [在前端 HTTP 边界解析真实响应](./52-frontend-runtime-response-schemas.md)
 53. [用真实跨服务响应验证前端契约](./53-cross-service-runtime-contract-gate.md)
 54. [持久化回复建议的人工审核结果](./54-persist-analysis-review-decisions.md)
+55. [补齐回复建议拒绝与审核历史](./55-reject-analysis-review-with-history.md)
+56. [建立可追溯质量基线与无证据安全门](./56-traceable-quality-baseline-and-no-evidence-gate.md)
 
 ## 优化后的主流程
 
@@ -130,3 +132,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 52 轮使用 Zod 在 React HTTP 边界解析工单、指标和分析成功响应，契约漂移会在进入页面状态前转换为不含原始响应内容的类型化错误。
 
 第 53 轮把三服务真实响应接入同一套前端 Zod Schema，通过显式 `--contract` 门禁验证工单、指标、mock 分析和持久化可见性；畸形 JSON 故障注入会让门禁返回非零退出码。
+
+第 56 轮把评估报告的引用覆盖率从“存在引用”收紧为“引用映射到本次返回的相关 chunk”，并在逐案例报告中保存 retrieved/cited chunk ID。Python 在没有证据时会在模型调用前使用确定性安全 fallback；live 模型返回不存在或重复的证据序号时进入 `invalid_model_response` fallback。Java 指标不再返回固定成功率、延迟、采纳率或 RAG 质量数字；没有已记录来源时返回空值，React 质量页和知识页也不展示静态演示数据。

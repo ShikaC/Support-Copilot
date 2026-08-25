@@ -155,3 +155,5 @@ class ModelDraft(BaseModel):
     reason_summary: str = Field(max_length=240)
     reply_content: str
     warnings: list[str]
+    # 模型只能引用输入证据中的 1-based 序号，系统会在回复落地前校验这些序号。
+    citation_indexes: list[int] = Field(default_factory=list)

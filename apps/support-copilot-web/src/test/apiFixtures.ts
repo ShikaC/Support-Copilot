@@ -122,3 +122,14 @@ export const metricsResponsePayload = {
     citationAccuracy: 0.95,
   },
 } as const
+
+export const nullableMetricsResponsePayload = {
+  ...metricsResponsePayload,
+  summary: {
+    ...metricsResponsePayload.summary,
+    analysisSuccessRate: null,
+  },
+  analysisLatency: null,
+  suggestionAcceptanceRate: null,
+  evaluation: null,
+} as const

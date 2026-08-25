@@ -25,10 +25,10 @@ FAILURE_RENDERING_CASES: Final = (
     (
         CaseFailure(
             metric="citation",
-            expected="retrieved_evidence_cited",
+            expected="retrieved_evidence_cited_and_mapped",
             actual="missing_citation",
         ),
-        "- 引用：已检索到相关证据，但回复没有引用",
+        "- 引用：引用缺失，或引用没有映射到本次返回的相关知识片段",
     ),
     (
         CaseFailure(

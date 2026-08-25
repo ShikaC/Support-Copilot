@@ -60,6 +60,25 @@ async def no_retrieval_hits(
     return []
 
 
+def one_retrieval_hit() -> list[RetrievalHit]:
+    return [
+        RetrievalHit(
+            chunkId="account-evidence",
+            documentId="account-guide",
+            documentTitle="账号访问排查手册",
+            section="SSO 登录循环",
+            content="请检查身份提供商回调和域名配置。",
+            sourceUri="knowledge://account-guide",
+            retrievalMethod="HYBRID_DEMO",
+            initialRank=1,
+            initialScore=0.9,
+            rerankPosition=1,
+            rerankScore=0.9,
+            usedAsEvidence=True,
+        )
+    ]
+
+
 @pytest.mark.asyncio
 async def test_recoverable_ai_error_returns_fallback(
     monkeypatch: pytest.MonkeyPatch,
@@ -79,7 +98,10 @@ async def test_recoverable_ai_error_returns_fallback(
         assert prompt_version == "ticket-analysis-v1"
         raise StructuredGenerationResponseTimeoutError
 
-    monkeypatch.setattr(retriever, "search", no_retrieval_hits)
+    async def one_hit_search(*args: object, **kwargs: object) -> list[RetrievalHit]:
+        return one_retrieval_hit()
+
+    monkeypatch.setattr(retriever, "search", one_hit_search)
     monkeypatch.setattr(OpenAIProvider, "analyze", unavailable_provider)
     caplog.set_level(logging.WARNING, logger="app.workflow")
 
@@ -113,11 +135,44 @@ async def test_programming_error_is_not_hidden_as_fallback(
     ) -> Never:
         raise SimulatedProgrammingError("simulated programming defect")
 
-    monkeypatch.setattr(retriever, "search", no_retrieval_hits)
+    async def one_hit_search(*args: object, **kwargs: object) -> list[RetrievalHit]:
+        return one_retrieval_hit()
+
+    monkeypatch.setattr(retriever, "search", one_hit_search)
     monkeypatch.setattr(OpenAIProvider, "analyze", broken_provider)
 
     with pytest.raises(RuntimeError, match="simulated programming defect"):
         await workflow.run(analyze_request())
+
+
+@pytest.mark.asyncio
+async def test_live_model_is_not_called_without_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = live_settings()
+    retriever = KnowledgeRetriever(settings)
+    workflow = AnalysisWorkflow(settings, retriever)
+    called = False
+
+    async def broken_provider(
+        provider: OpenAIProvider,
+        ticket: TicketInput,
+        evidence: list[RetrievalHit],
+        prompt_version: PromptVersion,
+    ) -> Never:
+        nonlocal called
+        called = True
+        raise AssertionError("model must not receive an empty evidence set")
+
+    monkeypatch.setattr(retriever, "search", no_retrieval_hits)
+    monkeypatch.setattr(OpenAIProvider, "analyze", broken_provider)
+
+    result = await workflow.run(analyze_request())
+
+    assert called is False
+    assert result.mode == "fallback"
+    assert result.status == "FALLBACK"
+    assert result.fallback_reason == "insufficient_evidence"
 
 
 @pytest.mark.asyncio

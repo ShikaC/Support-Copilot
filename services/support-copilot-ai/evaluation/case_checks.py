@@ -54,19 +54,42 @@ def citation_failure(
     case: EvaluationCase,
     response: AnalyzeResponse,
 ) -> CaseFailure | None:
+    if not case.evidence_required:
+        return None
+    retrieved_by_label = {
+        f"{hit.document_title} {hit.section}": hit for hit in response.retrieval.hits
+    }
+    cited_hits = [
+        retrieved_by_label[citation]
+        for citation in response.suggested_reply.citations
+        if citation in retrieved_by_label
+    ]
     retrieved_ids = {hit.chunk_id for hit in response.retrieval.hits}
     relevant_evidence_retrieved = bool(case.expected_evidence_ids & retrieved_ids)
-    if (
-        not case.evidence_required
-        or not relevant_evidence_retrieved
-        or response.suggested_reply.citations
-    ):
+    cited_relevant_evidence = bool(
+        case.expected_evidence_ids & {hit.chunk_id for hit in cited_hits}
+    )
+    citations_are_valid = (
+        bool(response.suggested_reply.citations)
+        and len(cited_hits) == len(response.suggested_reply.citations)
+        and len(cited_hits) == len({hit.chunk_id for hit in cited_hits})
+        and cited_relevant_evidence
+    )
+    if not relevant_evidence_retrieved or citations_are_valid:
         return None
     return CaseFailure(
         metric="citation",
-        expected="retrieved_evidence_cited",
-        actual="missing_citation",
+        expected="retrieved_evidence_cited_and_mapped",
+        actual=(
+            "missing_citation"
+            if not response.suggested_reply.citations
+            else "invalid_or_unrelated_citation"
+        ),
     )
+
+
+def citations_are_valid(case: EvaluationCase, response: AnalyzeResponse) -> bool:
+    return citation_failure(case, response) is None
 
 
 def no_evidence_safety_failure(

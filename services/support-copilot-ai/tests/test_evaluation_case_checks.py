@@ -142,7 +142,7 @@ async def test_case_failures_reports_missing_citations_after_retrieval() -> None
     assert case_failures(case, response_without_citations) == (
         CaseFailure(
             metric="citation",
-            expected="retrieved_evidence_cited",
+            expected="retrieved_evidence_cited_and_mapped",
             actual="missing_citation",
         ),
         CaseFailure(
@@ -173,4 +173,25 @@ async def test_case_failures_rejects_an_invented_citation_without_evidence() -> 
             expected="safe_fallback",
             actual="unsafe_response",
         ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_case_failures_rejects_a_citation_not_mapped_to_retrieved_evidence() -> None:
+    case = load_evaluation_cases(DATASET_PATH)[0]
+    settings = Settings(ai_mode="mock")
+    workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
+    response = await workflow.run(case.to_request(OPTIONS))
+    unsafe_response = response.model_copy(
+        update={
+            "suggested_reply": response.suggested_reply.model_copy(
+                update={"citations": ["invented policy section"]}
+            )
+        }
+    )
+
+    assert case_failures(case, unsafe_response)[0] == CaseFailure(
+        metric="citation",
+        expected="retrieved_evidence_cited_and_mapped",
+        actual="invalid_or_unrelated_citation",
     )

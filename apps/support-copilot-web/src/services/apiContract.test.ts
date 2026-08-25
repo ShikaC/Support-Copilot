@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import {
   analysisResponsePayload,
   metricsResponsePayload,
+  nullableMetricsResponsePayload,
   ticketResponsePayload,
 } from '../test/apiFixtures'
 import { analyzeTicket, fetchMetrics, fetchTickets } from './api'
@@ -180,6 +181,25 @@ it('rejects metrics when a count is returned as text', async () => {
   await expect(metricsRequest).rejects.toMatchObject({
     name: 'ApiContractError',
     issues: [{ path: 'summary.openTickets' }],
+  })
+})
+
+it('accepts nullable metrics when the backend has no report source', async () => {
+  // Given: Java 返回真实快照，但没有耗时、采纳率和离线评估报告来源。
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(nullableMetricsResponsePayload), { status: 200 }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: 浏览器读取当前可用指标。
+  const metricsRequest = fetchMetrics()
+
+  // Then: 可空字段保持 null，由页面显示“暂无来源”，而不是被转换成 0。
+  await expect(metricsRequest).resolves.toMatchObject({
+    summary: { analysisSuccessRate: null },
+    analysisLatency: null,
+    suggestionAcceptanceRate: null,
+    evaluation: null,
   })
 })
 

@@ -8,14 +8,25 @@ import org.springframework.stereotype.Service;
 
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
 
 @Service
 public class MetricsService {
 
 	private final TicketRepository ticketRepository;
+	private final AnalysisRunRepository analysisRunRepository;
+	private final AnalysisReviewRepository analysisReviewRepository;
 
-	public MetricsService(TicketRepository ticketRepository) {
+	public MetricsService(
+		TicketRepository ticketRepository,
+		AnalysisRunRepository analysisRunRepository,
+		AnalysisReviewRepository analysisReviewRepository
+	) {
 		this.ticketRepository = ticketRepository;
+		this.analysisRunRepository = analysisRunRepository;
+		this.analysisReviewRepository = analysisReviewRepository;
 	}
 
 	public MetricsResponse snapshot() {
@@ -24,22 +35,26 @@ public class MetricsService {
 		var urgent = tickets.stream().filter(ticket -> "URGENT".equals(ticket.getPriority())).count();
 		var slaRisk = tickets.stream().filter(ticket -> List.of("URGENT", "HIGH").contains(ticket.getPriority())).count();
 		var categoryCounts = tickets.stream().collect(Collectors.groupingBy(Ticket::getCategory, Collectors.counting()));
+		var analysisRuns = analysisRunRepository.findAll();
+		var analysisSuccessRate = analysisRuns.isEmpty()
+			? null
+			: analysisRuns.stream().filter(run -> "SUCCEEDED".equals(run.getStatus())).count()
+				/ (double) analysisRuns.size();
+		var reviews = analysisReviewRepository.findAll();
+		var suggestionAcceptanceRate = reviews.isEmpty()
+			? null
+			: reviews.stream()
+				.filter(review -> review.getAction() == AnalysisReviewAction.APPROVED
+					|| review.getAction() == AnalysisReviewAction.EDITED)
+				.count() / (double) reviews.size();
 
 		return new MetricsResponse(
-			new Summary(open, urgent, slaRisk, 0.942),
-			List.of(
-				new Trend("07-22", 31, 27),
-				new Trend("07-23", 28, 32),
-				new Trend("07-24", 36, 29),
-				new Trend("07-25", 33, 35),
-				new Trend("07-26", 25, 30),
-				new Trend("07-27", 42, 34),
-				new Trend("07-28", 38, 31)
-			),
+			new Summary(open, urgent, slaRisk, analysisSuccessRate),
+			List.of(),
 			categoryDistribution(categoryCounts),
-			new Latency(1842, 3268),
-			0.714,
-			new Evaluation(0.886, 0.821, 0.932, 0.948)
+			null,
+			suggestionAcceptanceRate,
+			null
 		);
 	}
 
@@ -71,12 +86,12 @@ public class MetricsService {
 		List<Trend> ticketTrend,
 		List<CategoryCount> categoryDistribution,
 		Latency analysisLatency,
-		double suggestionAcceptanceRate,
+		Double suggestionAcceptanceRate,
 		Evaluation evaluation
 	) {
 	}
 
-	public record Summary(long openTickets, long urgentTickets, long slaRiskTickets, double analysisSuccessRate) {
+	public record Summary(long openTickets, long urgentTickets, long slaRiskTickets, Double analysisSuccessRate) {
 	}
 
 	public record Trend(String date, int created, int resolved) {

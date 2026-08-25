@@ -42,11 +42,16 @@ async def run_evaluation() -> int:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     json_path = REPORT_DIR / f"mock-{timestamp}.json"
     markdown_path = REPORT_DIR / f"mock-{timestamp}.md"
+    latest_json_path = REPORT_DIR / "mock-latest.json"
+    latest_markdown_path = REPORT_DIR / "mock-latest.md"
     json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
     markdown_path.write_text(render_markdown(report), encoding="utf-8")
+    latest_json_path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    latest_markdown_path.write_text(render_markdown(report), encoding="utf-8")
 
     print(f"JSON report: {json_path}")
     print(f"Markdown report: {markdown_path}")
+    print(f"Latest JSON report: {latest_json_path}")
     print(f"Cases: {report.metrics.total_cases}")
     print(f"Passed: {report.passed}")
     print(f"Failed cases: {', '.join(report.failed_case_ids) or 'none'}")

@@ -179,7 +179,7 @@ export const metricsResponseSchema = z.strictObject({
     openTickets: z.number().int().nonnegative(),
     urgentTickets: z.number().int().nonnegative(),
     slaRiskTickets: z.number().int().nonnegative(),
-    analysisSuccessRate: rate,
+    analysisSuccessRate: rate.nullable(),
   }),
   ticketTrend: z.array(
     z.strictObject({
@@ -194,15 +194,19 @@ export const metricsResponseSchema = z.strictObject({
       count: z.number().int().nonnegative(),
     }),
   ),
-  analysisLatency: z.strictObject({
-    averageMs: z.number().int().nonnegative(),
-    p95Ms: z.number().int().nonnegative(),
-  }),
-  suggestionAcceptanceRate: rate,
-  evaluation: z.strictObject({
-    hitRateAt3: rate,
-    mrr: rate,
-    groundedness: rate,
-    citationAccuracy: rate,
-  }),
+  analysisLatency: z
+    .strictObject({
+      averageMs: z.number().int().nonnegative(),
+      p95Ms: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  suggestionAcceptanceRate: rate.nullable(),
+  evaluation: z
+    .strictObject({
+      hitRateAt3: rate,
+      mrr: rate,
+      groundedness: rate,
+      citationAccuracy: rate,
+    })
+    .nullable(),
 })

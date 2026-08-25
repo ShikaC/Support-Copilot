@@ -8,6 +8,7 @@ from typing import Final
 from app.models import AnalyzeResponse
 from evaluation.case_checks import (
     case_failures,
+    citations_are_valid,
     no_evidence_safety_failure,
     reply_constraint_failures,
 )
@@ -83,6 +84,14 @@ def _case_result(
     response: AnalyzeResponse,
 ) -> CaseEvaluationResult:
     retrieved_ids = tuple(hit.chunk_id for hit in response.retrieval.hits)
+    retrieved_by_label = {
+        f"{hit.document_title} {hit.section}": hit for hit in response.retrieval.hits
+    }
+    cited_ids = tuple(
+        retrieved_by_label[citation].chunk_id
+        for citation in response.suggested_reply.citations
+        if citation in retrieved_by_label
+    )
     relevant_rank = first_relevant_rank(retrieved_ids, case.expected_evidence_ids)
     return CaseEvaluationResult(
         id=case.id,
@@ -97,6 +106,7 @@ def _case_result(
         evidence_required=case.evidence_required,
         expected_evidence_ids=tuple(sorted(case.expected_evidence_ids)),
         retrieved_evidence_ids=retrieved_ids,
+        cited_evidence_ids=cited_ids,
         first_relevant_rank=relevant_rank,
         citations=tuple(response.suggested_reply.citations),
         status=response.status,
@@ -171,7 +181,11 @@ def _metrics(
         hit_rate_at_k=retrieval.hit_rate_at_k,
         mrr=retrieval.mrr,
         citation_coverage=_rate(
-            tuple(bool(result.citations) for result in evidence_results),
+            tuple(
+                citations_are_valid(case, response)
+                for case, response in zip(cases, responses, strict=True)
+                if case.evidence_required
+            ),
         ),
         no_evidence_safety_rate=_rate(
             tuple(

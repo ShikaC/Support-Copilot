@@ -45,7 +45,6 @@ import {
 import {
   createDemoAnalysis,
   demoKnowledgeArticles,
-  demoMetrics,
   demoTickets,
 } from './data/demoData'
 import type {
@@ -183,28 +182,34 @@ function StatusStrip({ metrics }: { metrics: Metrics | null }) {
     {
       label: '待处理工单',
       value: metrics?.summary.openTickets ?? '--',
-      delta: metrics ? '+6 今日' : '指标暂不可用',
+      delta: metrics ? '当前 H2 快照' : '指标暂不可用',
       icon: Inbox,
       tone: '',
     },
     {
       label: '紧急优先级',
       value: metrics?.summary.urgentTickets ?? '--',
-      delta: metrics ? '2 条临近 SLA' : '指标暂不可用',
+      delta: metrics ? '当前工单快照' : '指标暂不可用',
       icon: AlertTriangle,
       tone: 'danger',
     },
     {
       label: 'SLA 风险',
       value: metrics?.summary.slaRiskTickets ?? '--',
-      delta: metrics ? '较昨日 -2' : '指标暂不可用',
+      delta: metrics ? '按优先级计算' : '指标暂不可用',
       icon: Clock3,
       tone: 'warning',
     },
     {
       label: '分析成功率',
-      value: metrics ? `${(metrics.summary.analysisSuccessRate * 100).toFixed(1)}%` : '--',
-      delta: metrics ? '+1.8%' : '指标暂不可用',
+      value:
+        metrics?.summary.analysisSuccessRate == null
+          ? '--'
+          : `${(metrics.summary.analysisSuccessRate * 100).toFixed(1)}%`,
+      delta:
+        metrics?.summary.analysisSuccessRate == null
+          ? '暂无分析记录'
+          : '来自分析记录',
       icon: CircleGauge,
       tone: 'neutral',
     },
@@ -871,7 +876,14 @@ function OverviewView({ metrics, tickets }: { metrics: Metrics | null; tickets: 
               <Tag>最近 7 天</Tag>
             </div>
             <div className="chart-panel-body">
-              <ReactECharts option={trendOption} style={{ height: '100%' }} />
+              {metrics.ticketTrend.length > 0 ? (
+                <ReactECharts option={trendOption} style={{ height: '100%' }} />
+              ) : (
+                <UnavailablePanel
+                  title="趋势数据暂不可用"
+                  description="当前接口只返回工单快照，尚未提供可追溯的历史趋势数据。"
+                />
+              )}
             </div>
           </section>
 
@@ -934,25 +946,37 @@ function OverviewView({ metrics, tickets }: { metrics: Metrics | null; tickets: 
                   <div className="quality-context">编辑后采纳计入</div>
                 </div>
                 <span className="quality-value">
-                  {(metrics.suggestionAcceptanceRate * 100).toFixed(1)}%
+                  {metrics.suggestionAcceptanceRate == null
+                    ? '--'
+                    : `${(metrics.suggestionAcceptanceRate * 100).toFixed(1)}%`}
                 </span>
               </div>
               <div className="quality-row">
                 <div>
                   <div className="quality-name">平均分析耗时</div>
-                  <div className="quality-context">p95 {metrics.analysisLatency.p95Ms} ms</div>
+                  <div className="quality-context">
+                    {metrics.analysisLatency == null
+                      ? '暂无分析耗时记录'
+                      : `p95 ${metrics.analysisLatency.p95Ms} ms`}
+                  </div>
                 </div>
                 <span className="quality-value">
-                  {(metrics.analysisLatency.averageMs / 1000).toFixed(2)}s
+                  {metrics.analysisLatency == null
+                    ? '--'
+                    : `${(metrics.analysisLatency.averageMs / 1000).toFixed(2)}s`}
                 </span>
               </div>
               <div className="quality-row">
                 <div>
                   <div className="quality-name">证据忠实度</div>
-                  <div className="quality-context">离线评估集</div>
+                  <div className="quality-context">
+                    {metrics.evaluation == null ? '暂无评估报告' : '来自离线评估集'}
+                  </div>
                 </div>
                 <span className="quality-value">
-                  {(metrics.evaluation.groundedness * 100).toFixed(1)}%
+                  {metrics.evaluation == null
+                    ? '--'
+                    : `${(metrics.evaluation.groundedness * 100).toFixed(1)}%`}
                 </span>
               </div>
             </div>
@@ -963,9 +987,21 @@ function OverviewView({ metrics, tickets }: { metrics: Metrics | null; tickets: 
   )
 }
 
-function KnowledgeView({ articles }: { articles: KnowledgeArticle[] }) {
+function KnowledgeView({ articles, demo }: { articles: KnowledgeArticle[]; demo: boolean }) {
   const [query, setQuery] = useState('')
   const [documentType, setDocumentType] = useState('ALL')
+
+  if (!demo) {
+    return (
+      <div className="view-enter">
+        <UnavailablePanel
+          title="知识目录暂不可用"
+          description="当前连接的后端没有提供知识目录接口，页面不展示本地演示文章。分析服务仍会使用其已配置的知识源。"
+        />
+      </div>
+    )
+  }
+
   const filtered = articles.filter((article) => {
     const queryMatches = [article.title, article.owner, ...article.coverage]
       .join(' ')
@@ -1050,24 +1086,28 @@ function KnowledgeView({ articles }: { articles: KnowledgeArticle[] }) {
   )
 }
 
-function QualityView({ metrics }: { metrics: Metrics | null }) {
-  if (!metrics) {
+function QualityView({ metrics, metricsError }: { metrics: Metrics | null; metricsError: boolean }) {
+  if (metricsError) {
     return (
       <div className="view-enter">
         <UnavailablePanel
-          title="质量指标暂不可用"
-          description="当前没有收到后端指标数据，因此不展示可能过期或虚假的评估数字。"
+          title="质量指标请求失败"
+          description="指标接口请求失败，当前页面没有可展示的质量数字。请检查 Java API 和本地服务日志。"
         />
       </div>
     )
   }
 
-  const evaluationRows = [
-    ['检索基线 2026-07-A', '48', '向量 Top 3', '88.6%', '82.1%', '1.24s', '通过'],
-    ['混合检索候选', '48', 'RRF + 重排序', '91.7%', '86.4%', '1.79s', '观察'],
-    ['无答案专项集', '17', '阈值 + 拒答', '82.4%', '79.8%', '1.31s', '通过'],
-    ['错误码专项集', '14', 'BM25 + 向量', '92.9%', '90.3%', '1.08s', '通过'],
-  ]
+  if (!metrics || !metrics.evaluation) {
+    return (
+      <div className="view-enter">
+        <UnavailablePanel
+          title="质量指标暂不可用"
+          description="当前没有收到可追溯的评估报告，因此不展示硬编码的质量数字。请先运行固定 mock 评估。"
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="view-enter">
@@ -1076,28 +1116,28 @@ function QualityView({ metrics }: { metrics: Metrics | null }) {
           <div className="quality-hero-item">
             <span className="quality-hero-label">Hit Rate@3</span>
             <span className="quality-hero-value">{(metrics.evaluation.hitRateAt3 * 100).toFixed(1)}%</span>
-            <span className="quality-hero-note">较基线上升 3.8%</span>
+            <span className="quality-hero-note">来自后端评估报告</span>
           </div>
           <div className="quality-hero-item">
             <span className="quality-hero-label">MRR</span>
             <span className="quality-hero-value">{metrics.evaluation.mrr.toFixed(3)}</span>
-            <span className="quality-hero-note">首条证据排名稳定</span>
+            <span className="quality-hero-note">来自后端评估报告</span>
           </div>
           <div className="quality-hero-item">
             <span className="quality-hero-label">证据忠实度</span>
             <span className="quality-hero-value">{(metrics.evaluation.groundedness * 100).toFixed(1)}%</span>
-            <span className="quality-hero-note">评估集 96 条回答</span>
+            <span className="quality-hero-note">样本数见评估报告</span>
           </div>
           <div className="quality-hero-item">
             <span className="quality-hero-label">引用准确率</span>
             <span className="quality-hero-value">{(metrics.evaluation.citationAccuracy * 100).toFixed(1)}%</span>
-            <span className="quality-hero-note">人工抽检 63 条引用</span>
+            <span className="quality-hero-note">校验规则见评估报告</span>
           </div>
         </div>
         <div className="panel-header">
           <div className="panel-heading">
             <h2 className="panel-title">评估运行</h2>
-            <div className="panel-meta">最近 4 次离线评估结果</div>
+            <div className="panel-meta">后端评估报告尚未接入页面</div>
           </div>
         </div>
         <div className="evaluation-table-wrap">
@@ -1114,15 +1154,9 @@ function QualityView({ metrics }: { metrics: Metrics | null }) {
               </tr>
             </thead>
             <tbody>
-              {evaluationRows.map((row) => (
-                <tr key={row[0]}>
-                  {row.map((cell, index) => (
-                    <td className={[1, 3, 4, 5].includes(index) ? 'numeric' : ''} key={`${row[0]}-${cell}`}>
-                      {index === 6 ? <Tag color={cell === '通过' ? 'green' : 'gold'}>{cell}</Tag> : cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              <tr>
+                <td colSpan={7}>当前 Java 指标接口没有评估报告来源。</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1135,6 +1169,7 @@ function App() {
   const [view, setView] = useState<ViewKey>('workbench')
   const [tickets, setTickets] = useState<Ticket[]>(demoTickets)
   const [metrics, setMetrics] = useState<Metrics | null>(null)
+  const [metricsError, setMetricsError] = useState(false)
   const [selectedTicketId, setSelectedTicketId] = useState(demoTickets[0].id)
   const [apiState, setApiState] = useState<ApiState>('connecting')
   const [analyzingTicketId, setAnalyzingTicketId] = useState<string | null>(null)
@@ -1176,8 +1211,10 @@ function App() {
 
       if (metricsAvailable) {
         setMetrics(metricResult.value)
+        setMetricsError(false)
       } else {
-        setMetrics(ticketsAvailable ? null : demoMetrics)
+        setMetrics(null)
+        setMetricsError(!isAbortError(metricResult.reason))
         if (!isAbortError(metricResult.reason)) {
           console.warn('Metrics unavailable; hiding metric values.', metricResult.reason)
         }
@@ -1249,12 +1286,12 @@ function App() {
                 error.traceId ? `（traceId: ${error.traceId}）` : ''
               }`
             : error.message
-        showToast(message)
+        showToast(message, 'error')
         return
       }
 
       if (!(error instanceof TypeError)) {
-        showToast('分析失败，请稍后重试')
+        showToast('分析失败，请稍后重试', 'error')
         return
       }
 
@@ -1471,8 +1508,13 @@ function App() {
               />
             )}
             {view === 'overview' && <OverviewView metrics={metrics} tickets={tickets} />}
-            {view === 'knowledge' && <KnowledgeView articles={demoKnowledgeArticles} />}
-            {view === 'quality' && <QualityView metrics={metrics} />}
+            {view === 'knowledge' && (
+              <KnowledgeView
+                articles={apiState === 'demo' ? demoKnowledgeArticles : []}
+                demo={apiState === 'demo'}
+              />
+            )}
+            {view === 'quality' && <QualityView metrics={metrics} metricsError={metricsError} />}
           </main>
         </div>
       </div>

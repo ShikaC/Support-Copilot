@@ -1,6 +1,6 @@
 # Support Copilot
 
-企业级智能工单路由与 RAG 知识库辅助平台。
+面向企业客服场景的智能工单辅助平台 V1。
 
 Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路：工单进入系统后，由 Java 业务 API 保存和编排，Python AI 服务完成结构化分类、知识检索、证据约束回复与风险判断，React 工作台展示可审计的处理轨迹并保留人工审核入口。
 
@@ -10,11 +10,11 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - 工单分类、优先级、情绪、置信度与人工升级建议。
 - 检索查询、Top K 知识片段、来源、分数和引用展示。
 - 建议回复编辑、采纳和风险提示。
-- 运营概览、知识库状态和 RAG 质量评估视图。
+- 运营概览、知识目录演示页和质量评估占位视图；只有接入可追溯报告后才展示评估数字。
 - H2 工单与分析运行持久化。
 - FastAPI `mock`、`live` 和 `fallback` 三种运行模式。
 - Java 到 Python 的超时与业务降级。
-- OpenAI Responses API 结构化输出和 LangChain 内存向量检索的实时模式。
+- OpenAI Responses API 结构化输出和进程内向量检索的 live 模式骨架，尚未完成正式 API 成功验证。
 
 ## 技术架构
 
@@ -304,7 +304,7 @@ cd services/support-copilot-ai
 .venv/bin/python -m evaluation.run_mock_evaluation
 ```
 
-评估报告会写入 `services/support-copilot-ai/evaluation/reports/`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)，当前提交对应的可复核结果见 [2026-08-24 Mock 评估基线](docs/verification/mock-evaluation-2026-08-24.md)。
+评估报告会写入 `services/support-copilot-ai/evaluation/reports/`，并刷新 `mock-latest.json` 与 `mock-latest.md`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。报告逐案例保存 retrieved/cited chunk 映射。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)；[2026-08-24 Mock 评估基线](docs/verification/mock-evaluation-2026-08-24.md) 是历史提交记录，不代表当前 HEAD。
 
 ### 自动化 CI
 
@@ -359,7 +359,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 | POST | `/api/tickets/{id}/analyses/{analysisId}/reviews/reject` | 拒绝最新回复建议并记录必填原因 |
 | GET | `/api/tickets/{id}/analyses/{analysisId}/reviews` | 查询分析审核历史 |
 | GET | `/api/knowledge/search` | 调试知识检索 |
-| GET | `/api/metrics` | 查询运营与评估指标 |
+| GET | `/api/metrics` | 查询当前工单和已持久化运行态指标；没有来源的数据返回空值 |
 | POST | `/analyze` | Java 调用的 AI 服务内部接口 |
 
 ## 演示建议
@@ -369,7 +369,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 3. 打开“知识依据”，检查文档片段和引用。
 4. 打开“回复建议”，编辑后采纳，或拒绝建议并填写原因，再展开审核历史。
 5. 选择“能否恢复三个月前删除的项目”，展示无证据时的拒绝承诺与人工复核。
-6. 切换运营概览和质量评估，解释检索与生成需要分层评估。
+6. 切换运营概览和质量评估，说明当前页面不会把未接入报告的质量数字展示成事实。
 
 ## 当前限制
 

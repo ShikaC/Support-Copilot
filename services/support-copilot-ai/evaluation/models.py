@@ -168,6 +168,7 @@ class CaseEvaluationResult(EvaluationModel):
     evidence_required: bool
     expected_evidence_ids: tuple[str, ...]
     retrieved_evidence_ids: tuple[str, ...]
+    cited_evidence_ids: tuple[str, ...]
     first_relevant_rank: int | None
     citations: tuple[str, ...]
     status: str

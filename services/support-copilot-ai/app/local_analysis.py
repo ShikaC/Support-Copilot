@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from app.errors import InvalidModelResponseError
 from app.models import (
     AnalyzeRequest,
     Decision,
@@ -75,6 +76,7 @@ class LocalAnalysisPolicy:
                 "您好，我们已经收到您的问题，支持人员会核对相关信息并继续回复您。",
             ),
             warnings=["证据不足，禁止承诺处理结果。"] if no_evidence else [],
+            citation_indexes=list(range(1, len(hits) + 1)),
         )
 
     def decision(
@@ -102,7 +104,8 @@ class LocalAnalysisPolicy:
         hits: list[RetrievalHit],
         evidence_missing: bool,
     ) -> SuggestedReply:
-        citations = [f"{hit.document_title} {hit.section}" for hit in hits]
+        citation_hits = self._citation_hits(draft.citation_indexes, hits)
+        citations = [f"{hit.document_title} {hit.section}" for hit in citation_hits]
         citation_markers = "" if not citations else " " + "".join(
             f"[{index}]" for index in range(1, len(citations) + 1)
         )
@@ -114,6 +117,21 @@ class LocalAnalysisPolicy:
             citations=citations,
             warnings=warnings,
         )
+
+    def _citation_hits(
+        self,
+        citation_indexes: list[int],
+        hits: list[RetrievalHit],
+    ) -> list[RetrievalHit]:
+        if not hits:
+            if citation_indexes:
+                raise InvalidModelResponseError
+            return []
+        if not citation_indexes or len(set(citation_indexes)) != len(citation_indexes):
+            raise InvalidModelResponseError
+        if any(index < 1 or index > len(hits) for index in citation_indexes):
+            raise InvalidModelResponseError
+        return [hits[index - 1] for index in citation_indexes]
 
     def workflow_steps(
         self,
