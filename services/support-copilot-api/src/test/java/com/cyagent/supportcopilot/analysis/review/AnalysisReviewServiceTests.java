@@ -24,6 +24,7 @@ import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.ticket.TicketService;
 
 @SpringBootTest
 class AnalysisReviewServiceTests {
@@ -45,6 +46,9 @@ class AnalysisReviewServiceTests {
 
 	@Autowired
 	private TicketRepository ticketRepository;
+
+	@Autowired
+	private TicketService ticketService;
 
 	@Autowired
 	private PlatformTransactionManager transactionManager;
@@ -87,6 +91,49 @@ class AnalysisReviewServiceTests {
 		assertThat(review.action()).isEqualTo(AnalysisReviewAction.EDITED);
 		assertThat(review.originalReplyContent()).isEqualTo(analysis.suggestedReply().content());
 		assertThat(review.reviewedReplyContent()).isEqualTo(editedReply);
+	}
+
+	@Test
+	void recordsRejectionReasonWithoutTreatingTheSuggestionAsReviewedContent() {
+		var analysis = saveAnalysis();
+
+		var review = analysisReviewService.reject(
+			ticketId,
+			analysis.id(),
+			"退款结论需要先核对支付流水"
+		);
+
+		assertThat(review.action()).isEqualTo(AnalysisReviewAction.REJECTED);
+		assertThat(review.originalReplyContent()).isEqualTo(analysis.suggestedReply().content());
+		assertThat(review.reviewedReplyContent()).isNull();
+		assertThat(review.reason()).isEqualTo("退款结论需要先核对支付流水");
+		assertThat(analysisReviewRepository.findById(review.id())).isPresent();
+	}
+
+	@Test
+	void returnsExistingRejectionWhenTheSameReasonIsRetried() {
+		var analysis = saveAnalysis();
+
+		var first = analysisReviewService.reject(ticketId, analysis.id(), "证据不足");
+		var retry = analysisReviewService.reject(ticketId, analysis.id(), "证据不足");
+
+		assertThat(retry.id()).isEqualTo(first.id());
+		assertThat(analysisReviewRepository.findByAnalysisIdOrderByCreatedAtDesc(analysis.id()))
+			.hasSize(1);
+	}
+
+	@Test
+	void preservesRejectionReasonInTheRefreshedTicketEvent() {
+		var analysis = saveAnalysis();
+		var review = analysisReviewService.reject(ticketId, analysis.id(), "证据不足");
+
+		var ticket = ticketService.get(ticketId);
+
+		assertThat(ticket.events())
+			.filteredOn(event -> event.id().equals(review.id()))
+			.singleElement()
+			.extracting(event -> event.detail())
+			.isEqualTo("未认证演示用户已拒绝回复建议：证据不足");
 	}
 
 	@Test
@@ -142,6 +189,19 @@ class AnalysisReviewServiceTests {
 			.isInstanceOf(StaleAnalysisReviewException.class);
 		assertThat(analysisReviewRepository.findByAnalysisIdOrderByCreatedAtDesc(analysis.id()))
 			.hasSize(1);
+	}
+
+	@Test
+	void rejectsRejectionWhenTicketChangedAfterAnalysis() {
+		var analysis = saveAnalysis();
+		var changedTicket = ticketRepository.findById(ticketId).orElseThrow();
+		changedTicket.setStatus("IN_PROGRESS");
+		ticketRepository.saveAndFlush(changedTicket);
+
+		assertThatThrownBy(() -> analysisReviewService.reject(ticketId, analysis.id(), "版本已变化"))
+			.isInstanceOf(StaleAnalysisReviewException.class);
+		assertThat(analysisReviewRepository.findByAnalysisIdOrderByCreatedAtDesc(analysis.id()))
+			.isEmpty();
 	}
 
 	@Test

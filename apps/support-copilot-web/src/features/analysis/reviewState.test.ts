@@ -43,4 +43,23 @@ describe('applyAnalysisReview', () => {
     expect(updated.events.filter((event) => event.id.startsWith('review-'))).toHaveLength(1)
     expect(updated.latestReview?.id).toBe('review-second')
   })
+
+  it('keeps a rejection reason in the latest review and timeline', () => {
+    const ticket = ticketResponseSchema.parse(ticketResponsePayload)
+    const rejection = analysisReviewSchema.parse({
+      ...analysisReviewPayload('review-rejected'),
+      ticketId: ticket.id,
+      action: 'REJECTED',
+      reviewedReplyContent: null,
+      reason: '建议缺少足够证据',
+    })
+
+    const updated = applyAnalysisReview(ticket, rejection)
+
+    expect(updated.latestReview).toEqual(rejection)
+    expect(updated.events.at(-1)).toMatchObject({
+      id: rejection.id,
+      detail: '未认证演示用户已拒绝回复建议：建议缺少足够证据',
+    })
+  })
 })

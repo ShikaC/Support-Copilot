@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.CreateAnalysisReviewRequest;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.RejectAnalysisReviewRequest;
 
 @RestController
 @RequestMapping("/api/tickets/{ticketId}/analyses/{analysisId}/reviews")
@@ -39,5 +40,14 @@ public class AnalysisReviewController {
 		@Valid @RequestBody CreateAnalysisReviewRequest request
 	) {
 		return analysisReviewService.review(ticketId, analysisId, request.replyContent());
+	}
+
+	@PostMapping("/reject")
+	AnalysisReviewResponse reject(
+		@PathVariable String ticketId,
+		@PathVariable String analysisId,
+		@Valid @RequestBody RejectAnalysisReviewRequest request
+	) {
+		return analysisReviewService.reject(ticketId, analysisId, request.reason());
 	}
 }

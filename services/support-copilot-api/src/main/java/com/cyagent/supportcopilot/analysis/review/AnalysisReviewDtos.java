@@ -15,6 +15,11 @@ public final class AnalysisReviewDtos {
 	) {
 	}
 
+	public record RejectAnalysisReviewRequest(
+		@NotBlank @Size(max = 1000) String reason
+	) {
+	}
+
 	public record AnalysisReviewResponse(
 		String id,
 		String ticketId,
@@ -24,6 +29,7 @@ public final class AnalysisReviewDtos {
 		String reviewerLabel,
 		String originalReplyContent,
 		String reviewedReplyContent,
+		String reason,
 		long ticketVersion,
 		String traceId,
 		Instant createdAt

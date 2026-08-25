@@ -1,5 +1,9 @@
 import * as z from 'zod'
 
+import { analysisReviewSchema } from './analysisReviewSchema'
+
+export { analysisReviewListSchema, analysisReviewSchema } from './analysisReviewSchema'
+
 export const FALLBACK_REASONS = [
   'insufficient_evidence',
   'embedding_api_error',
@@ -130,20 +134,6 @@ export const ticketEventSchema = z.strictObject({
   id: nonEmptyString,
   label: nonEmptyString,
   detail: z.string(),
-  createdAt: timestamp,
-})
-
-export const analysisReviewSchema = z.strictObject({
-  id: nonEmptyString,
-  ticketId: nonEmptyString,
-  analysisId: nonEmptyString,
-  action: z.enum(['APPROVED', 'EDITED']),
-  reviewerType: z.literal('UNAUTHENTICATED_DEMO'),
-  reviewerLabel: nonEmptyString,
-  originalReplyContent: nonEmptyString,
-  reviewedReplyContent: nonEmptyString,
-  ticketVersion: z.number().int().nonnegative(),
-  traceId: nonEmptyString,
   createdAt: timestamp,
 })
 

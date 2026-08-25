@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cyagent.supportcopilot.analysis.AnalysisService;
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
-import com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
 import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
@@ -185,17 +184,18 @@ public class TicketService {
 			events.add(new TicketEventResponse(
 				latestReview.id(),
 				"人工审核已记录",
-				reviewDescription(latestReview.action()),
+				reviewDescription(latestReview),
 				latestReview.createdAt()
 			));
 		}
 		return List.copyOf(events);
 	}
 
-	private String reviewDescription(AnalysisReviewAction action) {
-		return switch (action) {
+	private String reviewDescription(AnalysisReviewResponse review) {
+		return switch (review.action()) {
 			case APPROVED -> "未认证演示用户已采纳原始回复建议";
 			case EDITED -> "未认证演示用户已编辑并采纳回复建议";
+			case REJECTED -> "未认证演示用户已拒绝回复建议：" + review.reason();
 		};
 	}
 }

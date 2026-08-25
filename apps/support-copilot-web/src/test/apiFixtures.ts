@@ -94,6 +94,7 @@ export function analysisReviewPayload(id: string) {
     reviewerLabel: '演示管理员',
     originalReplyContent: '我们会先核验交易记录。[1]',
     reviewedReplyContent: '我们会先核验交易记录，并同步处理进展。[1]',
+    reason: null,
     ticketVersion: 4,
     traceId: 'trace-contract-test',
     createdAt: '2026-08-25T08:00:00Z',

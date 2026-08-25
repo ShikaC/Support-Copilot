@@ -1,6 +1,8 @@
 package com.cyagent.supportcopilot.analysis.review;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -56,10 +58,50 @@ class AnalysisReviewApiTests {
 			.andExpect(jsonPath("$.details.currentTicketVersion").value(5));
 	}
 
+	@Test
+	void recordsRejectionWithRequiredReason() throws Exception {
+		var service = mock(AnalysisReviewService.class);
+		var response = response("review-rejected", AnalysisReviewAction.REJECTED, null, "证据不足");
+		when(service.reject("ticket-10042", "analysis-1", "证据不足")).thenReturn(response);
+
+		mockMvc(service).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+				.contentType(APPLICATION_JSON)
+				.content("{\"reason\":\"证据不足\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value("review-rejected"))
+			.andExpect(jsonPath("$.action").value("REJECTED"))
+			.andExpect(jsonPath("$.reviewedReplyContent").value((Object) null))
+			.andExpect(jsonPath("$.reason").value("证据不足"));
+
+		verify(service).reject("ticket-10042", "analysis-1", "证据不足");
+	}
+
+	@Test
+	void rejectsBlankRejectionReasonBeforeCallingTheService() throws Exception {
+		var service = mock(AnalysisReviewService.class);
+
+		mockMvc(service).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+				.contentType(APPLICATION_JSON)
+				.content("{\"reason\":\"   \"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+		verify(service, never()).reject(anyString(), anyString(), anyString());
+	}
+
 	private AnalysisReviewResponse response(
 		String id,
 		AnalysisReviewAction action,
 		String reviewedReply
+	) {
+		return response(id, action, reviewedReply, null);
+	}
+
+	private AnalysisReviewResponse response(
+		String id,
+		AnalysisReviewAction action,
+		String reviewedReply,
+		String reason
 	) {
 		return new AnalysisReviewResponse(
 			id,
@@ -70,6 +112,7 @@ class AnalysisReviewApiTests {
 			"演示管理员",
 			"原始回复",
 			reviewedReply,
+			reason,
 			4,
 			"trace-analysis-1",
 			Instant.parse("2026-08-25T08:00:00Z")

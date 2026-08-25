@@ -356,6 +356,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 | POST | `/api/tickets/{id}/analyze` | 触发分析 |
 | GET | `/api/tickets/{id}/analyses` | 查询分析历史 |
 | POST | `/api/tickets/{id}/analyses/{analysisId}/reviews` | 采纳或编辑后采纳最新回复建议 |
+| POST | `/api/tickets/{id}/analyses/{analysisId}/reviews/reject` | 拒绝最新回复建议并记录必填原因 |
 | GET | `/api/tickets/{id}/analyses/{analysisId}/reviews` | 查询分析审核历史 |
 | GET | `/api/knowledge/search` | 调试知识检索 |
 | GET | `/api/metrics` | 查询运营与评估指标 |
@@ -366,14 +367,14 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 1. 打开工单工作台，选择“本月套餐出现重复扣款”。
 2. 查看结构化分类、置信度和支付争议升级规则。
 3. 打开“知识依据”，检查文档片段和引用。
-4. 打开“回复建议”，编辑后采纳。
+4. 打开“回复建议”，编辑后采纳，或拒绝建议并填写原因，再展开审核历史。
 5. 选择“能否恢复三个月前删除的项目”，展示无证据时的拒绝承诺与人工复核。
 6. 切换运营概览和质量评估，解释检索与生成需要分层评估。
 
 ## 当前限制
 
 - V1 使用 H2 和内存向量存储，服务重启后业务数据会重新初始化。
-- 回复审核会持久化原始建议、审核后内容、动作、工单版本和 `traceId`；当前审核人固定为未认证的演示身份，只支持采纳和编辑后采纳，不代表已经具备登录、RBAC 或可信生产审计。
+- 回复审核会持久化原始建议、采纳后的内容或拒绝原因、动作、工单版本和 `traceId`；当前审核人固定为未认证的演示身份，不代表已经具备登录、RBAC 或可信生产审计。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。

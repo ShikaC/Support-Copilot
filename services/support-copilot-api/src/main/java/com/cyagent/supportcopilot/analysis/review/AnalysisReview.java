@@ -45,8 +45,12 @@ public class AnalysisReview {
 	private String originalReplyContent;
 
 	@Lob
-	@Column(nullable = false)
+	@Column
 	private String reviewedReplyContent;
+
+	@Lob
+	@Column
+	private String reason;
 
 	@Column(nullable = false)
 	private long ticketVersion;
