@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
+import com.cyagent.supportcopilot.analysis.review.StaleAnalysisReviewException;
 import com.cyagent.supportcopilot.ticket.TicketStateConflictException;
 
 @RestControllerAdvice
@@ -65,6 +66,27 @@ public class ApiExceptionHandler {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 			.body(new ApiError(
 				"TICKET_STATE_CONFLICT",
+				exception.getMessage(),
+				TraceId.from(request),
+				Instant.now(),
+				details
+			));
+	}
+
+	@ExceptionHandler(StaleAnalysisReviewException.class)
+	ResponseEntity<ApiError> handleStaleAnalysisReview(
+		StaleAnalysisReviewException exception,
+		HttpServletRequest request
+	) {
+		var details = new LinkedHashMap<String, Object>();
+		details.put("ticketId", exception.getTicketId());
+		details.put("analysisId", exception.getAnalysisId());
+		details.put("latestAnalysisId", exception.getLatestAnalysisId());
+		details.put("expectedTicketVersion", exception.getExpectedTicketVersion());
+		details.put("currentTicketVersion", exception.getCurrentTicketVersion());
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(new ApiError(
+				"ANALYSIS_REVIEW_STALE",
 				exception.getMessage(),
 				TraceId.from(request),
 				Instant.now(),

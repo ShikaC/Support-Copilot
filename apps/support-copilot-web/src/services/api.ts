@@ -2,6 +2,7 @@ import type * as z from 'zod'
 
 import type { AnalysisResult, Ticket } from '../types'
 import {
+  analysisReviewSchema,
   analysisResultSchema,
   metricsResponseSchema,
   ticketResponseListSchema,
@@ -147,5 +148,12 @@ export function unassignTicket(ticketId: string, expectedVersion: number) {
   return request(`/api/tickets/${ticketId}/unassign`, ticketResponseSchema, {
     method: 'POST',
     body: JSON.stringify({ expectedVersion }),
+  })
+}
+
+export function reviewAnalysisReply(ticketId: string, analysisId: string, replyContent: string) {
+  return request(`/api/tickets/${ticketId}/analyses/${analysisId}/reviews`, analysisReviewSchema, {
+    method: 'POST',
+    body: JSON.stringify({ replyContent }),
   })
 }

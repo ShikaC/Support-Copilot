@@ -133,6 +133,20 @@ export const ticketEventSchema = z.strictObject({
   createdAt: timestamp,
 })
 
+export const analysisReviewSchema = z.strictObject({
+  id: nonEmptyString,
+  ticketId: nonEmptyString,
+  analysisId: nonEmptyString,
+  action: z.enum(['APPROVED', 'EDITED']),
+  reviewerType: z.literal('UNAUTHENTICATED_DEMO'),
+  reviewerLabel: nonEmptyString,
+  originalReplyContent: nonEmptyString,
+  reviewedReplyContent: nonEmptyString,
+  ticketVersion: z.number().int().nonnegative(),
+  traceId: nonEmptyString,
+  createdAt: timestamp,
+})
+
 export const ticketResponseSchema = z.strictObject({
   id: nonEmptyString,
   ticketNo: nonEmptyString,
@@ -162,6 +176,7 @@ export const ticketResponseSchema = z.strictObject({
   updatedAt: timestamp,
   version: z.number().int().nonnegative(),
   latestAnalysis: analysisResultSchema.nullable(),
+  latestReview: analysisReviewSchema.nullable(),
   events: z.array(ticketEventSchema),
 })
 

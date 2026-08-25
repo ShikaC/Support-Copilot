@@ -9,6 +9,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
 
 public final class TicketDtos {
 
@@ -66,6 +67,7 @@ public final class TicketDtos {
 		Instant updatedAt,
 		long version,
 		AnalysisResponse latestAnalysis,
+		AnalysisReviewResponse latestReview,
 		List<TicketEventResponse> events
 	) {
 	}

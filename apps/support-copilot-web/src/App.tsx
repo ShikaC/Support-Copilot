@@ -12,11 +12,9 @@ import {
   FileSearch,
   Inbox,
   LayoutDashboard,
-  Link2,
   Play,
   RefreshCw,
   Search,
-  Send,
   UserRound,
   UserRoundX,
 } from 'lucide-react'
@@ -34,6 +32,8 @@ import {
   Tooltip,
 } from 'antd'
 import ReactECharts from 'echarts-for-react'
+import { ReplyReview } from './features/analysis/ReplyReview'
+import { applyAnalysisReview } from './features/analysis/reviewState'
 import {
   analyzeTicket,
   ApiError,
@@ -50,6 +50,7 @@ import {
 } from './data/demoData'
 import type {
   AnalysisResult,
+  AnalysisReview,
   KnowledgeArticle,
   Metrics,
   Priority,
@@ -59,6 +60,12 @@ import type {
 import './App.css'
 
 type ViewKey = 'workbench' | 'overview' | 'knowledge' | 'quality'
+type ToastKind = 'success' | 'error'
+
+type ToastMessage = {
+  readonly kind: ToastKind
+  readonly message: string
+}
 
 const categoryLabels: Record<string, string> = {
   BILLING: '账单支付',
@@ -596,80 +603,18 @@ function EvidencePanel({ analysis }: { analysis: AnalysisResult }) {
   )
 }
 
-function ReplyPanel({
-  analysis,
-  onToast,
-}: {
-  analysis: AnalysisResult
-  onToast: (message: string) => void
-}) {
-  const [reply, setReply] = useState(analysis.suggestedReply.content)
-
-  useEffect(() => {
-    setReply(analysis.suggestedReply.content)
-  }, [analysis.id, analysis.suggestedReply.content])
-
-  return (
-    <div className="analysis-content reply-editor">
-      <Input.TextArea
-        aria-label="建议回复"
-        rows={10}
-        value={reply}
-        onChange={(event) => setReply(event.target.value)}
-      />
-
-      {analysis.suggestedReply.citations.length > 0 && (
-        <div className="citation-list">
-          {analysis.suggestedReply.citations.map((citation, index) => (
-            <div className="citation-item" key={citation}>
-              <Link2 />
-              <span>
-                [{index + 1}] {citation}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {analysis.suggestedReply.warnings.length > 0 && (
-        <div className="warning-list">
-          {analysis.suggestedReply.warnings.map((warning) => (
-            <div className="warning-item" key={warning}>
-              <AlertTriangle />
-              <span>{warning}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="reply-footer">
-        <span className="reply-usage">
-          {analysis.usage.inputTokens + analysis.usage.outputTokens} tokens ·{' '}
-          {(analysis.usage.durationMs / 1000).toFixed(2)} s
-        </span>
-        <Button
-          type="primary"
-          icon={<Send size={13} />}
-          disabled={!reply.trim()}
-          onClick={() => onToast('回复建议已采纳，修改记录已写入审计日志')}
-        >
-          采纳回复
-        </Button>
-      </div>
-    </div>
-  )
-}
-
 function AnalysisColumn({
   ticket,
   analyzing,
   onAnalyze,
+  onReviewSaved,
   onToast,
 }: {
   ticket: Ticket
   analyzing: boolean
   onAnalyze: () => void
-  onToast: (message: string) => void
+  onReviewSaved: (review: AnalysisReview) => void
+  onToast: (message: string, kind?: ToastKind) => void
 }) {
   const analysis = ticket.latestAnalysis
 
@@ -758,7 +703,14 @@ function AnalysisColumn({
             {
               key: 'reply',
               label: '回复建议',
-              children: <ReplyPanel analysis={analysis} onToast={onToast} />,
+              children: (
+                <ReplyReview
+                  ticket={ticket}
+                  analysis={analysis}
+                  onReviewSaved={onReviewSaved}
+                  onToast={onToast}
+                />
+              ),
             },
           ]}
         />
@@ -774,6 +726,7 @@ function WorkbenchView({
   analyzing,
   onSelect,
   onAnalyze,
+  onReviewSaved,
   onAssign,
   onUnassign,
   assigneeUpdating,
@@ -785,10 +738,11 @@ function WorkbenchView({
   analyzing: boolean
   onSelect: (ticketId: string) => void
   onAnalyze: () => void
+  onReviewSaved: (review: AnalysisReview) => void
   onAssign: () => void
   onUnassign: () => void
   assigneeUpdating: boolean
-  onToast: (message: string) => void
+  onToast: (message: string, kind?: ToastKind) => void
 }) {
   return (
     <div className="view-enter">
@@ -807,6 +761,7 @@ function WorkbenchView({
           ticket={selectedTicket}
           analyzing={analyzing}
           onAnalyze={onAnalyze}
+          onReviewSaved={onReviewSaved}
           onToast={onToast}
         />
       </div>
@@ -1184,7 +1139,7 @@ function App() {
   const [apiState, setApiState] = useState<ApiState>('connecting')
   const [analyzingTicketId, setAnalyzingTicketId] = useState<string | null>(null)
   const [assigneeActionTicketId, setAssigneeActionTicketId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<ToastMessage | null>(null)
   const toastTimer = useRef<number | null>(null)
 
   const selectedTicket =
@@ -1248,10 +1203,16 @@ function App() {
     }
   }, [])
 
-  const showToast = (message: string) => {
-    setToast(message)
+  const showToast = (message: string, kind: ToastKind = 'success') => {
+    setToast({ kind, message })
     if (toastTimer.current != null) window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), 3200)
+  }
+
+  const recordAnalysisReview = (review: AnalysisReview) => {
+    setTickets((current) =>
+      current.map((ticket) => applyAnalysisReview(ticket, review)),
+    )
   }
 
   const runAnalysis = async () => {
@@ -1266,6 +1227,7 @@ function App() {
             ? {
                 ...ticket,
                 latestAnalysis: result,
+                latestReview: null,
                 status: result.decision.escalationRequired
                   ? 'NEEDS_ESCALATION'
                   : 'READY_FOR_REVIEW',
@@ -1305,6 +1267,7 @@ function App() {
             ? {
                 ...ticket,
                 latestAnalysis: result,
+                latestReview: null,
                 status: result.decision.escalationRequired
                   ? 'NEEDS_ESCALATION'
                   : 'READY_FOR_REVIEW',
@@ -1500,6 +1463,7 @@ function App() {
                 analyzing={analyzingTicketId === selectedTicket.id}
                 onSelect={setSelectedTicketId}
                 onAnalyze={runAnalysis}
+                onReviewSaved={recordAnalysisReview}
                 onAssign={assignSelectedTicket}
                 onUnassign={unassignSelectedTicket}
                 assigneeUpdating={assigneeActionTicketId === selectedTicket.id}
@@ -1514,9 +1478,9 @@ function App() {
       </div>
 
       {toast && (
-        <div className="toast" role="status">
-          <CheckCircle2 />
-          <span>{toast}</span>
+        <div className={`toast ${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
+          {toast.kind === 'error' ? <AlertTriangle /> : <CheckCircle2 />}
+          <span>{toast.message}</span>
         </div>
       )}
     </ConfigProvider>

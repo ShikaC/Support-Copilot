@@ -2,6 +2,7 @@ package com.cyagent.supportcopilot.ticket;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -15,7 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cyagent.supportcopilot.analysis.AnalysisService;
+import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
+import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
 import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketEventResponse;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketResponse;
@@ -28,10 +33,16 @@ public class TicketService {
 
 	private final TicketRepository ticketRepository;
 	private final AnalysisService analysisService;
+	private final AnalysisReviewService analysisReviewService;
 
-	public TicketService(TicketRepository ticketRepository, AnalysisService analysisService) {
+	public TicketService(
+		TicketRepository ticketRepository,
+		AnalysisService analysisService,
+		AnalysisReviewService analysisReviewService
+	) {
 		this.ticketRepository = ticketRepository;
 		this.analysisService = analysisService;
+		this.analysisReviewService = analysisReviewService;
 	}
 
 	public List<TicketResponse> list(String status, String priority, String keyword) {
@@ -78,7 +89,7 @@ public class TicketService {
 		if (request.category() != null) ticket.setCategory(request.category());
 		if (request.assigneeName() != null) ticket.setAssigneeName(request.assigneeName());
 		ticket.setUpdatedAt(Instant.now());
-		return toResponse(ticketRepository.save(ticket));
+		return toResponse(ticketRepository.saveAndFlush(ticket));
 	}
 
 	@Transactional
@@ -122,12 +133,8 @@ public class TicketService {
 
 	private TicketResponse toResponse(Ticket ticket) {
 		var latest = analysisService.latest(ticket.getId()).orElse(null);
-		var events = latest == null
-			? List.of(new TicketEventResponse("created-" + ticket.getId(), "工单创建", "已进入待处理队列", ticket.getCreatedAt()))
-			: List.of(
-				new TicketEventResponse("created-" + ticket.getId(), "工单创建", "已进入待处理队列", ticket.getCreatedAt()),
-				new TicketEventResponse("analysis-" + latest.id(), "辅助分析完成", latest.decision().reason(), latest.createdAt())
-			);
+		var latestReview = latest == null ? null : analysisReviewService.latest(latest.id()).orElse(null);
+		var events = events(ticket, latest, latestReview);
 
 		return new TicketResponse(
 			ticket.getId(),
@@ -148,7 +155,47 @@ public class TicketService {
 			ticket.getUpdatedAt(),
 			ticket.getVersion(),
 			latest,
+			latestReview,
 			events
 		);
+	}
+
+	private List<TicketEventResponse> events(
+		Ticket ticket,
+		AnalysisResponse latest,
+		AnalysisReviewResponse latestReview
+	) {
+		var events = new ArrayList<TicketEventResponse>();
+		events.add(new TicketEventResponse(
+			"created-" + ticket.getId(),
+			"工单创建",
+			"已进入待处理队列",
+			ticket.getCreatedAt()
+		));
+
+		if (latest != null) {
+			events.add(new TicketEventResponse(
+				"analysis-" + latest.id(),
+				"辅助分析完成",
+				latest.decision().reason(),
+				latest.createdAt()
+			));
+		}
+		if (latestReview != null) {
+			events.add(new TicketEventResponse(
+				latestReview.id(),
+				"人工审核已记录",
+				reviewDescription(latestReview.action()),
+				latestReview.createdAt()
+			));
+		}
+		return List.copyOf(events);
+	}
+
+	private String reviewDescription(AnalysisReviewAction action) {
+		return switch (action) {
+			case APPROVED -> "未认证演示用户已采纳原始回复建议";
+			case EDITED -> "未认证演示用户已编辑并采纳回复建议";
+		};
 	}
 }

@@ -80,8 +80,25 @@ export const ticketResponsePayload = {
   updatedAt: '2026-08-25T01:30:00Z',
   version: 0,
   latestAnalysis: null,
+  latestReview: null,
   events: [],
 } as const
+
+export function analysisReviewPayload(id: string) {
+  return {
+    id,
+    ticketId: 'ticket-10042',
+    analysisId: 'analysis-1',
+    action: 'EDITED',
+    reviewerType: 'UNAUTHENTICATED_DEMO',
+    reviewerLabel: '演示管理员',
+    originalReplyContent: '我们会先核验交易记录。[1]',
+    reviewedReplyContent: '我们会先核验交易记录，并同步处理进展。[1]',
+    ticketVersion: 4,
+    traceId: 'trace-contract-test',
+    createdAt: '2026-08-25T08:00:00Z',
+  }
+}
 
 export const metricsResponsePayload = {
   summary: {

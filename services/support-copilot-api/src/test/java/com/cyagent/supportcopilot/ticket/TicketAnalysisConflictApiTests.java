@@ -44,7 +44,7 @@ class TicketAnalysisConflictApiTests {
 		var updated = new TicketDtos.TicketResponse(
 			"ticket-10042", "SC-10042", "EMAIL", "测试客户", "测试公司", "STANDARD",
 			"测试主题", "测试描述", "zh-CN", "BILLING", "HIGH", "IN_PROGRESS", null,
-			java.time.Instant.now(), java.time.Instant.now(), java.time.Instant.now(), 4, null, java.util.List.of()
+			java.time.Instant.now(), java.time.Instant.now(), java.time.Instant.now(), 4, null, null, java.util.List.of()
 		);
 		when(ticketService.unassign("ticket-10042", 3)).thenReturn(updated);
 

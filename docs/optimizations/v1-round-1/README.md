@@ -69,6 +69,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 51. [合并重复的在途分析请求](./51-analysis-single-flight.md)
 52. [在前端 HTTP 边界解析真实响应](./52-frontend-runtime-response-schemas.md)
 53. [用真实跨服务响应验证前端契约](./53-cross-service-runtime-contract-gate.md)
+54. [持久化回复建议的人工审核结果](./54-persist-analysis-review-decisions.md)
 
 ## 优化后的主流程
 

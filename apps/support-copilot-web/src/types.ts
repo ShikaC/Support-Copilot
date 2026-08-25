@@ -2,6 +2,7 @@ import type * as z from 'zod'
 
 import type {
   analysisModeSchema,
+  analysisReviewSchema,
   analysisResultSchema,
   fallbackReasonSchema,
   metricsResponseSchema,
@@ -15,6 +16,7 @@ import type {
 export { FALLBACK_REASONS } from './services/apiSchemas'
 
 export type AnalysisMode = z.infer<typeof analysisModeSchema>
+export type AnalysisReview = z.infer<typeof analysisReviewSchema>
 export type AnalysisResult = z.infer<typeof analysisResultSchema>
 export type FallbackReason = z.infer<typeof fallbackReasonSchema>
 export type Metrics = z.infer<typeof metricsResponseSchema>
@@ -27,8 +29,9 @@ type ApiTicket = z.infer<typeof ticketResponseSchema>
 
 export type TicketStatus = ApiTicket['status']
 
-export type Ticket = Omit<ApiTicket, 'latestAnalysis' | 'version'> & {
+export type Ticket = Omit<ApiTicket, 'latestAnalysis' | 'latestReview' | 'version'> & {
   latestAnalysis?: ApiTicket['latestAnalysis']
+  latestReview?: ApiTicket['latestReview']
   version?: ApiTicket['version']
 }
 

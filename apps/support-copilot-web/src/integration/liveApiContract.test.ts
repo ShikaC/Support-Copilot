@@ -1,6 +1,11 @@
 import { expect, it } from 'vitest'
 
-import { analyzeTicket, fetchMetrics, fetchTickets } from '../services/api'
+import {
+  analyzeTicket,
+  fetchMetrics,
+  fetchTickets,
+  reviewAnalysisReply,
+} from '../services/api'
 
 const CONTRACT_TEST_ENABLED = import.meta.env.VITE_CONTRACT_TEST_ENABLED === 'true'
 const CONTRACT_TICKET_ID = import.meta.env.VITE_CONTRACT_TICKET_ID ?? 'ticket-10042'
@@ -48,8 +53,20 @@ it.skipIf(!CONTRACT_TEST_ENABLED)(
     expect(analysis.retrieval.hits.length).toBeGreaterThan(0)
     expect(analysis.suggestedReply.citations.length).toBeGreaterThan(0)
 
+    const review = await reviewAnalysisReply(
+      CONTRACT_TICKET_ID,
+      analysis.id,
+      analysis.suggestedReply.content,
+    )
+    expect(review).toMatchObject({
+      action: 'APPROVED',
+      reviewerType: 'UNAUTHENTICATED_DEMO',
+      analysisId: analysis.id,
+    })
+
     const refreshedTickets = await fetchTickets()
     const refreshedTicket = refreshedTickets.find((ticket) => ticket.id === CONTRACT_TICKET_ID)
     expect(refreshedTicket?.latestAnalysis?.id).toBe(analysis.id)
+    expect(refreshedTicket?.latestReview?.id).toBe(review.id)
   },
 )

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
+import com.cyagent.supportcopilot.ticket.TicketDtos.UpdateTicketRequest;
 
 @SpringBootTest
 class TicketUnassignServiceTests {
@@ -76,6 +77,20 @@ class TicketUnassignServiceTests {
 			.isInstanceOf(TicketStateConflictException.class);
 		assertThat(ticketRepository.findById(ticket.getId()).orElseThrow().getAssigneeName())
 			.isEqualTo("周岚");
+	}
+
+	@Test
+	void updateReturnsTheVersionCommittedToTheDatabase() {
+		var ticket = saveTicket("NEW", "周岚");
+
+		var updated = ticketService.update(
+			ticket.getId(),
+			new UpdateTicketRequest("IN_PROGRESS", null, null, null)
+		);
+
+		var persisted = ticketRepository.findById(ticket.getId()).orElseThrow();
+		assertThat(updated.version()).isEqualTo(persisted.getVersion());
+		assertThat(updated.version()).isEqualTo(ticket.getVersion() + 1);
 	}
 
 	private Ticket saveTicket(String status, String assigneeName) {
