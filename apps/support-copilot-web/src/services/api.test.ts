@@ -27,6 +27,90 @@ it('posts the selected ticket id to the analysis endpoint', async () => {
   })
 })
 
+it('shares one request while the same ticket analysis is in flight', async () => {
+  // Given: the first request remains pending while a duplicate call arrives.
+  let resolveResponse: ((response: Response) => void) | undefined
+  const pendingResponse = new Promise<Response>((resolve) => {
+    resolveResponse = resolve
+  })
+  const fetchMock = vi.fn().mockReturnValue(pendingResponse)
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: the browser requests the same ticket twice before the first response returns.
+  const first = analyzeTicket('ticket-10042')
+  const second = analyzeTicket('ticket-10042')
+  resolveResponse?.(
+    new Response('{"id":"analysis-shared"}', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
+
+  // Then: both callers share one HTTP request and receive the same analysis.
+  await expect(first).resolves.toEqual({ id: 'analysis-shared' })
+  await expect(second).resolves.toEqual({ id: 'analysis-shared' })
+  expect(fetchMock).toHaveBeenCalledOnce()
+})
+
+it('allows a new analysis request after the previous request settles', async () => {
+  // Given: two sequential requests both return successfully.
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response('{"id":"analysis-first"}', { status: 200 }))
+    .mockResolvedValueOnce(new Response('{"id":"analysis-retry"}', { status: 200 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: the user retries after the first request has completed.
+  const first = await analyzeTicket('ticket-10042')
+  const retry = await analyzeTicket('ticket-10042')
+
+  // Then: in-flight sharing does not become a permanent response cache.
+  expect(first).toEqual({ id: 'analysis-first' })
+  expect(retry).toEqual({ id: 'analysis-retry' })
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it('allows retry after the shared request fails', async () => {
+  // Given: the first in-flight request fails before a later retry succeeds.
+  const fetchMock = vi
+    .fn()
+    .mockRejectedValueOnce(new TypeError('simulated network failure'))
+    .mockResolvedValueOnce(new Response('{"id":"analysis-after-failure"}', { status: 200 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: the user retries the same ticket after the failure is observed.
+  await expect(analyzeTicket('ticket-10042')).rejects.toThrow('simulated network failure')
+  const retry = await analyzeTicket('ticket-10042')
+
+  // Then: the failed Promise was removed and a new HTTP request was sent.
+  expect(retry).toEqual({ id: 'analysis-after-failure' })
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it('does not block another ticket while one analysis remains in flight', async () => {
+  // Given: one ticket request remains pending.
+  let resolveFirst: ((response: Response) => void) | undefined
+  const firstResponse = new Promise<Response>((resolve) => {
+    resolveFirst = resolve
+  })
+  const fetchMock = vi.fn((path: string) =>
+    path.includes('ticket-10042')
+      ? firstResponse
+      : Promise.resolve(new Response('{"id":"analysis-second-ticket"}', { status: 200 })),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: another ticket starts before the first one finishes.
+  const first = analyzeTicket('ticket-10042')
+  const second = analyzeTicket('ticket-10041')
+
+  // Then: the second ticket completes independently.
+  await expect(second).resolves.toEqual({ id: 'analysis-second-ticket' })
+  resolveFirst?.(new Response('{"id":"analysis-first-ticket"}', { status: 200 }))
+  await expect(first).resolves.toEqual({ id: 'analysis-first-ticket' })
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
 it('preserves structured conflict details from the API', async () => {
   // Given: Java 返回带业务代码和版本信息的 409 响应。
   const fetchMock = vi.fn().mockResolvedValue(

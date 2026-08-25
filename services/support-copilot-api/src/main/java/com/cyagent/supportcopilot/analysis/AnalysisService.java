@@ -24,6 +24,7 @@ public class AnalysisService {
 	private final TicketRepository ticketRepository;
 	private final AnalysisRunRepository analysisRunRepository;
 	private final AnalysisPersistenceService analysisPersistenceService;
+	private final AnalysisSingleFlightCoordinator singleFlightCoordinator;
 	private final AiServiceClient aiServiceClient;
 	private final MockAnalysisFactory mockAnalysisFactory;
 	private final ObjectMapper objectMapper;
@@ -32,6 +33,7 @@ public class AnalysisService {
 		TicketRepository ticketRepository,
 		AnalysisRunRepository analysisRunRepository,
 		AnalysisPersistenceService analysisPersistenceService,
+		AnalysisSingleFlightCoordinator singleFlightCoordinator,
 		AiServiceClient aiServiceClient,
 		MockAnalysisFactory mockAnalysisFactory,
 		ObjectMapper objectMapper
@@ -39,6 +41,7 @@ public class AnalysisService {
 		this.ticketRepository = ticketRepository;
 		this.analysisRunRepository = analysisRunRepository;
 		this.analysisPersistenceService = analysisPersistenceService;
+		this.singleFlightCoordinator = singleFlightCoordinator;
 		this.aiServiceClient = aiServiceClient;
 		this.mockAnalysisFactory = mockAnalysisFactory;
 		this.objectMapper = objectMapper;
@@ -49,7 +52,25 @@ public class AnalysisService {
 			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + ticketId));
 		var sourceTicketVersion = ticket.getVersion();
 		var traceId = TraceId.currentOrCreate();
+		var execution = singleFlightCoordinator.execute(
+			ticketId,
+			sourceTicketVersion,
+			AnalysisPolicy.VERSION,
+			() -> executeAnalysis(ticket, sourceTicketVersion, traceId)
+		);
+		if (execution.joined()) {
+			log.info(
+				"analysis.single_flight_join ticket_id={} source_version={} policy_version={} execution_trace_id={}",
+				ticketId,
+				sourceTicketVersion,
+				AnalysisPolicy.VERSION,
+				execution.response().traceId()
+			);
+		}
+		return execution.response();
+	}
 
+	private AnalysisResponse executeAnalysis(Ticket ticket, long sourceTicketVersion, String traceId) {
 		// AI 是辅助能力，不是业务事实的来源。
 		// 工单已经保存在 Java/H2 中；如果 Python 服务失败，
 		// 系统会返回 fallback 分析，而不是让整个流程不可用。
@@ -59,7 +80,7 @@ public class AnalysisService {
 		} catch (AiServiceCallException exception) {
 			log.warn(
 				"analysis.fallback ticket_id={} reason={}",
-				ticketId,
+				ticket.getId(),
 				exception.getFallbackReason().value()
 			);
 			response = mockAnalysisFactory.createFallback(
@@ -69,7 +90,7 @@ public class AnalysisService {
 			);
 		}
 
-		analysisPersistenceService.persist(ticketId, sourceTicketVersion, response);
+		analysisPersistenceService.persist(ticket.getId(), sourceTicketVersion, response);
 		return response;
 	}
 

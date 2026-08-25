@@ -56,7 +56,7 @@ public class MockAnalysisFactory {
 			effectiveMode,
 			fallbackReason,
 			"configured-chat-model",
-			"ticket-analysis-v1",
+			AnalysisPolicy.VERSION,
 			new Classification(
 				intentFor(category),
 				category,

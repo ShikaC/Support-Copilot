@@ -184,6 +184,8 @@ SUPPORT_COPILOT_TRACE_ID=interview-flow-01 ./scripts/check-local-analysis-flow.s
 
 Java 会在没有请求头时生成 `X-Trace-Id`，并将同一个值写入响应头、分析响应和日志上下文；Python 日志会记录该值以及分析模式和状态。
 
+同一工单的重复在途请求会先在浏览器 API 层合并；Java 再按 `ticketId + sourceTicketVersion + analysisPolicyVersion` 保证单实例内只调用一次 Python 并保存一次结果。执行结束后会释放键，因此后续人工重试仍会真正运行。该能力不是跨实例的持久化幂等，完整边界见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
+
 ## OpenAI 实时模式
 
 默认 `AI_MODE=mock` 不调用外部 API，适合开发、测试和面试环境预检。

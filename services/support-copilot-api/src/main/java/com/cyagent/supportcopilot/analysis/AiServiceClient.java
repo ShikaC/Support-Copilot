@@ -53,7 +53,7 @@ public class AiServiceClient {
 				ticket.getCategory(),
 				ticket.getPriority()
 			),
-			new AnalyzeOptions(10, 3, "ticket-analysis-v1")
+			new AnalyzeOptions(10, 3, AnalysisPolicy.VERSION)
 		);
 
 		try {
@@ -62,7 +62,7 @@ public class AiServiceClient {
 				.body(request)
 				.retrieve()
 				.body(AnalysisResponse.class);
-			if (response == null) {
+			if (response == null || !AnalysisPolicy.VERSION.equals(response.promptVersion())) {
 				throw new AiServiceCallException(FallbackReason.INVALID_AI_RESPONSE);
 			}
 			return response;

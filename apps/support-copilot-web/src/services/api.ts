@@ -1,6 +1,7 @@
 import type { AnalysisResult, Metrics, Ticket } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+const inFlightAnalyses = new Map<string, Promise<AnalysisResult>>()
 
 type ApiErrorPayload = {
   code?: string
@@ -70,9 +71,19 @@ export function fetchMetrics(signal?: AbortSignal) {
 }
 
 export function analyzeTicket(ticketId: string) {
-  return request<AnalysisResult>(`/api/tickets/${ticketId}/analyze`, {
+  const existing = inFlightAnalyses.get(ticketId)
+  if (existing) return existing
+
+  const pending = request<AnalysisResult>(`/api/tickets/${ticketId}/analyze`, {
     method: 'POST',
   })
+  const tracked = pending.finally(() => {
+    if (inFlightAnalyses.get(ticketId) === tracked) {
+      inFlightAnalyses.delete(ticketId)
+    }
+  })
+  inFlightAnalyses.set(ticketId, tracked)
+  return tracked
 }
 
 export function updateTicket(

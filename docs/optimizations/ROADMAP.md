@@ -127,6 +127,8 @@ cd services/support-copilot-ai
 
 第 50 轮增加跨 Python、Java 和 TypeScript 的受控 `fallbackReason`。Python 区分证据不足、Embedding、结构化生成和非法模型响应，Java 区分 Python 504、自身等待超时、不可连接、普通服务错误和非法响应；原因会写入 `AnalysisRun` 独立列与完整响应 JSON。Java 只捕获类型化 `AiServiceCallException`，未知程序错误不再伪装成 fallback。本地三服务演练已验证正常结果原因为空、Python 停止时为 `ai_service_unavailable`、兼容端点返回 504 时为 `processing_timeout`，正式 API live 成功仍未完成。
 
+第 51 轮增加浏览器与 Java 的在途分析请求合并。Java 以 `ticketId + sourceTicketVersion + analysisPolicyVersion` 作为单实例 single-flight 键，相同键只调用一次 Python 并持久化一次；完成或失败后立即释放，保留人工重试。真实 HTTP 并发演练验证 2 个 Java 请求只产生 1 次 Python 调用和 1 条分析历史。当前不是持久化或分布式幂等，正式 API live 成功仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
@@ -421,6 +423,8 @@ ticketId + sourceTicketVersion + analysisPolicyVersion
 ~~~text
 ticketId + sourceTicketVersion + requestId
 ~~~
+
+第 51 轮已完成单实例内的在途请求合并，并验证完成或失败后允许重试。前端网络重试的持久化 `requestId`、服务重启后的重放和多 Java 实例协调仍未实现，因此 P1-03 只完成当前 V1.5 的并发保护，不代表分布式幂等完成。
 
 验收标准：
 
@@ -820,7 +824,7 @@ live 模式上线前至少设计：
 | 提示注入 | 工单或知识片段不能覆盖系统规则 |
 | 重复请求 | 不产生无法解释的重复分析记录 |
 
-第 50 轮已覆盖其中的无证据、Embedding/结构化生成错误分类和 API 超时原因持久化；API Key 缺失门禁已在第 44 轮覆盖。正式 live 正常分类、有证据回复、真实提示注入验证和重复请求幂等仍未全部完成。
+第 50 轮已覆盖其中的无证据、Embedding/结构化生成错误分类和 API 超时原因持久化；API Key 缺失门禁已在第 44 轮覆盖。第 51 轮已用本地真实 HTTP 并发演练覆盖单实例重复在途请求，但尚未在正式 live API 下验证。正式 live 正常分类、有证据回复和真实提示注入验证仍未完成。
 
 没有完成这些测试前，简历只写 mock 链路和 live 接口预留。
 

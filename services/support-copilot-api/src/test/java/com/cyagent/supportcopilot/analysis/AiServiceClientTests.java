@@ -16,6 +16,40 @@ import com.cyagent.supportcopilot.ticket.Ticket;
 class AiServiceClientTests {
 
 	@Test
+	void responseWithADifferentPolicyVersionIsRejected() throws Exception {
+		// Given: Python returns a successful shape for a policy Java did not request.
+		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/analyze", exchange -> {
+			var body = """
+				{"id":"analysis-wrong-policy","traceId":"trace-policy","status":"SUCCEEDED",\
+				"mode":"mock","modelName":"configured-chat-model","promptVersion":"ticket-analysis-v2"}
+				""".getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().add("Content-Type", "application/json");
+			exchange.sendResponseHeaders(200, body.length);
+			exchange.getResponseBody().write(body);
+			exchange.close();
+		});
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			server.setExecutor(executor);
+			server.start();
+			var client = new AiServiceClient(
+				"http://127.0.0.1:" + server.getAddress().getPort(),
+				1_000
+			);
+
+			try {
+				// When/Then: Java refuses to persist a result under the wrong idempotency key.
+				assertThatThrownBy(() -> client.analyze(ticket(), "trace-policy"))
+					.isInstanceOfSatisfying(AiServiceCallException.class, exception ->
+						assertThat(exception.getFallbackReason()).isEqualTo(FallbackReason.INVALID_AI_RESPONSE)
+					);
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
+
+	@Test
 	void pythonProcessingTimeoutHasItsOwnFallbackReason() throws Exception {
 		// Given: Python returns its structured overall-processing timeout response.
 		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
