@@ -68,6 +68,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 50. [持久化结构化 fallback 原因](./50-structured-fallback-reasons.md)
 51. [合并重复的在途分析请求](./51-analysis-single-flight.md)
 52. [在前端 HTTP 边界解析真实响应](./52-frontend-runtime-response-schemas.md)
+53. [用真实跨服务响应验证前端契约](./53-cross-service-runtime-contract-gate.md)
 
 ## 优化后的主流程
 
@@ -126,3 +127,5 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 51 轮在浏览器和单 Java 实例内合并同工单版本、同策略的在途分析请求，减少重复模型调用和重复持久化，同时保留完成后的人工重试。
 
 第 52 轮使用 Zod 在 React HTTP 边界解析工单、指标和分析成功响应，契约漂移会在进入页面状态前转换为不含原始响应内容的类型化错误。
+
+第 53 轮把三服务真实响应接入同一套前端 Zod Schema，通过显式 `--contract` 门禁验证工单、指标、mock 分析和持久化可见性；畸形 JSON 故障注入会让门禁返回非零退出码。

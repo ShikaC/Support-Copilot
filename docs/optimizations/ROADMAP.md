@@ -131,6 +131,8 @@ cd services/support-copilot-ai
 
 第 52 轮增加 React 成功响应的 Zod 运行时 Schema。工单、指标、分析、工单更新和取消负责人响应必须先从 `unknown` 解析为 Schema 推导类型；缺字段、错误类型、未知字段、非法枚举和不一致的 fallback 组合会转换为不含原始响应体的 `ApiContractError`。三服务浏览器联调已证明当前 Java JSON 可通过边界；Schema 尚未从统一 OpenAPI 自动生成，正式 API live 成功仍未完成。
 
+第 53 轮增加显式跨服务运行时契约门禁。它通过 React 代理读取真实 Java 工单和指标响应、触发 Python mock 分析，并让所有响应经过页面使用的同一套 Zod Schema；刷新工单和查询 Java 历史会继续确认分析已保存。畸形 JSON 故障注入验证门禁会返回非零退出码。该检查按需运行，不在离线前端单测或 CI 中偷偷启动服务；正式 API live 成功仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

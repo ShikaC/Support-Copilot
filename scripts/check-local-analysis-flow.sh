@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+WEB_APP_DIR="$SCRIPT_DIR/../apps/support-copilot-web"
 WEB_BASE_URL="${SUPPORT_COPILOT_WEB_BASE_URL:-http://127.0.0.1:5173}"
 JAVA_BASE_URL="${SUPPORT_COPILOT_JAVA_BASE_URL:-http://127.0.0.1:8080}"
 TICKET_ID="${SUPPORT_COPILOT_TICKET_ID:-ticket-10042}"
@@ -11,14 +13,26 @@ EXPECTED_FALLBACK_REASON="${SUPPORT_COPILOT_EXPECTED_FALLBACK_REASON:-ai_service
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/check-local-analysis-flow.sh --success|--fallback
+Usage: ./scripts/check-local-analysis-flow.sh --success|--fallback|--contract
 
   --success   Verify a mock analysis through React -> Java -> Python.
   --fallback  Verify Java fallback after Python is intentionally stopped.
+  --contract  Parse real ticket, metrics, and analysis responses with the
+              same runtime schemas used by the React page.
 
 The script never starts or stops services. Run --fallback only after stopping
 the Python AI service yourself, then restart it after the check.
 EOF
+}
+
+run_contract() {
+  (
+    cd "$WEB_APP_DIR"
+    VITE_API_BASE_URL="$WEB_BASE_URL" \
+      VITE_CONTRACT_TICKET_ID="$TICKET_ID" \
+      npm run test:contract
+  )
+  assert_persisted_latest mock SUCCEEDED none
 }
 
 assert_analysis() {
@@ -130,6 +144,9 @@ main() {
       ;;
     --fallback)
       run_flow fallback FALLBACK "$EXPECTED_FALLBACK_REASON"
+      ;;
+    --contract)
+      run_contract
       ;;
     --help|-h)
       usage

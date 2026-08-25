@@ -168,6 +168,14 @@ Vite 会把 `/api` 代理到 `http://localhost:8080`。如果 Java API 未启动
 ./scripts/check-local-analysis-flow.sh --success
 ```
 
+要让真实工单列表、指标和分析 JSON 经过 React 页面实际使用的 Zod Schema，再运行契约门禁：
+
+```bash
+./scripts/check-local-analysis-flow.sh --contract
+```
+
+该命令会复用前端生产 API 客户端，而不是在 Shell 中维护第二套完整字段清单；它还会刷新工单并确认最新分析已经可见，再检查 Java 分析历史。普通 `npm run test` 不会连接本地服务，只有显式运行契约门禁时才执行这 3 条集成测试。
+
 故障演练时，先停止 Python AI 服务，再执行 Java fallback 检查：
 
 ```bash
@@ -366,4 +374,4 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。
-- V2 的 MySQL、Redis、向量数据库、Docker Compose 和 CI/CD 尚未实现。
+- V2 的 MySQL、Redis、向量数据库、Docker Compose 和自动化部署/CD 尚未实现；当前已有三条 GitHub CI，但不包含部署。
