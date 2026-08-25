@@ -1,6 +1,6 @@
 # V1 第一轮代码优化合集
 
-> 最近更新：2026-08-14
+> 最近更新：2026-08-25
 >
 > 范围：实现已经理解、完成设计并且可以被测试验证的 V1 可靠性改进；每轮优化完成后创建本地 Git 提交。
 
@@ -64,6 +64,10 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 46. [支持经过校验的外部知识源](./46-configurable-knowledge-source.md)
 47. [从 Markdown 和 PDF 构建可追踪知识](./47-source-document-ingestion.md)
 48. [限制 live 外发敏感数据](./48-live-external-data-redaction.md)
+49. [建立跨服务超时预算](./49-cross-service-timeout-budget.md)
+50. [持久化结构化 fallback 原因](./50-structured-fallback-reasons.md)
+51. [合并重复的在途分析请求](./51-analysis-single-flight.md)
+52. [在前端 HTTP 边界解析真实响应](./52-frontend-runtime-response-schemas.md)
 
 ## 优化后的主流程
 
@@ -114,3 +118,11 @@ Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。�
 第 47 轮增加原始 Markdown 和文本型 PDF 导入。构建命令生成可直接配置给 Python 的知识 JSON 和不含正文的 provenance；服务启动与 live 门禁会校验两者哈希一致。扫描件 OCR、增量索引和审批发布仍未实现。
 
 第 48 轮在 Embedding 与 Responses 两个外部边界增加确定性脱敏，覆盖常见邮箱、中国大陆手机号、18 位身份证号和通过 Luhn 校验的支付卡号，并为 Responses 显式设置 `store=false`。本地 OpenAI 兼容 HTTP 服务已验证 live 成功与 503 fallback；正式 API 成功记录、完整 DLP 和供应商合规评估仍未完成。
+
+第 49 轮固定外部 AI 请求、Python 整体分析、Java 等待和验收客户端的递增超时预算，并用可取消异步调用限制超时后的后续 AI 工作。
+
+第 50 轮增加受控 `fallbackReason` 并贯通 Python、Java、分析历史和 React，未知 Java 程序错误不再伪装成普通 fallback。
+
+第 51 轮在浏览器和单 Java 实例内合并同工单版本、同策略的在途分析请求，减少重复模型调用和重复持久化，同时保留完成后的人工重试。
+
+第 52 轮使用 Zod 在 React HTTP 边界解析工单、指标和分析成功响应，契约漂移会在进入页面状态前转换为不含原始响应内容的类型化错误。

@@ -259,11 +259,12 @@ usage                耗时和 token 信息
 
 对应位置：
 
-- TypeScript：`apps/support-copilot-web/src/types.ts`
+- TypeScript 运行时 Schema：`apps/support-copilot-web/src/services/apiSchemas.ts`
+- TypeScript 推导类型：`apps/support-copilot-web/src/types.ts`
 - Java：`services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/analysis/AnalysisResponse.java`
 - Python：`services/support-copilot-ai/app/models.py`
 
-这三份结构必须保持兼容，否则一个服务新增字段后，另一个服务可能无法正确解析。
+这三份结构必须保持兼容。React 会在 HTTP 边界拒绝缺字段、错误类型、未知字段和非法枚举，避免契约漂移继续进入页面状态。
 
 ## 6. 失败处理地图
 
@@ -290,6 +291,7 @@ usage                耗时和 token 信息
 - Java fallback 明确标记为需要人工复核。
 - 浏览器和 Java 会合并相同工单的在途分析；Java 业务键包含工单版本与分析策略版本。
 - React 分析请求保留 Java 的 `code`、`message` 和 `traceId`。
+- React 使用 Zod 解析工单、指标和分析成功响应，不再通过 TypeScript 断言直接相信网络 JSON。
 - React 不再把 HTTP 409 和普通后端错误伪装成 Demo。
 - React 启动阶段支持工单和指标部分成功，不再因为指标失败丢弃真实工单。
 - 取消负责人使用 `POST /api/tickets/{id}/unassign`，携带 `expectedVersion` 做版本保护。

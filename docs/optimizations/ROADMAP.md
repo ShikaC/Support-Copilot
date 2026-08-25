@@ -129,6 +129,8 @@ cd services/support-copilot-ai
 
 第 51 轮增加浏览器与 Java 的在途分析请求合并。Java 以 `ticketId + sourceTicketVersion + analysisPolicyVersion` 作为单实例 single-flight 键，相同键只调用一次 Python 并持久化一次；完成或失败后立即释放，保留人工重试。真实 HTTP 并发演练验证 2 个 Java 请求只产生 1 次 Python 调用和 1 条分析历史。当前不是持久化或分布式幂等，正式 API live 成功仍未完成。
 
+第 52 轮增加 React 成功响应的 Zod 运行时 Schema。工单、指标、分析、工单更新和取消负责人响应必须先从 `unknown` 解析为 Schema 推导类型；缺字段、错误类型、未知字段、非法枚举和不一致的 fallback 组合会转换为不含原始响应体的 `ApiContractError`。三服务浏览器联调已证明当前 Java JSON 可通过边界；Schema 尚未从统一 OpenAPI 自动生成，正式 API live 成功仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

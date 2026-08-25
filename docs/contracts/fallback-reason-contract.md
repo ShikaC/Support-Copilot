@@ -49,7 +49,7 @@ Python 整体超时或不可连接
 
 ## 当前边界
 
-- TypeScript 已声明固定值域，但当前网络响应仍依赖编译期类型，没有增加 Zod 运行时解析。
+- React 已通过 Zod 在 HTTP 边界校验固定值域，并同时约束 `mode`、`status` 和 `fallbackReason` 的组合；完整规则见 [`frontend-runtime-schema-contract.md`](frontend-runtime-schema-contract.md)。
 - H2 是内存数据库，服务重启后分析历史会清空。
 - 当前字段支持定位和统计，不代表已经接入日志平台或指标后端。
 - 正式 API live 成功记录仍未完成，不能用本地故障演练替代。

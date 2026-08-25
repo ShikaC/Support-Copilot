@@ -186,6 +186,8 @@ Java 会在没有请求头时生成 `X-Trace-Id`，并将同一个值写入响�
 
 同一工单的重复在途请求会先在浏览器 API 层合并；Java 再按 `ticketId + sourceTicketVersion + analysisPolicyVersion` 保证单实例内只调用一次 Python 并保存一次结果。执行结束后会释放键，因此后续人工重试仍会真正运行。该能力不是跨实例的持久化幂等，完整边界见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
 
+React 不直接相信 Java 返回的 2xx JSON。工单、指标、分析和工单命令响应会先通过 Zod 运行时 Schema，缺字段、错误类型或未知枚举会在进入页面状态前转换为 `ApiContractError`；完整范围见 [前端运行时响应契约](docs/contracts/frontend-runtime-schema-contract.md)。
+
 ## OpenAI 实时模式
 
 默认 `AI_MODE=mock` 不调用外部 API，适合开发、测试和面试环境预检。
