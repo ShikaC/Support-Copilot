@@ -89,6 +89,7 @@ async def test_recoverable_ai_error_returns_fallback(
     # Then: fallback is explicit and the log preserves the named failure type.
     assert result.status == "FALLBACK"
     assert result.mode == "fallback"
+    assert result.fallback_reason == "structured_generation_response_timeout"
     assert result.decision.escalation_required is True
     assert any(
         "error_type=StructuredGenerationResponseTimeoutError" in record.message

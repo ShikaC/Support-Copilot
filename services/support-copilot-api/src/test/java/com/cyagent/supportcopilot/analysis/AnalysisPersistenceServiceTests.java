@@ -45,13 +45,14 @@ class AnalysisPersistenceServiceTests {
 	void savesAnalysisAndTicketTogetherWithSourceVersion() {
 		var ticket = saveTicket();
 		var sourceVersion = ticket.getVersion();
-		var response = mockAnalysisFactory.create(ticket, "mock");
+		var response = mockAnalysisFactory.createMock(ticket);
 
 		analysisPersistenceService.persist(ticket.getId(), sourceVersion, response);
 
 		var savedRun = analysisRunRepository.findById(response.id()).orElseThrow();
 		var savedTicket = ticketRepository.findById(ticket.getId()).orElseThrow();
 		assertThat(savedRun.getSourceTicketVersion()).isEqualTo(sourceVersion);
+		assertThat(savedRun.getFallbackReason()).isNull();
 		assertThat(savedTicket.getVersion()).isEqualTo(sourceVersion + 1);
 		assertThat(savedTicket.getStatus()).isEqualTo("NEEDS_ESCALATION");
 	}
@@ -61,7 +62,7 @@ class AnalysisPersistenceServiceTests {
 		// 模拟 AI 分析期间，另一名客服先提交了工单状态变更。
 		var ticket = saveTicket();
 		var sourceVersion = ticket.getVersion();
-		var response = mockAnalysisFactory.create(ticket, "mock");
+		var response = mockAnalysisFactory.createMock(ticket);
 		ticket.setStatus("IN_PROGRESS");
 		var currentTicket = ticketRepository.saveAndFlush(ticket);
 
@@ -84,13 +85,14 @@ class AnalysisPersistenceServiceTests {
 	void rollsBackTicketUpdateWhenAnalysisRunCannotBeSaved() {
 		var ticket = saveTicket();
 		var sourceVersion = ticket.getVersion();
-		var validResponse = mockAnalysisFactory.create(ticket, "mock");
+		var validResponse = mockAnalysisFactory.createMock(ticket);
 		// 用缺少状态的响应制造保存失败，验证 Ticket 更新会和分析记录一起回滚。
 		var invalidResponse = new AnalysisResponse(
 			validResponse.id(),
 			validResponse.traceId(),
 			null,
 			validResponse.mode(),
+			validResponse.fallbackReason(),
 			validResponse.modelName(),
 			validResponse.promptVersion(),
 			validResponse.classification(),

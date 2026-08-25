@@ -7,6 +7,7 @@ JAVA_BASE_URL="${SUPPORT_COPILOT_JAVA_BASE_URL:-http://127.0.0.1:8080}"
 TICKET_ID="${SUPPORT_COPILOT_TICKET_ID:-ticket-10042}"
 HTTP_TIMEOUT_SECONDS="${SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS:-10}"
 TRACE_ID="${SUPPORT_COPILOT_TRACE_ID:-flow-check-trace}"
+EXPECTED_FALLBACK_REASON="${SUPPORT_COPILOT_EXPECTED_FALLBACK_REASON:-ai_service_unavailable}"
 
 usage() {
   cat <<'EOF'
@@ -23,14 +24,15 @@ EOF
 assert_analysis() {
   local expected_mode="$1"
   local expected_status="$2"
-  local response="$3"
+  local expected_reason="$3"
+  local response="$4"
 
   python3 -c '
 import json
 import sys
 
 body = json.loads(sys.stdin.read())
-expected_mode, expected_status = sys.argv[1:3]
+expected_mode, expected_status, expected_trace_id, expected_reason = sys.argv[1:5]
 mode = body["mode"]
 status = body["status"]
 if mode != expected_mode or status != expected_status:
@@ -39,11 +41,17 @@ if mode != expected_mode or status != expected_status:
     )
 if not body["traceId"]:
     raise SystemExit("analysis response did not preserve traceId")
-expected_trace_id = sys.argv[3]
 actual_trace_id = body["traceId"]
 if actual_trace_id != expected_trace_id:
     raise SystemExit(
         f"traceId changed across services: expected={expected_trace_id} actual={actual_trace_id}"
+    )
+fallback_reason = body["fallbackReason"]
+expected_fallback_reason = None if expected_reason == "none" else expected_reason
+if fallback_reason != expected_fallback_reason:
+    raise SystemExit(
+        "unexpected fallback reason: "
+        f"expected={expected_fallback_reason} actual={fallback_reason}"
     )
 
 hits = len(body["retrieval"]["hits"])
@@ -58,14 +66,16 @@ if expected_mode == "fallback" and warnings == 0:
 print(
     f"analysis: mode={mode} status={status} "
     f"category={category} "
-    f"hits={hits} citations={citations} warnings={warnings} traceId={actual_trace_id}"
+    f"fallbackReason={fallback_reason} hits={hits} citations={citations} "
+    f"warnings={warnings} traceId={actual_trace_id}"
 )
-' "$expected_mode" "$expected_status" "$TRACE_ID" <<<"$response"
+' "$expected_mode" "$expected_status" "$TRACE_ID" "$expected_reason" <<<"$response"
 }
 
 assert_persisted_latest() {
   local expected_mode="$1"
   local expected_status="$2"
+  local expected_reason="$3"
   local history
 
   history="$(curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
@@ -75,7 +85,7 @@ import json
 import sys
 
 body = json.loads(sys.stdin.read())
-expected_mode, expected_status = sys.argv[1:3]
+expected_mode, expected_status, expected_reason = sys.argv[1:4]
 if not body:
     raise SystemExit("analysis history is empty")
 latest = body[0]
@@ -85,32 +95,41 @@ if mode != expected_mode or status != expected_status:
     raise SystemExit(
         f"latest persisted analysis is mode={mode}, status={status}"
     )
+fallback_reason = latest["fallbackReason"]
+expected_fallback_reason = None if expected_reason == "none" else expected_reason
+if fallback_reason != expected_fallback_reason:
+    raise SystemExit(
+        "persisted fallback reason changed: "
+        f"expected={expected_fallback_reason} actual={fallback_reason}"
+    )
 print(
-    f"history: count={len(body)} latestMode={mode} latestStatus={status}"
+    f"history: count={len(body)} latestMode={mode} latestStatus={status} "
+    f"latestFallbackReason={fallback_reason}"
 )
-' "$expected_mode" "$expected_status" <<<"$history"
+' "$expected_mode" "$expected_status" "$expected_reason" <<<"$history"
 }
 
 run_flow() {
   local expected_mode="$1"
   local expected_status="$2"
+  local expected_reason="$3"
   local response
 
   response="$(curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
     -X POST \
     -H "X-Trace-Id: $TRACE_ID" \
     "$WEB_BASE_URL/api/tickets/$TICKET_ID/analyze")"
-  assert_analysis "$expected_mode" "$expected_status" "$response"
-  assert_persisted_latest "$expected_mode" "$expected_status"
+  assert_analysis "$expected_mode" "$expected_status" "$expected_reason" "$response"
+  assert_persisted_latest "$expected_mode" "$expected_status" "$expected_reason"
 }
 
 main() {
   case "${1:---success}" in
     --success)
-      run_flow mock SUCCEEDED
+      run_flow mock SUCCEEDED none
       ;;
     --fallback)
-      run_flow fallback FALLBACK
+      run_flow fallback FALLBACK "$EXPECTED_FALLBACK_REASON"
       ;;
     --help|-h)
       usage

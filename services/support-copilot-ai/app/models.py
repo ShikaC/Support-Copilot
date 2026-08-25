@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import PydanticCustomError
 
+from app.errors import FallbackReason
+
 PromptVersion = Literal["ticket-analysis-v1"]
 
 
@@ -128,6 +130,7 @@ class AnalyzeResponse(ApiModel):
     trace_id: str
     status: Literal["RUNNING", "SUCCEEDED", "FAILED", "FALLBACK"]
     mode: Literal["live", "mock", "fallback"]
+    fallback_reason: FallbackReason | None
     model_name: str
     prompt_version: str
     classification: Classification

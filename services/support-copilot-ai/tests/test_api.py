@@ -125,6 +125,7 @@ def test_processing_timeout_returns_traceable_gateway_timeout(
 
 
 def test_missing_recovery_evidence_returns_fallback() -> None:
+    # Given: the knowledge corpus does not cover the requested recovery window.
     response = client.post(
         "/analyze",
         json=request_payload(
@@ -134,10 +135,14 @@ def test_missing_recovery_evidence_returns_fallback() -> None:
         ),
     )
 
+    # When: the mock workflow returns its safe manual-review result.
     assert response.status_code == 200
     body = response.json()
+
+    # Then: the response names evidence absence instead of only saying fallback.
     assert body["mode"] == "fallback"
     assert body["status"] == "FALLBACK"
+    assert body["fallbackReason"] == "insufficient_evidence"
     assert body["retrieval"]["hits"] == []
     assert body["decision"]["escalationRequired"] is True
 

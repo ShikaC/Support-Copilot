@@ -19,15 +19,31 @@ import com.cyagent.supportcopilot.ticket.Ticket;
 @Component
 public class MockAnalysisFactory {
 
-	public AnalysisResponse create(Ticket ticket, String mode) {
-		return create(ticket, mode, "trace_" + compactUuid());
+	public AnalysisResponse createMock(Ticket ticket) {
+		return create(ticket, "mock", "trace_" + compactUuid(), null);
 	}
 
-	public AnalysisResponse create(Ticket ticket, String mode, String traceId) {
+	public AnalysisResponse createFallback(
+		Ticket ticket,
+		String traceId,
+		FallbackReason fallbackReason
+	) {
+		return create(ticket, "fallback", traceId, fallbackReason);
+	}
+
+	private AnalysisResponse create(
+		Ticket ticket,
+		String mode,
+		String traceId,
+		FallbackReason serviceFallbackReason
+	) {
 		var category = ticket.getCategory();
 		var lowEvidence = "DATA_RECOVERY".equals(category);
-		var serviceFallback = "fallback".equals(mode);
+		var serviceFallback = serviceFallbackReason != null;
 		var fallback = lowEvidence || serviceFallback;
+		var fallbackReason = serviceFallback
+			? serviceFallbackReason
+			: lowEvidence ? FallbackReason.INSUFFICIENT_EVIDENCE : null;
 		var escalation = fallback
 			|| List.of("BILLING", "PRIVACY", "ACCOUNT_ACCESS", "DATA_RECOVERY").contains(category);
 		var hits = lowEvidence ? List.<RetrievalHit>of() : hitsFor(category);
@@ -38,6 +54,7 @@ public class MockAnalysisFactory {
 			traceId,
 			fallback ? "FALLBACK" : "SUCCEEDED",
 			effectiveMode,
+			fallbackReason,
 			"configured-chat-model",
 			"ticket-analysis-v1",
 			new Classification(

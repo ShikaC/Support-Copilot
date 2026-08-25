@@ -13,6 +13,24 @@ export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
 
 export type AnalysisMode = 'live' | 'mock' | 'fallback'
 
+export const FALLBACK_REASONS = [
+  'insufficient_evidence',
+  'embedding_api_error',
+  'embedding_connection_timeout',
+  'embedding_response_timeout',
+  'structured_generation_api_error',
+  'structured_generation_connection_timeout',
+  'structured_generation_response_timeout',
+  'invalid_model_response',
+  'processing_timeout',
+  'ai_service_timeout',
+  'ai_service_unavailable',
+  'ai_service_error',
+  'invalid_ai_response',
+] as const
+
+export type FallbackReason = (typeof FALLBACK_REASONS)[number]
+
 export interface WorkflowStep {
   id: string
   name: string
@@ -41,6 +59,7 @@ export interface AnalysisResult {
   traceId: string
   status: 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'FALLBACK'
   mode: AnalysisMode
+  fallbackReason: FallbackReason | null
   modelName: string
   promptVersion: string
   classification: {

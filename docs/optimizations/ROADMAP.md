@@ -125,6 +125,8 @@ cd services/support-copilot-ai
 
 第 49 轮建立 `外部单次请求 < Python 整体分析 < Java 等待 < live 验收客户端` 的截止时间顺序，将 OpenAI 自动重试限制为 1 次，并把 live 向量建库和查询改成可取消的异步调用。预检会拒绝倒置预算；本地慢 Embedding 故障演练验证 Python 504、Java fallback、分析历史持久化和同一 `traceId`。客户端取消不能保证供应商停止已经接收的计算，正式 API 成功记录和费用限额仍是层级 3 的外部前提。
 
+第 50 轮增加跨 Python、Java 和 TypeScript 的受控 `fallbackReason`。Python 区分证据不足、Embedding、结构化生成和非法模型响应，Java 区分 Python 504、自身等待超时、不可连接、普通服务错误和非法响应；原因会写入 `AnalysisRun` 独立列与完整响应 JSON。Java 只捕获类型化 `AiServiceCallException`，未知程序错误不再伪装成 fallback。本地三服务演练已验证正常结果原因为空、Python 停止时为 `ai_service_unavailable`、兼容端点返回 504 时为 `processing_timeout`，正式 API live 成功仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
@@ -818,6 +820,8 @@ live 模式上线前至少设计：
 | 提示注入 | 工单或知识片段不能覆盖系统规则 |
 | 重复请求 | 不产生无法解释的重复分析记录 |
 
+第 50 轮已覆盖其中的无证据、Embedding/结构化生成错误分类和 API 超时原因持久化；API Key 缺失门禁已在第 44 轮覆盖。正式 live 正常分类、有证据回复、真实提示注入验证和重复请求幂等仍未全部完成。
+
 没有完成这些测试前，简历只写 mock 链路和 live 接口预留。
 
 ---
@@ -931,6 +935,8 @@ P5 完成条件：
 - status。
 
 这些字段用于定位和解释，不代表需要把所有字段都放在首屏。
+
+第 50 轮已补齐并验证 `fallbackReason`；其余字段仍按实际代码和后续批次逐项核对，不能把整张清单视为全部完成。
 
 ### P6-02 指标分层
 

@@ -87,6 +87,7 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
     traceId: 'trace_7C31A9F2',
     status: 'SUCCEEDED',
     mode: 'mock',
+    fallbackReason: null,
     modelName: 'configured-chat-model',
     promptVersion: 'ticket-analysis-v1',
     classification: {
@@ -430,6 +431,7 @@ export const demoTickets: Ticket[] = [
       traceId: 'trace_B8172C30',
       status: 'FALLBACK',
       mode: 'fallback',
+      fallbackReason: 'insufficient_evidence',
       classification: {
         intent: 'deleted_project_recovery',
         category: 'DATA_RECOVERY',

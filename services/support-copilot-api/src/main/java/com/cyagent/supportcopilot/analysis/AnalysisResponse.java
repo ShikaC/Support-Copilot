@@ -8,6 +8,7 @@ public record AnalysisResponse(
 	String traceId,
 	String status,
 	String mode,
+	FallbackReason fallbackReason,
 	String modelName,
 	String promptVersion,
 	Classification classification,

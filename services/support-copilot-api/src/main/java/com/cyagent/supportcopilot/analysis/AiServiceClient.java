@@ -1,12 +1,17 @@
 package com.cyagent.supportcopilot.analysis;
 
 import java.net.http.HttpClient;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import com.cyagent.supportcopilot.ticket.Ticket;
 
@@ -51,11 +56,39 @@ public class AiServiceClient {
 			new AnalyzeOptions(10, 3, "ticket-analysis-v1")
 		);
 
-		return restClient.post()
-			.uri("/analyze")
-			.body(request)
-			.retrieve()
-			.body(AnalysisResponse.class);
+		try {
+			var response = restClient.post()
+				.uri("/analyze")
+				.body(request)
+				.retrieve()
+				.body(AnalysisResponse.class);
+			if (response == null) {
+				throw new AiServiceCallException(FallbackReason.INVALID_AI_RESPONSE);
+			}
+			return response;
+		} catch (HttpServerErrorException.GatewayTimeout exception) {
+			throw new AiServiceCallException(FallbackReason.PROCESSING_TIMEOUT, exception);
+		} catch (ResourceAccessException exception) {
+			var reason = hasTimeoutCause(exception)
+				? FallbackReason.AI_SERVICE_TIMEOUT
+				: FallbackReason.AI_SERVICE_UNAVAILABLE;
+			throw new AiServiceCallException(reason, exception);
+		} catch (RestClientResponseException exception) {
+			throw new AiServiceCallException(FallbackReason.AI_SERVICE_ERROR, exception);
+		} catch (RestClientException exception) {
+			throw new AiServiceCallException(FallbackReason.INVALID_AI_RESPONSE, exception);
+		}
+	}
+
+	private boolean hasTimeoutCause(Throwable exception) {
+		var current = exception;
+		while (current != null) {
+			if (current instanceof HttpTimeoutException) {
+				return true;
+			}
+			current = current.getCause();
+		}
+		return false;
 	}
 
 	private record AnalyzeRequest(String traceId, TicketInput ticket, AnalyzeOptions options) {

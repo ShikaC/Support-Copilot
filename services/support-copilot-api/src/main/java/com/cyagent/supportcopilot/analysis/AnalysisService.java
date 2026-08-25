@@ -56,12 +56,17 @@ public class AnalysisService {
 		AnalysisResponse response;
 		try {
 			response = aiServiceClient.analyze(ticket, traceId);
-			if (response == null) {
-				throw new IllegalStateException("AI service returned an empty response");
-			}
-		} catch (RuntimeException exception) {
-			log.warn("AI service unavailable for ticket {}, using fallback: {}", ticketId, exception.getMessage());
-			response = mockAnalysisFactory.create(ticket, "fallback", traceId);
+		} catch (AiServiceCallException exception) {
+			log.warn(
+				"analysis.fallback ticket_id={} reason={}",
+				ticketId,
+				exception.getFallbackReason().value()
+			);
+			response = mockAnalysisFactory.createFallback(
+				ticket,
+				traceId,
+				exception.getFallbackReason()
+			);
 		}
 
 		analysisPersistenceService.persist(ticketId, sourceTicketVersion, response);
@@ -75,7 +80,7 @@ public class AnalysisService {
 		analysisPersistenceService.persist(
 			ticket.getId(),
 			ticket.getVersion(),
-			mockAnalysisFactory.create(ticket, "mock")
+			mockAnalysisFactory.createMock(ticket)
 		);
 	}
 

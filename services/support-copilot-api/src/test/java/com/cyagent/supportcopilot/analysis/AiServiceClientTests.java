@@ -4,17 +4,49 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.Executors;
 
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.ResourceAccessException;
-
 import com.cyagent.supportcopilot.ticket.Ticket;
 
 class AiServiceClientTests {
+
+	@Test
+	void pythonProcessingTimeoutHasItsOwnFallbackReason() throws Exception {
+		// Given: Python returns its structured overall-processing timeout response.
+		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/analyze", exchange -> {
+			var body = """
+				{"detail":{"code":"AI_PROCESSING_TIMEOUT","message":"deadline","traceId":"trace-python-timeout"}}
+				""".getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().add("Content-Type", "application/json");
+			exchange.sendResponseHeaders(504, body.length);
+			exchange.getResponseBody().write(body);
+			exchange.close();
+		});
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			server.setExecutor(executor);
+			server.start();
+			var client = new AiServiceClient(
+				"http://127.0.0.1:" + server.getAddress().getPort(),
+				1_000
+			);
+
+			try {
+				// When/Then: Java preserves the Python deadline category for persistence.
+				assertThatThrownBy(() -> client.analyze(ticket(), "trace-python-timeout"))
+					.isInstanceOfSatisfying(AiServiceCallException.class, exception ->
+						assertThat(exception.getFallbackReason()).isEqualTo(FallbackReason.PROCESSING_TIMEOUT)
+					);
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
 
 	@Test
 	void slowPythonResponseStopsWithinTheConfiguredJavaBudget() throws Exception {
@@ -41,8 +73,10 @@ class AiServiceClientTests {
 
 			try {
 				// When/Then: Java stops waiting inside its configured total budget.
-				assertThatThrownBy(() -> client.analyze(ticket(), "trace-java-timeout"))
-					.isInstanceOf(ResourceAccessException.class);
+					assertThatThrownBy(() -> client.analyze(ticket(), "trace-java-timeout"))
+						.isInstanceOfSatisfying(AiServiceCallException.class, exception ->
+							assertThat(exception.getFallbackReason()).isEqualTo(FallbackReason.AI_SERVICE_TIMEOUT)
+						);
 				assertThat(Duration.between(started, Instant.now())).isLessThan(Duration.ofMillis(800));
 			} finally {
 				server.stop(0);

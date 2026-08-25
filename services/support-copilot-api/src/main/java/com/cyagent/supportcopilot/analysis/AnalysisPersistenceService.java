@@ -46,6 +46,7 @@ public class AnalysisPersistenceService {
 		run.setTraceId(response.traceId());
 		run.setStatus(response.status());
 		run.setMode(response.mode());
+		run.setFallbackReason(response.fallbackReason());
 		run.setResponseJson(serialize(response));
 		run.setCreatedAt(response.createdAt() == null ? Instant.now() : response.createdAt());
 		analysisRunRepository.save(run);

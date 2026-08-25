@@ -4,6 +4,8 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
@@ -36,6 +38,10 @@ public class AnalysisRun {
 
 	@Column(nullable = false, length = 24)
 	private String mode;
+
+	@Enumerated(EnumType.STRING)
+	@Column(length = 64)
+	private FallbackReason fallbackReason;
 
 	@Lob
 	@Column(nullable = false)

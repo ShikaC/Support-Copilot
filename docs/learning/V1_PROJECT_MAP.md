@@ -233,6 +233,7 @@ Java 返回 `AnalysisResponse` 后，React 会：
 - 本次分析 ID。
 - `traceId`。
 - 分析使用的模式：`live`、`mock` 或 `fallback`。
+- 结构化 `fallbackReason`；正常结果为空，降级结果说明具体原因。
 - 分析结果。
 - `sourceTicketVersion`。
 - 创建时间。
@@ -248,6 +249,7 @@ Java 返回 `AnalysisResponse` 后，React 会：
 
 ```text
 classification       分类、优先级、情绪、置信度
+fallbackReason       降级原因；正常结果为 null
 workflowSteps        分析经过的步骤
 retrieval            检索 query 和知识片段
 suggestedReply       回复建议和引用
