@@ -226,7 +226,7 @@ Java 返回 `AnalysisResponse` 后，React 会：
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/Ticket.java`
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketRepository.java`
 
-运行配置边界：`demo` 才加载演示工单并开放 H2 Console，`test` 使用空的随机内存库，`local` 和 `pilot` 要求非空 MySQL JDBC 环境变量并配置 Flyway 建表。未选择 profile 或数据库设置缺失/留空时，Java 会拒绝启动，不会回退到 H2；真实 MySQL 建表和持久化行为仍待 Task 15 验证。
+运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单并开放 H2 Console，`test` 使用空的随机内存库，`local` 和 `pilot` 要求非空 MySQL JDBC 环境变量并配置 Flyway 建表。数据库设置缺失/留空时也会拒绝启动，不会回退到 H2；真实 MySQL 建表和持久化行为仍待 Task 15 验证。
 
 ### AnalysisRun
 

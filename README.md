@@ -55,7 +55,7 @@ RAG 理论课程、词汇表和学习记录保留在独立的 `CY-Agent` 学习�
 - Python 3.11
 - npm
 
-Java API 没有隐式数据库配置。必须明确选择 `demo`、`test`、`local` 或 `pilot`；不指定 profile 会因为缺少数据源而失败，避免意外打开 H2。
+Java API 没有隐式数据库配置。必须且只能明确选择 `demo`、`test`、`local` 或 `pilot` 中的一个；未选择、显式选择 `default`、使用未知 profile 或同时选择多个 profile，都会在创建 datasource 前拒绝启动，错误会列出允许的四个 profile，避免 Spring Boot 自动打开嵌入式 H2。
 
 ## 快速启动
 
@@ -334,7 +334,7 @@ cd services/support-copilot-api
 
 ```bash
 cd services/support-copilot-api
-./gradlew test --tests '*ProfileConfigurationTests' --tests '*FlywayMigrationContractTests' --tests '*DemoProfileIntegrationTests' --tests '*TestProfileIntegrationTests' --no-daemon
+./gradlew test --tests '*RuntimeProfileIntegrationTests' --tests '*ProfileConfigurationTests' --tests '*FlywayMigrationContractTests' --tests '*DemoProfileIntegrationTests' --tests '*TestProfileIntegrationTests' --no-daemon
 ./gradlew compileTestJava --no-daemon
 ```
 
