@@ -27,7 +27,8 @@ export type WorkflowStep = z.infer<typeof workflowStepSchema>
 
 type ApiTicket = z.infer<typeof ticketResponseSchema>
 
-export type TicketStatus = ApiTicket['status']
+export type PersistedTicketStatus = ApiTicket['status']
+export type TicketStatus = PersistedTicketStatus | 'ANALYZING'
 
 export type Ticket = Omit<ApiTicket, 'latestAnalysis' | 'latestReview' | 'version'> & {
   latestAnalysis?: ApiTicket['latestAnalysis']

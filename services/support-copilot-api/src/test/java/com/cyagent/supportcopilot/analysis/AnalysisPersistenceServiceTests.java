@@ -9,6 +9,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -111,6 +113,52 @@ class AnalysisPersistenceServiceTests {
 		assertThat(analysisRunRepository.existsById(invalidResponse.id())).isFalse();
 		assertThat(unchangedTicket.getVersion()).isEqualTo(sourceVersion);
 		assertThat(unchangedTicket.getStatus()).isEqualTo("NEW");
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+		"category, ARBITRARY_CATEGORY",
+		"priority, CRITICAL",
+		"status, RUNNING"
+	})
+	void rejectsInvalidAiValueWithoutMutatingTicketOrAnalysisHistory(String field, String value) {
+		var ticket = saveTicket();
+		var sourceVersion = ticket.getVersion();
+		var valid = mockAnalysisFactory.createMock(ticket);
+		var classification = new AnalysisResponse.Classification(
+			valid.classification().intent(),
+			"category".equals(field) ? value : valid.classification().category(),
+			"priority".equals(field) ? value : valid.classification().priority(),
+			valid.classification().sentiment(),
+			valid.classification().confidence(),
+			valid.classification().reasonSummary()
+		);
+		var invalid = new AnalysisResponse(
+			valid.id(),
+			valid.traceId(),
+			"status".equals(field) ? value : valid.status(),
+			valid.mode(),
+			valid.fallbackReason(),
+			valid.modelName(),
+			valid.promptVersion(),
+			classification,
+			valid.workflowSteps(),
+			valid.retrieval(),
+			valid.suggestedReply(),
+			valid.decision(),
+			valid.usage(),
+			valid.createdAt()
+		);
+
+		assertThatThrownBy(() -> analysisPersistenceService.persist(ticket.getId(), sourceVersion, invalid))
+			.isInstanceOf(IllegalArgumentException.class);
+
+		var persisted = ticketRepository.findById(ticket.getId()).orElseThrow();
+		assertThat(analysisRunRepository.existsById(invalid.id())).isFalse();
+		assertThat(persisted.getCategory()).isEqualTo("BILLING");
+		assertThat(persisted.getPriority()).isEqualTo("HIGH");
+		assertThat(persisted.getStatus()).isEqualTo("NEW");
+		assertThat(persisted.getVersion()).isEqualTo(sourceVersion);
 	}
 
 	private Ticket saveTicket() {

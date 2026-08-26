@@ -10,6 +10,11 @@ import jakarta.validation.constraints.Size;
 
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
+import com.cyagent.supportcopilot.ticket.TicketDomain.Category;
+import com.cyagent.supportcopilot.ticket.TicketDomain.Channel;
+import com.cyagent.supportcopilot.ticket.TicketDomain.CustomerTier;
+import com.cyagent.supportcopilot.ticket.TicketDomain.Priority;
+import com.cyagent.supportcopilot.ticket.TicketDomain.Status;
 
 public final class TicketDtos {
 
@@ -17,10 +22,10 @@ public final class TicketDtos {
 	}
 
 	public record CreateTicketRequest(
-		@NotBlank String channel,
+		@NotNull Channel channel,
 		@NotBlank @Size(max = 80) String customerName,
 		@NotBlank @Size(max = 120) String customerCompany,
-		@NotBlank String customerTier,
+		@NotNull CustomerTier customerTier,
 		@NotBlank @Size(max = 240) String subject,
 		@NotBlank @Size(max = 4000) String description,
 		String language
@@ -28,10 +33,11 @@ public final class TicketDtos {
 	}
 
 	public record UpdateTicketRequest(
-		String status,
-		String priority,
-		String category,
-		String assigneeName
+		Status status,
+		Priority priority,
+		Category category,
+		@Size(max = 80) String assigneeName,
+		@NotNull @PositiveOrZero Long expectedVersion
 	) {
 	}
 

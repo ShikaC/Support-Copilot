@@ -75,6 +75,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 57. [增加隔离端口的本地 mock smoke 验收](./57-local-smoke-orchestration.md)
 58. [扩充评估集并增加检索证据门禁](./58-evaluation-and-retrieval-safety.md)
 59. [将 mock 评估报告接入质量页面](./59-connect-evaluation-report-to-quality-page.md)
+60. [收紧工单值域、状态转换与版本写入](./60-ticket-domain-contracts.md)
 
 ## 优化后的主流程
 

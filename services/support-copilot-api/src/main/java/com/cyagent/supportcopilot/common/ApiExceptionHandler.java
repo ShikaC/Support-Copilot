@@ -10,16 +10,24 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.analysis.review.StaleAnalysisReviewException;
+import com.cyagent.supportcopilot.ticket.Ticket;
+import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketStateConflictException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+	private final TicketRepository ticketRepository;
+
+	public ApiExceptionHandler(TicketRepository ticketRepository) {
+		this.ticketRepository = ticketRepository;
+	}
 
 	@ExceptionHandler(EntityNotFoundException.class)
 	ResponseEntity<ApiError> handleNotFound(EntityNotFoundException exception, HttpServletRequest request) {
@@ -27,7 +35,12 @@ public class ApiExceptionHandler {
 			.body(error("RESOURCE_NOT_FOUND", exception.getMessage(), request));
 	}
 
-	@ExceptionHandler({MethodArgumentNotValidException.class, BindException.class, IllegalArgumentException.class})
+	@ExceptionHandler({
+		MethodArgumentNotValidException.class,
+		BindException.class,
+		HttpMessageNotReadableException.class,
+		IllegalArgumentException.class
+	})
 	ResponseEntity<ApiError> handleBadRequest(Exception exception, HttpServletRequest request) {
 		return ResponseEntity.badRequest()
 			.body(error("INVALID_REQUEST", "请求参数不符合业务约束。", request));
@@ -42,9 +55,7 @@ public class ApiExceptionHandler {
 		var details = new LinkedHashMap<String, Object>();
 		details.put("ticketId", exception.getTicketId());
 		details.put("expectedVersion", exception.getExpectedVersion());
-		if (exception.getCurrentVersion() != null) {
-			details.put("currentVersion", exception.getCurrentVersion());
-		}
+		details.put("currentVersion", currentVersion(exception));
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 			.body(new ApiError(
 				"VERSION_CONFLICT",
@@ -55,6 +66,15 @@ public class ApiExceptionHandler {
 			));
 	}
 
+	private Long currentVersion(TicketVersionConflictException exception) {
+		if (exception.getCurrentVersion() != null) {
+			return exception.getCurrentVersion();
+		}
+		return ticketRepository.findById(exception.getTicketId())
+			.map(Ticket::getVersion)
+			.orElse(null);
+	}
+
 	@ExceptionHandler(TicketStateConflictException.class)
 	ResponseEntity<ApiError> handleTicketStateConflict(
 		TicketStateConflictException exception,
@@ -63,6 +83,9 @@ public class ApiExceptionHandler {
 		var details = new LinkedHashMap<String, Object>();
 		details.put("ticketId", exception.getTicketId());
 		details.put("currentStatus", exception.getCurrentStatus());
+		if (exception.getRequestedStatus() != null) {
+			details.put("requestedStatus", exception.getRequestedStatus());
+		}
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 			.body(new ApiError(
 				"TICKET_STATE_CONFLICT",

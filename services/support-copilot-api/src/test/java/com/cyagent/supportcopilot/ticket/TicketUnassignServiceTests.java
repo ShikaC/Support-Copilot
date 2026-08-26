@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.ticket.TicketDtos.UpdateTicketRequest;
+import com.cyagent.supportcopilot.ticket.TicketDomain.Status;
 
 @SpringBootTest
 class TicketUnassignServiceTests {
@@ -85,7 +86,7 @@ class TicketUnassignServiceTests {
 
 		var updated = ticketService.update(
 			ticket.getId(),
-			new UpdateTicketRequest("IN_PROGRESS", null, null, null)
+				new UpdateTicketRequest(Status.IN_PROGRESS, null, null, null, ticket.getVersion())
 		);
 
 		var persisted = ticketRepository.findById(ticket.getId()).orElseThrow();

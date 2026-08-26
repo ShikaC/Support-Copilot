@@ -17,7 +17,7 @@ ticket-10042
 
 ```json
 {
-  "code": "TICKET_VERSION_CONFLICT",
+  "code": "VERSION_CONFLICT",
   "message": "工单版本已变化",
   "traceId": "trace-409",
   "details": {
@@ -32,7 +32,7 @@ HTTP 状态为 `409`，所以 `response.ok` 是 `false`。React 的 API 边界�
 ```text
 name    = ApiError
 status  = 409
-code    = TICKET_VERSION_CONFLICT
+code    = VERSION_CONFLICT
 message = 工单版本已变化
 traceId = trace-409
 details = expectedVersion 3、currentVersion 4
@@ -83,7 +83,7 @@ React CI 每次都会执行这两条测试
 本轮完成以下验证：
 
 - 正确代码：1 个测试文件中的 2 条测试全部通过。
-- 故障注入：临时让解析器丢弃 `code` 后，新测试明确报告预期 `TICKET_VERSION_CONFLICT`、实际 `HTTP_409`，并返回退出码 1。
+- 故障注入：临时让解析器丢弃 `code` 后，新测试明确报告预期 `VERSION_CONFLICT`、实际 `HTTP_409`，并返回退出码 1。
 - 恢复正确解析器后，`npm run lint` 通过。
 - `npm run test`：2 条通过。
 - `npm run build`：TypeScript 和 Vite 生产构建通过。

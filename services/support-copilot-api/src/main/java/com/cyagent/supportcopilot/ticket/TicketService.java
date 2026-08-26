@@ -64,10 +64,10 @@ public class TicketService {
 		var ticket = new Ticket();
 		ticket.setId("ticket-" + UUID.randomUUID());
 		ticket.setTicketNo("SC-" + TICKET_SEQUENCE.incrementAndGet());
-		ticket.setChannel(request.channel());
+		ticket.setChannel(request.channel().name());
 		ticket.setCustomerName(request.customerName());
 		ticket.setCustomerCompany(request.customerCompany());
-		ticket.setCustomerTier(request.customerTier());
+		ticket.setCustomerTier(request.customerTier().name());
 		ticket.setSubject(request.subject());
 		ticket.setDescription(request.description());
 		ticket.setLanguage(request.language() == null || request.language().isBlank() ? "zh-CN" : request.language());
@@ -83,12 +83,38 @@ public class TicketService {
 	@Transactional
 	public TicketResponse update(String id, UpdateTicketRequest request) {
 		var ticket = find(id);
-		if (request.status() != null) ticket.setStatus(request.status());
-		if (request.priority() != null) ticket.setPriority(request.priority());
-		if (request.category() != null) ticket.setCategory(request.category());
-		if (request.assigneeName() != null) ticket.setAssigneeName(request.assigneeName());
+		if (ticket.getVersion() != request.expectedVersion()) {
+			throw new TicketVersionConflictException(id, request.expectedVersion(), ticket.getVersion());
+		}
+		var changed = false;
+		if (request.status() != null) {
+			TicketDomain.requireManualTransition(id, ticket.getStatus(), request.status());
+			if (!ticket.getStatus().equals(request.status().name())) {
+				ticket.setStatus(request.status().name());
+				changed = true;
+			}
+		}
+		if (request.priority() != null && !request.priority().name().equals(ticket.getPriority())) {
+			ticket.setPriority(request.priority().name());
+			changed = true;
+		}
+		if (request.category() != null && !request.category().name().equals(ticket.getCategory())) {
+			ticket.setCategory(request.category().name());
+			changed = true;
+		}
+		if (request.assigneeName() != null && !request.assigneeName().equals(ticket.getAssigneeName())) {
+			ticket.setAssigneeName(request.assigneeName());
+			changed = true;
+		}
+		if (!changed) {
+			return toResponse(ticket);
+		}
 		ticket.setUpdatedAt(Instant.now());
-		return toResponse(ticketRepository.saveAndFlush(ticket));
+		try {
+			return toResponse(ticketRepository.saveAndFlush(ticket));
+		} catch (ObjectOptimisticLockingFailureException exception) {
+			throw new TicketVersionConflictException(id, request.expectedVersion(), null, exception);
+		}
 	}
 
 	@Transactional

@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 
-import { analysisResponsePayload } from '../test/apiFixtures'
-import { analyzeTicket } from './api'
+import { analysisResponsePayload, ticketResponsePayload } from '../test/apiFixtures'
+import { analyzeTicket, updateTicket } from './api'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -131,7 +131,7 @@ it('preserves structured conflict details from the API', async () => {
   const fetchMock = vi.fn().mockResolvedValue(
     new Response(
       JSON.stringify({
-        code: 'TICKET_VERSION_CONFLICT',
+        code: 'VERSION_CONFLICT',
         message: '工单版本已变化',
         traceId: 'trace-409',
         details: { expectedVersion: 3, currentVersion: 4 },
@@ -151,10 +151,35 @@ it('preserves structured conflict details from the API', async () => {
   await expect(analysisRequest).rejects.toMatchObject({
     name: 'ApiError',
     status: 409,
-    code: 'TICKET_VERSION_CONFLICT',
+    code: 'VERSION_CONFLICT',
     message: '工单版本已变化',
     traceId: 'trace-409',
     details: { expectedVersion: 3, currentVersion: 4 },
+  })
+})
+
+it('sends the current ticket version with a patch update', async () => {
+  // Given: Java accepts the assignment and returns the incremented ticket version.
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        ...ticketResponsePayload,
+        assigneeName: '演示管理员',
+        version: 5,
+      }),
+      { status: 200 },
+    ),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: the browser assigns a real backend ticket at version 4.
+  await updateTicket('ticket-10042', { assigneeName: '演示管理员' }, 4)
+
+  // Then: the optimistic precondition travels in the PATCH body.
+  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ assigneeName: '演示管理员', expectedVersion: 4 }),
   })
 })
 

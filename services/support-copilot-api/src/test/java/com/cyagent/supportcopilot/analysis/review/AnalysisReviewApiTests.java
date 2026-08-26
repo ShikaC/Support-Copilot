@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
 import com.cyagent.supportcopilot.common.ApiExceptionHandler;
+import com.cyagent.supportcopilot.ticket.TicketRepository;
 
 class AnalysisReviewApiTests {
 
@@ -122,7 +123,7 @@ class AnalysisReviewApiTests {
 	private MockMvc mockMvc(AnalysisReviewService service) {
 		return MockMvcBuilders
 			.standaloneSetup(new AnalysisReviewController(service))
-			.setControllerAdvice(new ApiExceptionHandler())
+			.setControllerAdvice(new ApiExceptionHandler(mock(TicketRepository.class)))
 			.build();
 	}
 }

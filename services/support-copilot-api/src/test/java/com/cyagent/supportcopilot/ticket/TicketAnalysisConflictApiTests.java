@@ -60,7 +60,7 @@ class TicketAnalysisConflictApiTests {
 	private MockMvc mockMvc(TicketService ticketService, AnalysisService analysisService) {
 		return MockMvcBuilders
 			.standaloneSetup(new TicketController(ticketService, analysisService))
-			.setControllerAdvice(new ApiExceptionHandler())
+			.setControllerAdvice(new ApiExceptionHandler(mock(TicketRepository.class)))
 			.build();
 	}
 }

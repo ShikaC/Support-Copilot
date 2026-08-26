@@ -202,7 +202,7 @@ Java 会在没有请求头时生成 `X-Trace-Id`，并将同一个值写入响�
 
 同一工单的重复在途请求会先在浏览器 API 层合并；Java 再按 `ticketId + sourceTicketVersion + analysisPolicyVersion` 保证单实例内只调用一次 Python 并保存一次结果。执行结束后会释放键，因此后续人工重试仍会真正运行。该能力不是跨实例的持久化幂等，完整边界见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
 
-React 不直接相信 Java 返回的 2xx JSON。工单、指标、分析和工单命令响应会先通过 Zod 运行时 Schema，缺字段、错误类型或未知枚举会在进入页面状态前转换为 `ApiContractError`；完整范围见 [前端运行时响应契约](docs/contracts/frontend-runtime-schema-contract.md)。
+React 不直接相信 Java 返回的 2xx JSON。工单、指标、分析和工单命令响应会先通过 Zod 运行时 Schema，缺字段、错误类型或未知枚举会在进入页面状态前转换为 `ApiContractError`；完整范围见 [前端运行时响应契约](docs/contracts/frontend-runtime-schema-contract.md)。工单 PATCH 必须携带当前 `expectedVersion`；匹配时版本递增，过期或并发写入返回 `409 VERSION_CONFLICT`，页面会保留错误详情并重新读取受影响工单。没有版本的本地 Demo 工单不会发送写请求。
 
 ## OpenAI 实时模式
 
@@ -371,7 +371,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 | GET | `/api/tickets` | 查询工单队列 |
 | GET | `/api/tickets/{id}` | 查询工单详情 |
 | POST | `/api/tickets` | 创建工单 |
-| PATCH | `/api/tickets/{id}` | 修改状态、分类、优先级或负责人 |
+| PATCH | `/api/tickets/{id}` | 携带非负 `expectedVersion` 修改状态、分类、优先级或负责人 |
 | POST | `/api/tickets/{id}/unassign` | 按工单版本取消负责人 |
 | POST | `/api/tickets/{id}/analyze` | 触发分析 |
 | GET | `/api/tickets/{id}/analyses` | 查询分析历史 |

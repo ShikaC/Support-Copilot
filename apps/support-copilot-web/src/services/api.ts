@@ -1,6 +1,6 @@
 import type * as z from 'zod'
 
-import type { AnalysisResult, Ticket } from '../types'
+import type { AnalysisResult, PersistedTicketStatus, Ticket } from '../types'
 import {
   analysisReviewListSchema,
   analysisReviewSchema,
@@ -115,6 +115,10 @@ export function fetchTickets(signal?: AbortSignal) {
   return request('/api/tickets', ticketResponseListSchema, { signal })
 }
 
+export function fetchTicket(ticketId: string) {
+  return request(`/api/tickets/${ticketId}`, ticketResponseSchema)
+}
+
 export function fetchMetrics(signal?: AbortSignal) {
   return request('/api/metrics', metricsResponseSchema, { signal })
 }
@@ -137,11 +141,14 @@ export function analyzeTicket(ticketId: string) {
 
 export function updateTicket(
   ticketId: string,
-  update: Partial<Pick<Ticket, 'status' | 'priority' | 'category' | 'assigneeName'>>,
+  update: Partial<Pick<Ticket, 'priority' | 'category' | 'assigneeName'>> & {
+    readonly status?: PersistedTicketStatus
+  },
+  expectedVersion: number,
 ) {
   return request(`/api/tickets/${ticketId}`, ticketResponseSchema, {
     method: 'PATCH',
-    body: JSON.stringify(update),
+    body: JSON.stringify({ ...update, expectedVersion }),
   })
 }
 

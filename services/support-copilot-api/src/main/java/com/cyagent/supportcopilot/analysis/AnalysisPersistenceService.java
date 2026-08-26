@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.ticket.TicketDomain;
 
 @Service
 public class AnalysisPersistenceService {
@@ -38,6 +39,14 @@ public class AnalysisPersistenceService {
 		if (ticket.getVersion() != expectedVersion) {
 			throw new TicketVersionConflictException(ticketId, expectedVersion, ticket.getVersion());
 		}
+		var category = TicketDomain.parseCategory(response.classification().category());
+		var priority = TicketDomain.parsePriority(response.classification().priority());
+		TicketDomain.parseAnalysisStatus(response.status());
+		var resultStatus = TicketDomain.analysisResultStatus(
+			ticketId,
+			ticket.getStatus(),
+			response.decision().escalationRequired()
+		);
 
 		var run = new AnalysisRun();
 		run.setId(response.id());
@@ -51,9 +60,9 @@ public class AnalysisPersistenceService {
 		run.setCreatedAt(response.createdAt() == null ? Instant.now() : response.createdAt());
 		analysisRunRepository.save(run);
 
-		ticket.setCategory(response.classification().category());
-		ticket.setPriority(response.classification().priority());
-		ticket.setStatus(response.decision().escalationRequired() ? "NEEDS_ESCALATION" : "READY_FOR_REVIEW");
+		ticket.setCategory(category.name());
+		ticket.setPriority(priority.name());
+		ticket.setStatus(resultStatus.name());
 		ticket.setUpdatedAt(Instant.now());
 		ticketRepository.save(ticket);
 

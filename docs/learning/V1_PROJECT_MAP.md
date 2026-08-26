@@ -295,6 +295,9 @@ usage                耗时和 token 信息
 - React 不再把 HTTP 409 和普通后端错误伪装成 Demo。
 - React 启动阶段支持工单和指标部分成功，不再因为指标失败丢弃真实工单。
 - 取消负责人使用 `POST /api/tickets/{id}/unassign`，携带 `expectedVersion` 做版本保护。
+- 普通工单 PATCH 同样要求非负 `expectedVersion`；匹配版本提交后递增，过期或 JPA 并发写入统一返回 `409 VERSION_CONFLICT`，React 随后重新读取受影响工单。
+- 手工状态只允许 `NEW -> IN_PROGRESS`、待审核/人工复核/需升级 `-> IN_PROGRESS`、处理中 `-> 等待客户/已解决`、等待客户 `-> 处理中`、已解决 `-> 已关闭`。`ANALYZING` 只表示浏览器等待，不保存到工单。
+- channel、customer tier、priority、category 和 status 在 HTTP/AI 写入边界使用受控值域；非法 AI 分类、优先级或分析状态不会留下工单或分析历史修改。
 - React 只有在 Java 命令成功后才更新真实工单的负责人；本地演示工单才允许本地演示修改。
 - 回复建议的采纳或编辑后采纳会写入独立 `analysis_reviews` 记录，保存原始内容、审核后内容、动作、工单版本和 `traceId`；只有 Java 成功响应后前端才显示已记录。
 - 回复审核事务先锁定工单行，只接受当前工单的最新分析，并拒绝分析完成后又被修改过的工单；同内容的顺序重试复用已有记录。

@@ -36,6 +36,39 @@ it('rejects an analysis response when a required field is missing', async () => 
   })
 })
 
+it('rejects a ticket response with an arbitrary category', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify([{ ...ticketResponsePayload, category: 'MADE_UP' }]), { status: 200 }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(fetchTickets()).rejects.toMatchObject({
+    name: 'ApiContractError',
+    issues: [{ path: '0.category' }],
+  })
+})
+
+it('rejects ANALYZING as a persisted ticket status', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify([{ ...ticketResponsePayload, status: 'ANALYZING' }]), { status: 200 }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(fetchTickets()).rejects.toMatchObject({
+    name: 'ApiContractError',
+    issues: [{ path: '0.status' }],
+  })
+})
+
+it.each(['SECURITY', 'LEGAL'])('accepts the %s category consumed by AI risk policy', async (category) => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify([{ ...ticketResponsePayload, category }]), { status: 200 }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(fetchTickets()).resolves.toMatchObject([{ category }])
+})
+
 it('rejects an analysis response when the mode is outside the contract', async () => {
   // Given: Java 返回 TypeScript 类型中不存在的新模式。
   const fetchMock = vi.fn().mockResolvedValue(

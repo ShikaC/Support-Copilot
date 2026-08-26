@@ -38,6 +38,7 @@ import {
   analyzeTicket,
   ApiError,
   fetchMetrics,
+  fetchTicket,
   fetchTickets,
   unassignTicket,
   updateTicket,
@@ -73,6 +74,8 @@ const categoryLabels: Record<string, string> = {
   DATA_EXPORT: '数据导出',
   SUBSCRIPTION: '订阅咨询',
   PRIVACY: '隐私合规',
+  SECURITY: '安全事件',
+  LEGAL: '法务请求',
   TECHNICAL: '技术问题',
   DATA_RECOVERY: '数据恢复',
 }
@@ -1264,6 +1267,19 @@ function App() {
     )
   }
 
+  const reconcileTicket = async (ticketId: string) => {
+    try {
+      const latest = await fetchTicket(ticketId)
+      setTickets((current) => current.map((ticket) => (ticket.id === latest.id ? latest : ticket)))
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.warn('Unable to refresh stale ticket state.', error)
+        return
+      }
+      throw error
+    }
+  }
+
   const runAnalysis = async () => {
     setAnalyzingTicketId(selectedTicket.id)
     try {
@@ -1292,6 +1308,9 @@ function App() {
 
       if (error instanceof ApiError) {
         setApiState((current) => (current === 'connected' ? 'connected' : 'partial'))
+        if (error.code === 'VERSION_CONFLICT') {
+          await reconcileTicket(selectedTicket.id)
+        }
         const message =
           error.code === 'VERSION_CONFLICT'
             ? `工单 ${selectedTicket.id} 版本已变化，请重新加载后再分析${
@@ -1350,13 +1369,18 @@ function App() {
 
     setAssigneeActionTicketId(selectedTicket.id)
     try {
-      const updated = await updateTicket(selectedTicket.id, { assigneeName })
+      const updated = await updateTicket(selectedTicket.id, { assigneeName }, selectedTicket.version)
       setTickets((current) =>
         current.map((ticket) => (ticket.id === updated.id ? updated : ticket)),
       )
       showToast('工单已分配给演示管理员')
     } catch (error: unknown) {
-      showToast(error instanceof ApiError ? error.message : '服务不可用，负责人未更新')
+      if (error instanceof ApiError && error.code === 'VERSION_CONFLICT') {
+        await reconcileTicket(selectedTicket.id)
+        showToast('工单已被其他操作更新，请刷新后再更新负责人', 'error')
+        return
+      }
+      showToast(error instanceof ApiError ? error.message : '服务不可用，负责人未更新', 'error')
     } finally {
       setAssigneeActionTicketId(null)
     }
@@ -1387,11 +1411,14 @@ function App() {
       showToast('负责人已取消')
     } catch (error: unknown) {
       if (error instanceof ApiError) {
+        if (error.code === 'VERSION_CONFLICT') {
+          await reconcileTicket(selectedTicket.id)
+        }
         const message =
           error.code === 'VERSION_CONFLICT'
             ? '工单已被其他操作更新，请刷新后再取消负责人'
             : error.message
-        showToast(message)
+        showToast(message, 'error')
         return
       }
       showToast('服务不可用，负责人未取消')

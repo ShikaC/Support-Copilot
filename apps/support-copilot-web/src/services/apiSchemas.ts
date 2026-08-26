@@ -23,6 +23,20 @@ export const FALLBACK_REASONS = [
 const nonEmptyString = z.string().min(1)
 const timestamp = z.iso.datetime({ offset: true })
 export const prioritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+export const categorySchema = z.enum([
+  'UNCLASSIFIED',
+  'GENERAL',
+  'BILLING',
+  'ACCOUNT_ACCESS',
+  'INVOICE',
+  'DATA_EXPORT',
+  'SUBSCRIPTION',
+  'PRIVACY',
+  'SECURITY',
+  'LEGAL',
+  'TECHNICAL',
+  'DATA_RECOVERY',
+])
 export const analysisModeSchema = z.enum(['live', 'mock', 'fallback'])
 export const fallbackReasonSchema = z.enum(FALLBACK_REASONS)
 
@@ -60,7 +74,7 @@ export const analysisResultSchema = z
     promptVersion: nonEmptyString,
     classification: z.strictObject({
       intent: nonEmptyString,
-      category: nonEmptyString,
+      category: categorySchema,
       priority: prioritySchema,
       sentiment: z.enum(['POSITIVE', 'NEUTRAL', 'NEGATIVE']),
       confidence: z.number().min(0).max(1),
@@ -147,11 +161,10 @@ export const ticketResponseSchema = z.strictObject({
   subject: nonEmptyString,
   description: nonEmptyString,
   language: nonEmptyString,
-  category: nonEmptyString,
+  category: categorySchema,
   priority: prioritySchema,
   status: z.enum([
     'NEW',
-    'ANALYZING',
     'READY_FOR_REVIEW',
     'IN_PROGRESS',
     'NEEDS_ESCALATION',
