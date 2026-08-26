@@ -83,6 +83,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 65. [建立跨服务可靠性契约](./65-service-reliability-contracts.md)
 66. [治理知识发布并实施硬访问过滤](./66-knowledge-governance-and-access.md)
 67. [持久化版本化 Embedding artifact](./67-versioned-embedding-artifacts.md)
+68. [可追溯 live 评估与人工 groundedness 审核](./68-traceable-live-evaluation.md)
 
 ## 优化后的主流程
 

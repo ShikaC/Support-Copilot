@@ -143,8 +143,19 @@ print(
 }
 
 require_clean_commit() {
-  if [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]; then
-    fail "Git worktree must be clean so the live record can reference an exact commit"
+  local task_status
+  task_status="$(git -C "$ROOT_DIR" status --porcelain -- . \
+    ':(exclude)infra/README.md' \
+    ':(exclude)infra/compose.pilot.yml' \
+    ':(exclude)scripts/verify-mysql-persistence.sh')"
+  if [[ -n "$task_status" ]]; then
+    fail "Task 10 tracked scope must be clean so the live record can reference an exact commit"
+    return 1
+  fi
+  if [[ "$(shasum -a 256 "$ROOT_DIR/infra/README.md" | awk '{print $1}')" != "6d96929d9bc44db7d90aecc4583c03b3671b829b145abc5b769d7a782188ea85" \
+    || "$(shasum -a 256 "$ROOT_DIR/infra/compose.pilot.yml" | awk '{print $1}')" != "5e902c608b6e5984dde2f2242697349ac90921e104bad6dabcfa08cdecb58b32" \
+    || "$(shasum -a 256 "$ROOT_DIR/scripts/verify-mysql-persistence.sh" | awk '{print $1}')" != "1d092ba952dd57f9baf8c6d5f0ef81734b1884ff73fa4bf637e71989d53d03b4" ]]; then
+    fail "Protected Task 15 path hashes changed"
     return 1
   fi
 }
@@ -284,6 +295,7 @@ write_evidence() {
   local summary_json="$1"
   local history_summary_json="$2"
   local git_commit="$3"
+  local worktree_dirty="$4"
 
   python3 -c '
 import json
@@ -294,7 +306,7 @@ config = json.loads(sys.argv[1])
 summary = json.loads(sys.argv[2])
 history = json.loads(sys.argv[3])
 output_path = Path(sys.argv[4])
-validated_at, git_commit, ticket_id = sys.argv[5:8]
+validated_at, git_commit, ticket_id, worktree_dirty = sys.argv[5:9]
 
 if summary["retrievalMethod"] != "VECTOR":
     raise SystemExit("refusing to write success evidence without verified VECTOR retrieval")
@@ -317,7 +329,8 @@ content = "\n".join(
         "",
         f"- Validated at: `{validated_at}`",
         f"- Git commit: `{git_commit}`",
-        "- Worktree dirty: `false`",
+        f"- Worktree dirty: `{worktree_dirty}`",
+        "- Task 10 tracked scope clean: `true`",
         f"- Chat endpoint type: `{config['"'"'endpointType'"'"']}`",
         f"- Embedding endpoint type: `{config['"'"'embeddingEndpointType'"'"']}`",
         f"- Chat model: `{config['"'"'chatModel'"'"']}`",
@@ -362,12 +375,20 @@ content = "\n".join(
 output_path.parent.mkdir(parents=True, exist_ok=True)
 output_path.write_text(content, encoding="utf-8")
 print(f"Evidence record: {output_path}")
-' "$CONFIG_JSON" "$summary_json" "$history_summary_json" "$EVIDENCE_PATH" "$VALIDATED_AT" "$git_commit" "$TICKET_ID"
+' "$CONFIG_JSON" "$summary_json" "$history_summary_json" "$EVIDENCE_PATH" "$VALIDATED_AT" "$git_commit" "$TICKET_ID" "$worktree_dirty"
+}
+
+run_live_dataset_evaluation() {
+  (
+    cd "$AI_DIR"
+    .venv/bin/python -m evaluation.run_live_evaluation
+  )
+  printf 'Live dataset machine evaluation complete; publishable gate remains pending human review.\n'
 }
 
 run_success() {
   local health_file headers_file analysis_file history_file
-  local response_trace_header summary_json history_summary_json git_commit idempotency_key
+  local response_trace_header summary_json history_summary_json git_commit idempotency_key worktree_dirty
 
   run_preflight
   new_temp_file health
@@ -408,7 +429,12 @@ run_success() {
   printf 'Java history: latest mode=live status=SUCCEEDED traceId=preserved\n'
 
   git_commit="$(git -C "$ROOT_DIR" rev-parse HEAD)"
-  write_evidence "$summary_json" "$history_summary_json" "$git_commit"
+  worktree_dirty="false"
+  if [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]; then
+    worktree_dirty="true"
+  fi
+  write_evidence "$summary_json" "$history_summary_json" "$git_commit" "$worktree_dirty"
+  run_live_dataset_evaluation
 }
 
 main() {

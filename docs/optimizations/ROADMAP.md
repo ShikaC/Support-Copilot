@@ -32,6 +32,10 @@ Support-Copilot 后续不应继续以“增加页面数量”作为主要目标�
 
 ## 2. 当前基线
 
+### Task 10 traceable live evaluation（2026-08-27）
+
+Task 10 增加独立于 31-case deterministic mock 报告的版本化合成 live 数据集和严格报告格式。逐案例记录检索判定、retrieved/allowed/cited chunks、citation validity、response evidence indexes、runner latency、provider token availability、fallback 和默认 `NOT_REVIEWED`；provenance 绑定 dataset、release/corpus、active artifact manifest、provider/model、prompt、redacted config fingerprint 和 Git dirty truth。verifier 对 unknown release/artifact/chunk、forbidden/non-retrieved citation、invalid evidence index、stale Git、敏感模式和 usage/cost 失败关闭。人工 worksheet apply 只替换 review fields；完整 factual-support judgment 前 publishable gate 保持失败。一次运行只可称为该 dataset/run 的评估结果，不是生产准确率、SLO 或稳定性结论。
+
 ### 2.1 当前架构
 
 ~~~text

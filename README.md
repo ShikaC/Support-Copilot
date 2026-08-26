@@ -377,7 +377,7 @@ Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes
 ./scripts/check-live-rag.sh --success
 ```
 
-`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，并在 `services/support-copilot-ai/evaluation/reports/` 生成脱敏 Markdown 记录。记录包含知识来源类型、格式、片段数量和 SHA-256；配置 provenance 时还会记录索引版本、源文档数量和清单 SHA-256，但不包含本地路径或知识正文。该目录默认被 Git 忽略；真实成功后必须先人工确认记录中没有密钥或客户数据，再选择性强制加入 Git。
+`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，然后运行版本化合成 live 评估集。它在忽略的 `evaluation/reports/` 生成逐案例 JSON、Markdown 和人工审核 worksheet，记录 dataset/release/corpus/artifact/provider/model/prompt/redacted-config/Git provenance、runner 实测耗时、provider 暴露的 token 和引用映射。机器始终留下 `NOT_REVIEWED`，因此生成成功不等于可发布成功。
 
 不要把 API Key 写入代码或提交到 Git。ChatGPT 产品订阅不等同于 OpenAI API Key。
 
@@ -454,6 +454,18 @@ cd services/support-copilot-ai
 评估报告会写入 `services/support-copilot-ai/evaluation/reports/`，并刷新 `mock-latest.json` 与 `mock-latest.md`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。报告逐案例保存 retrieved/cited chunk 映射。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)；[2026-08-24 Mock 评估基线](docs/verification/mock-evaluation-2026-08-24.md) 是历史提交记录，不代表当前 HEAD。
 
 Java 指标接口会按 `EVALUATION_REPORT_PATH` 读取 `mock-latest.json`，再把报告中的数据集、样本数、模型、Prompt 版本、Top N/K、Hit@K、MRR、引用覆盖率、无证据安全率、P95 和门禁状态传给质量页面。默认路径是从 `services/support-copilot-api/` 启动 Java 时的 `../support-copilot-ai/evaluation/reports/mock-latest.json`；没有报告、报告损坏或字段不兼容时，接口仍返回工单指标，但 `evaluation` 为 `null`。
+
+Live 人审不修改机器报告或 provider 回复：
+
+```bash
+cd services/support-copilot-ai
+.venv/bin/python -m evaluation.live_review worksheet --report evaluation/reports/live-latest.json --output evaluation/reports/live-review.json
+# 人工填写 reviewer、factual_support、decision_note、reviewed_at 后：
+.venv/bin/python -m evaluation.live_review apply --report evaluation/reports/live-latest.json --worksheet evaluation/reports/live-review.json --output evaluation/reports/live-reviewed.json
+.venv/bin/python -m evaluation.verify_live_evaluation --report evaluation/reports/live-reviewed.json --dataset evaluation/data/live-v1.json --require-human
+```
+
+`factual_support` 只允许 `SUPPORTED/PARTIAL/UNSUPPORTED/NOT_REVIEWED`，机器不能填写前三项。没有明确可核查 pricing source 时 cost 保持 `null`，不得估算。Java 可将 `EVALUATION_REPORT_PATH` 指向忽略的 live 报告；质量页比例只表示该 dataset/run 的评估结果，不是生产准确率或 SLO。
 
 ### 自动化 CI
 

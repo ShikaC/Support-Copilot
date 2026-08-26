@@ -69,3 +69,9 @@ export EVALUATION_REPORT_PATH='/absolute/path/to/services/support-copilot-ai/eva
 ```
 
 Java 只读取报告中的稳定指标和来源元数据。报告缺失、JSON 损坏或必需字段不兼容时，`GET /api/metrics` 保留其他可用指标，并将 `evaluation` 返回为 `null`。
+
+## Traceable live evaluation
+
+`evaluation/data/live-v1.json` 是提交到 Git 的版本化合成数据集，不含真实客户 PII。正式服务和兼容 active embedding artifact 准备好后，仓库根目录的 `./scripts/check-live-rag.sh --success` 会执行该数据集并生成忽略的 `live-latest.json`、Markdown 和 review worksheet。
+
+机器报告只记录可观察事实，并将 groundedness label 留为 `NOT_REVIEWED`。使用 `python -m evaluation.live_review worksheet/apply` 生成和应用人工判断，再用 `python -m evaluation.verify_live_evaluation --require-human` 校验。verifier 对 provenance、引用范围、evidence indexes、Git metadata、敏感模式、usage/cost 和 review completeness 失败关闭。没有显式 pricing source 时 cost 为 null；所有 rate 只解释这一版本数据集的一次运行。

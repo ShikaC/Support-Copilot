@@ -103,4 +103,42 @@ class EvaluationReportReaderTests {
 
 		assertThat(report).isEmpty();
 	}
+
+	@Test
+	void readsLiveEvaluationSummaryWithoutTreatingItAsProductionAccuracy(@TempDir Path tempDir) throws Exception {
+		var reportPath = tempDir.resolve("live-latest.json");
+		Files.writeString(reportPath, """
+			{
+			  "report_kind": "live-evaluation",
+			  "run": {
+			    "timestamp": "2026-08-27T00:00:00Z",
+			    "dataset_id": "support-copilot-live-synthetic",
+			    "dataset_version": "1.0.0",
+			    "prompt_version": "ticket-analysis-v1",
+			    "top_n": 10,
+			    "top_k": 3
+			  },
+			  "provenance": {"chat_model": "chat-model"},
+			  "summary": {
+			    "total_cases": 4,
+			    "retrieval_success_rate": 1.0,
+			    "mean_reciprocal_rank": 1.0,
+			    "citation_valid_rate": 1.0,
+			    "no_evidence_safety_rate": 1.0,
+			    "average_latency_ms": 42.5,
+			    "p95_latency_ms": 50,
+			    "gate_reasons": ["human-review-incomplete"],
+			    "publishable": false
+			  }
+			}
+			""");
+
+		var report = new EvaluationReportReader(objectMapper, reportPath).read().orElseThrow();
+
+		assertThat(report.datasetName()).isEqualTo("support-copilot-live-synthetic@1.0.0");
+		assertThat(report.mode()).isEqualTo("live");
+		assertThat(report.totalCases()).isEqualTo(4);
+		assertThat(report.thresholdFailureCount()).isEqualTo(1);
+		assertThat(report.passed()).isFalse();
+	}
 }

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "dataset_id": "support-copilot-live-synthetic",
+  "version": "1.0.0",
+  "classification": "SYNTHETIC",
+  "cases": [
+    {
+      "id": "live-sso-001",
+      "classification": "SYNTHETIC",
+      "ticket": {"subject": "企业 SSO 登录失败", "description": "合成测试用户在企业身份提供方完成验证后仍无法登录。", "customer_tier": "ENTERPRISE"},
+      "expected_retrieval": {"evidence_required": true, "document_ids": ["kb-account-access"], "chunk_ids": ["chunk-account-sso-01"]},
+      "allowed_chunk_ids": ["chunk-account-sso-01", "chunk-account-lock-02"],
+      "human_review": {"reviewer": null, "factual_support": "NOT_REVIEWED", "decision_note": null, "reviewed_at": null}
+    },
+    {
+      "id": "live-billing-001",
+      "classification": "SYNTHETIC",
+      "ticket": {"subject": "账单出现重复扣款", "description": "合成测试账号在同一账期看到两笔相同金额的扣款记录。", "customer_tier": "STANDARD"},
+      "expected_retrieval": {"evidence_required": true, "document_ids": ["kb-billing-policy"], "chunk_ids": ["chunk-billing-07"]},
+      "allowed_chunk_ids": ["chunk-billing-07", "chunk-payment-04", "chunk-refund-02"],
+      "human_review": {"reviewer": null, "factual_support": "NOT_REVIEWED", "decision_note": null, "reviewed_at": null}
+    },
+    {
+      "id": "live-sync-001",
+      "classification": "SYNTHETIC",
+      "ticket": {"subject": "桌面端提示 SYNC-2047", "description": "合成测试设备同步失败并显示错误码 SYNC-2047，需要排查步骤。", "customer_tier": "STANDARD"},
+      "expected_retrieval": {"evidence_required": true, "document_ids": ["kb-sync-errors"], "chunk_ids": ["chunk-sync-2047"]},
+      "allowed_chunk_ids": ["chunk-sync-2047"],
+      "human_review": {"reviewer": null, "factual_support": "NOT_REVIEWED", "decision_note": null, "reviewed_at": null}
+    },
+    {
+      "id": "live-unsupported-001",
+      "classification": "SYNTHETIC",
+      "ticket": {"subject": "请求查询未知硬件保修", "description": "合成测试请求查询知识库中不存在的硬件保修政策。", "customer_tier": "STANDARD"},
+      "expected_retrieval": {"evidence_required": false, "document_ids": [], "chunk_ids": []},
+      "allowed_chunk_ids": [],
+      "human_review": {"reviewer": null, "factual_support": "NOT_REVIEWED", "decision_note": null, "reviewed_at": null}
+    }
+  ]
+}

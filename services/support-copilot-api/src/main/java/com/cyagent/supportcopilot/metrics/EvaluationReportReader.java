@@ -52,6 +52,10 @@ public class EvaluationReportReader {
 	}
 
 	private EvaluationSnapshot parse(JsonNode root) {
+		var reportKind = root.get("report_kind");
+		if (reportKind != null && reportKind.isString() && reportKind.asString().equals("live-evaluation")) {
+			return parseLive(root);
+		}
 		var metrics = requiredObject(root, "metrics");
 		var thresholdFailures = requiredArray(root, "threshold_failures");
 		var topN = requiredPositiveInt(root, "top_n");
@@ -76,6 +80,35 @@ public class EvaluationReportReader {
 			thresholdFailures.size(),
 			requiredBoolean(root, "passed"),
 			Instant.parse(requiredText(root, "generated_at"))
+		);
+	}
+
+	private EvaluationSnapshot parseLive(JsonNode root) {
+		var run = requiredObject(root, "run");
+		var provenance = requiredObject(root, "provenance");
+		var summary = requiredObject(root, "summary");
+		var topN = requiredPositiveInt(run, "top_n");
+		var topK = requiredPositiveInt(run, "top_k");
+		if (topK > topN) {
+			throw new IllegalArgumentException("top_k must not exceed top_n");
+		}
+		return new EvaluationSnapshot(
+			requiredText(run, "dataset_id") + "@" + requiredText(run, "dataset_version"),
+			"live",
+			requiredText(provenance, "chat_model"),
+			requiredText(run, "prompt_version"),
+			requiredPositiveInt(summary, "total_cases"),
+			topN,
+			topK,
+			requiredRate(summary, "retrieval_success_rate"),
+			requiredRate(summary, "mean_reciprocal_rank"),
+			requiredRate(summary, "citation_valid_rate"),
+			requiredRate(summary, "no_evidence_safety_rate"),
+			requiredNonNegativeDouble(summary, "average_latency_ms"),
+			requiredNonNegativeInt(summary, "p95_latency_ms"),
+			requiredArray(summary, "gate_reasons").size(),
+			requiredBoolean(summary, "publishable"),
+			Instant.parse(requiredText(run, "timestamp"))
 		);
 	}
 

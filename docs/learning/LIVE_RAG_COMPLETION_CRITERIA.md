@@ -44,6 +44,8 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 - 当前已有 Markdown 和文本型 PDF 的批量构建入口，但尚未支持扫描件 OCR、增量更新、审批发布和持久化向量索引。
 - live 检索和生成质量尚未用真实调用结果与固定评估集对照。
 
+Task 10 已增加版本化合成 live 数据集、逐案例引用/检索/token/runner latency 记录、release/corpus/artifact/model/config/Git provenance 校验，以及独立人工 groundedness worksheet。机器只生成 `NOT_REVIEWED`；只有真实 reviewer 填写 factual-support label、decision note 和 reviewed_at 且 verifier 通过，报告才可标记 publishable。新正式 live 运行和人审状态以 Task 10 evidence 为准，本段不预先宣称成功。
+
 准确表述应是：**真实模型和 Embedding API 的端到端 RAG 链路已完成一次脱敏验证；当前仍是单次 V1.5 验收，不代表成熟 RAG、生产稳定性或真实客服效果。**
 
 ## 3. 四个完成层级
@@ -140,6 +142,8 @@ Python health: mode=live、liveReady=true
 - 执行命令和通过或失败结果。
 
 不得记录 API Key、Authorization 头、真实客户数据或无法核实的效果结论。
+
+Traceable live evaluation 还必须记录 dataset id/version/checksum、knowledge release id/version/semantic checksum、active artifact id/manifest/provider/model/dimension/chunking、chat endpoint nonsecret identity/model、prompt/config fingerprint、Git SHA/dirty truth、逐案例 fallback/retrieved/allowed/cited/evidence-index/runner latency/token/cost availability 和人工 review。缺少明确 pricing source 时 cost 必须为 null。
 
 ## 6. 外部前提
 
