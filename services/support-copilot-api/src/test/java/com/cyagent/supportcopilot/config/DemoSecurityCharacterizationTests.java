@@ -10,7 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.cyagent.supportcopilot.analysis.review.ReviewActorProvider;
+import com.cyagent.supportcopilot.identity.TrustedActorProvider;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -21,7 +21,7 @@ class DemoSecurityCharacterizationTests {
 	private MockMvc mockMvc;
 
 	@Autowired
-	private ReviewActorProvider reviewActorProvider;
+	private TrustedActorProvider trustedActorProvider;
 
 	@Test
 	void demoBusinessApiIsPublicWithoutCredentials() throws Exception {
@@ -31,9 +31,10 @@ class DemoSecurityCharacterizationTests {
 
 	@Test
 	void demoUsesAnExplicitAnonymousDemoActor() {
-		var actor = reviewActorProvider.currentActor();
+		var actor = trustedActorProvider.currentActor();
 
-		org.assertj.core.api.Assertions.assertThat(actor.type()).isEqualTo("UNAUTHENTICATED_DEMO");
-		org.assertj.core.api.Assertions.assertThat(actor.label()).isEqualTo("匿名演示操作人");
+		org.assertj.core.api.Assertions.assertThat(actor.type().name()).isEqualTo("UNAUTHENTICATED_DEMO");
+		org.assertj.core.api.Assertions.assertThat(actor.subject()).isEqualTo("anonymous-demo");
+		org.assertj.core.api.Assertions.assertThat(actor.displayLabel()).isEqualTo("匿名演示操作人");
 	}
 }

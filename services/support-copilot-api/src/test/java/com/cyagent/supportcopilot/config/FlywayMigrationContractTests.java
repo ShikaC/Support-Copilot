@@ -21,4 +21,25 @@ class FlywayMigrationContractTests {
 			.contains("unique", "index")
 			.doesNotContain("drop table", "truncate table", "delete from", "flyway clean");
 	}
+
+	@Test
+	void auditMigrationCreatesAppendOnlyQueryIndexesWithoutDestructiveStatements() throws IOException {
+		var migration = new ClassPathResource("db/migration/V2__trusted_audit_events.sql")
+			.getContentAsString(StandardCharsets.UTF_8)
+			.toLowerCase();
+
+		assertThat(migration)
+			.contains("create table audit_events")
+			.contains("actor_subject", "actor_type", "actor_roles_json")
+			.contains("action", "target_type", "target_id", "target_version")
+			.contains("trace_id", "metadata_json", "created_at")
+			.contains("idx_audit_events_created", "idx_audit_events_target_created")
+			.doesNotContain(
+				"drop table",
+				"truncate table",
+				"delete from",
+				"update audit_events",
+				"flyway clean"
+			);
+	}
 }

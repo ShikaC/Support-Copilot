@@ -33,6 +33,7 @@ import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.common.TestTrustedActors;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -144,7 +145,12 @@ class ReviewActorIdentityContractTests {
 		ticketId = ticket.getId();
 		ticketRepository.saveAndFlush(ticket);
 		var analysis = mockAnalysisFactory.createMock(ticket);
-		analysisPersistenceService.persist(ticket.getId(), ticket.getVersion(), analysis);
+		TestTrustedActors.authenticate("review-identity-fixture-agent", "SUPPORT_AGENT");
+		try {
+			analysisPersistenceService.persist(ticket.getId(), ticket.getVersion(), analysis);
+		} finally {
+			TestTrustedActors.clear();
+		}
 		return analysis.id();
 	}
 

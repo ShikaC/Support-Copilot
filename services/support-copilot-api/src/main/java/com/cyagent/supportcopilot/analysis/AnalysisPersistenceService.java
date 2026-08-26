@@ -13,6 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketDomain;
+import com.cyagent.supportcopilot.audit.AuditAction;
+import com.cyagent.supportcopilot.audit.AuditEventCommand;
+import com.cyagent.supportcopilot.audit.AuditEventRecorder;
+import com.cyagent.supportcopilot.audit.AuditMetadata;
+import com.cyagent.supportcopilot.audit.AuditTargetType;
 
 @Service
 public class AnalysisPersistenceService {
@@ -20,15 +25,18 @@ public class AnalysisPersistenceService {
 	private final TicketRepository ticketRepository;
 	private final AnalysisRunRepository analysisRunRepository;
 	private final ObjectMapper objectMapper;
+	private final AuditEventRecorder auditEventRecorder;
 
 	public AnalysisPersistenceService(
 		TicketRepository ticketRepository,
 		AnalysisRunRepository analysisRunRepository,
-		ObjectMapper objectMapper
+		ObjectMapper objectMapper,
+		AuditEventRecorder auditEventRecorder
 	) {
 		this.ticketRepository = ticketRepository;
 		this.analysisRunRepository = analysisRunRepository;
 		this.objectMapper = objectMapper;
+		this.auditEventRecorder = auditEventRecorder;
 	}
 
 	@Transactional
@@ -72,6 +80,19 @@ public class AnalysisPersistenceService {
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new TicketVersionConflictException(ticketId, expectedVersion, null, exception);
 		}
+		auditEventRecorder.record(new AuditEventCommand(
+			AuditAction.ANALYSIS_PERSISTED,
+			AuditTargetType.ANALYSIS,
+			response.id(),
+			expectedVersion,
+			new AuditMetadata.Analysis(
+				AuditMetadata.AnalysisMode.parse(response.mode()),
+				AuditMetadata.AnalysisStatus.parse(response.status()),
+				response.fallbackReason(),
+				expectedVersion,
+				response.id()
+			)
+		));
 	}
 
 	private String serialize(AnalysisResponse response) {

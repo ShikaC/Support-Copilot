@@ -18,6 +18,12 @@ import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.AnalysisRun;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
+import com.cyagent.supportcopilot.identity.TrustedActorProvider;
+import com.cyagent.supportcopilot.audit.AuditAction;
+import com.cyagent.supportcopilot.audit.AuditEventCommand;
+import com.cyagent.supportcopilot.audit.AuditEventRecorder;
+import com.cyagent.supportcopilot.audit.AuditMetadata;
+import com.cyagent.supportcopilot.audit.AuditTargetType;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 
@@ -28,20 +34,23 @@ public class AnalysisReviewService {
 	private final AnalysisRunRepository analysisRunRepository;
 	private final TicketRepository ticketRepository;
 	private final ObjectMapper objectMapper;
-	private final ReviewActorProvider reviewActorProvider;
+	private final TrustedActorProvider trustedActorProvider;
+	private final AuditEventRecorder auditEventRecorder;
 
 	public AnalysisReviewService(
 		AnalysisReviewRepository analysisReviewRepository,
 		AnalysisRunRepository analysisRunRepository,
 		TicketRepository ticketRepository,
 		ObjectMapper objectMapper,
-		ReviewActorProvider reviewActorProvider
+		TrustedActorProvider trustedActorProvider,
+		AuditEventRecorder auditEventRecorder
 	) {
 		this.analysisReviewRepository = analysisReviewRepository;
 		this.analysisRunRepository = analysisRunRepository;
 		this.ticketRepository = ticketRepository;
 		this.objectMapper = objectMapper;
-		this.reviewActorProvider = reviewActorProvider;
+		this.trustedActorProvider = trustedActorProvider;
+		this.auditEventRecorder = auditEventRecorder;
 	}
 
 	@Transactional
@@ -140,21 +149,41 @@ public class AnalysisReviewService {
 		String reviewedReply,
 		String reason
 	) {
-		var actor = reviewActorProvider.currentActor();
+		var actor = trustedActorProvider.currentActor();
 		var review = new AnalysisReview();
 		review.setId("review-" + UUID.randomUUID());
 		review.setTicketId(context.run().getTicketId());
 		review.setAnalysisId(context.run().getId());
 		review.setAction(action);
-		review.setReviewerType(actor.type());
-		review.setReviewerLabel(actor.label());
+		review.setReviewerType(actor.type().name());
+		review.setReviewerLabel(actor.displayLabel());
 		review.setOriginalReplyContent(originalReply);
 		review.setReviewedReplyContent(reviewedReply);
 		review.setReason(reason);
 		review.setTicketVersion(context.ticket().getVersion());
 		review.setTraceId(context.run().getTraceId());
 		review.setCreatedAt(Instant.now());
-		return toResponse(analysisReviewRepository.save(review));
+		var saved = analysisReviewRepository.saveAndFlush(review);
+		auditEventRecorder.record(new AuditEventCommand(
+			auditAction(action),
+			AuditTargetType.ANALYSIS_REVIEW,
+			saved.getId(),
+			context.ticket().getVersion(),
+			new AuditMetadata.Review(
+				AuditMetadata.ReviewAction.valueOf(action.name()),
+				context.run().getSourceTicketVersion(),
+				context.run().getId()
+			)
+		));
+		return toResponse(saved);
+	}
+
+	private AuditAction auditAction(AnalysisReviewAction action) {
+		return switch (action) {
+			case APPROVED -> AuditAction.ANALYSIS_REVIEW_APPROVED;
+			case EDITED -> AuditAction.ANALYSIS_REVIEW_EDITED;
+			case REJECTED -> AuditAction.ANALYSIS_REVIEW_REJECTED;
+		};
 	}
 
 	private AnalysisResponse deserialize(AnalysisRun run) {

@@ -20,6 +20,12 @@ import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
+import com.cyagent.supportcopilot.audit.AuditAction;
+import com.cyagent.supportcopilot.audit.AuditChangedField;
+import com.cyagent.supportcopilot.audit.AuditEventCommand;
+import com.cyagent.supportcopilot.audit.AuditEventRecorder;
+import com.cyagent.supportcopilot.audit.AuditMetadata;
+import com.cyagent.supportcopilot.audit.AuditTargetType;
 import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketEventResponse;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketResponse;
@@ -33,15 +39,18 @@ public class TicketService {
 	private final TicketRepository ticketRepository;
 	private final AnalysisService analysisService;
 	private final AnalysisReviewService analysisReviewService;
+	private final AuditEventRecorder auditEventRecorder;
 
 	public TicketService(
 		TicketRepository ticketRepository,
 		AnalysisService analysisService,
-		AnalysisReviewService analysisReviewService
+		AnalysisReviewService analysisReviewService,
+		AuditEventRecorder auditEventRecorder
 	) {
 		this.ticketRepository = ticketRepository;
 		this.analysisService = analysisService;
 		this.analysisReviewService = analysisReviewService;
+		this.auditEventRecorder = auditEventRecorder;
 	}
 
 	public List<TicketResponse> list(String status, String priority, String keyword) {
@@ -77,7 +86,15 @@ public class TicketService {
 		ticket.setSlaDeadline(now.plus(Duration.ofHours(8)));
 		ticket.setCreatedAt(now);
 		ticket.setUpdatedAt(now);
-		return toResponse(ticketRepository.save(ticket));
+		var saved = ticketRepository.saveAndFlush(ticket);
+		auditEventRecorder.record(new AuditEventCommand(
+			AuditAction.TICKET_CREATED,
+			AuditTargetType.TICKET,
+			saved.getId(),
+			saved.getVersion(),
+			new AuditMetadata.None()
+		));
+		return toResponse(saved);
 	}
 
 	@Transactional
@@ -86,32 +103,40 @@ public class TicketService {
 		if (ticket.getVersion() != request.expectedVersion()) {
 			throw new TicketVersionConflictException(id, request.expectedVersion(), ticket.getVersion());
 		}
-		var changed = false;
+		var changedFields = new ArrayList<AuditChangedField>();
 		if (request.status() != null) {
 			TicketDomain.requireManualTransition(id, ticket.getStatus(), request.status());
 			if (!ticket.getStatus().equals(request.status().name())) {
 				ticket.setStatus(request.status().name());
-				changed = true;
+				changedFields.add(AuditChangedField.STATUS);
 			}
 		}
 		if (request.priority() != null && !request.priority().name().equals(ticket.getPriority())) {
 			ticket.setPriority(request.priority().name());
-			changed = true;
+			changedFields.add(AuditChangedField.PRIORITY);
 		}
 		if (request.category() != null && !request.category().name().equals(ticket.getCategory())) {
 			ticket.setCategory(request.category().name());
-			changed = true;
+			changedFields.add(AuditChangedField.CATEGORY);
 		}
 		if (request.assigneeName() != null && !request.assigneeName().equals(ticket.getAssigneeName())) {
 			ticket.setAssigneeName(request.assigneeName());
-			changed = true;
+			changedFields.add(AuditChangedField.ASSIGNEE);
 		}
-		if (!changed) {
+		if (changedFields.isEmpty()) {
 			return toResponse(ticket);
 		}
 		ticket.setUpdatedAt(Instant.now());
 		try {
-			return toResponse(ticketRepository.saveAndFlush(ticket));
+			var saved = ticketRepository.saveAndFlush(ticket);
+			auditEventRecorder.record(new AuditEventCommand(
+				AuditAction.TICKET_UPDATED,
+				AuditTargetType.TICKET,
+				saved.getId(),
+				saved.getVersion(),
+				new AuditMetadata.TicketChange(changedFields)
+			));
+			return toResponse(saved);
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new TicketVersionConflictException(id, request.expectedVersion(), null, exception);
 		}
@@ -136,6 +161,13 @@ public class TicketService {
 		try {
 			// 显式 flush，让并发更新在本次请求中尽早转换成可识别的版本冲突。
 			ticketRepository.saveAndFlush(ticket);
+			auditEventRecorder.record(new AuditEventCommand(
+				AuditAction.TICKET_UNASSIGNED,
+				AuditTargetType.TICKET,
+				ticket.getId(),
+				ticket.getVersion(),
+				new AuditMetadata.TicketChange(List.of(AuditChangedField.ASSIGNEE))
+			));
 		} catch (ObjectOptimisticLockingFailureException exception) {
 			throw new TicketVersionConflictException(id, expectedVersion, null, exception);
 		}

@@ -55,6 +55,8 @@ public class SecurityConfig {
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/actuator/health").permitAll()
+				.requestMatchers("/api/audit-events/**")
+					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/api/tickets/*/analyses/*/reviews/**")
 					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/api/tickets/**", "/api/knowledge/**", "/api/metrics/**")

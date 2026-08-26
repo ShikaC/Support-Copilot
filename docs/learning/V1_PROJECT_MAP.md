@@ -303,6 +303,7 @@ usage                耗时和 token 信息
 - React 只有在 Java 命令成功后才更新真实工单的负责人；本地演示工单才允许本地演示修改。
 - 回复建议的采纳或编辑后采纳会写入独立 `analysis_reviews` 记录，保存原始内容、审核后内容、动作、工单版本和 `traceId`；只有 Java 成功响应后前端才显示已记录。
 - 回复审核事务先锁定工单行，只接受当前工单的最新分析，并拒绝分析完成后又被修改过的工单；同内容的顺序重试复用已有记录。
+- 工单创建/实际变更、分析持久化和人工审核在各自业务事务内写入一条可信 `AuditEvent`；no-op、stale、冲突和同内容审核重放不写事件。
 
 相关文档：`docs/optimizations/v1-round-1/`
 
@@ -310,8 +311,10 @@ usage                耗时和 token 信息
 
 - Java 已按 JWT roles 保护 tickets、knowledge、metrics、reviews 和 actuator；React 登录/token adapter 尚未完成，真实 OIDC issuer 联调留待 Task 15。
 - 取消负责人已经有命令接口、版本冲突和终态检查，但尚未形成可信的权限检查。
-- 安全 profile 的审核操作人来自 JWT subject，浏览器 actor header/body 不被信任；只有 `demo` 使用明确的匿名演示 actor。通用审计事件仍未实现。
+- 安全 profile 的审核与审计 actor 来自同一个 JWT trusted actor provider，浏览器 actor/action/metadata 不被信任；只有 `demo` 使用明确的 `anonymous-demo` actor。
+- `GET /api/audit-events` 只允许 reviewer/admin，并使用 `createdAt + id` keyset 分页；事件 metadata 只允许变更字段、分析状态/模式/fallback、审核动作、来源版本和结果 ID。
 - `AnalysisReview` 是持久化审核记录，但工单页面中的 `TicketEventResponse` 仍是根据业务数据派生的响应 DTO，不是独立持久化的通用审计日志。
+- 知识发布审计接入留待 Task 8；V2 migration 的 MySQL checksum、索引和事务 parity 留待 Task 15。
 - 审核相同内容的顺序重试可复用记录，并发重试仍可能竞争；尚未使用持久化请求 ID 或数据库唯一约束保证跨实例幂等。
 - 独立的持久化幂等请求记录尚未实现；分析 single-flight 只覆盖单 Java 实例内的在途请求，取消负责人依靠“已经没有负责人时不再写入”实现状态幂等。
 - 工单和指标仍不是同一个后端快照，严格一致性需要统一初始化接口或明确统计时间范围。

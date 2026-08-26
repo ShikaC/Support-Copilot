@@ -31,6 +31,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
@@ -62,6 +67,9 @@ class PilotSecurityContractTests {
 	@Autowired
 	private AnalysisPersistenceService analysisPersistenceService;
 
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
 	private String ticketId;
 
 	@Value("${support-copilot.security.test-jwt-secret}")
@@ -69,6 +77,7 @@ class PilotSecurityContractTests {
 
 	@AfterEach
 	void cleanUp() {
+		jdbcTemplate.update("delete from audit_events");
 		if (ticketId != null) {
 			analysisReviewRepository.deleteAllByTicketId(ticketId);
 			analysisRunRepository.findByTicketIdOrderByCreatedAtDesc(ticketId)
@@ -238,7 +247,19 @@ class PilotSecurityContractTests {
 	private String saveReviewableAnalysis() {
 		var ticket = saveTicket();
 		var analysis = mockAnalysisFactory.createMock(ticket);
-		analysisPersistenceService.persist(ticket.getId(), ticket.getVersion(), analysis);
+		var jwt = Jwt.withTokenValue("synthetic-security-fixture-jwt")
+			.header("alg", "none")
+			.subject("security-fixture-agent")
+			.build();
+		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
+			jwt,
+			java.util.List.of(new SimpleGrantedAuthority("ROLE_SUPPORT_AGENT"))
+		));
+		try {
+			analysisPersistenceService.persist(ticket.getId(), ticket.getVersion(), analysis);
+		} finally {
+			SecurityContextHolder.clearContext();
+		}
 		return analysis.id();
 	}
 

@@ -8,12 +8,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
+import com.cyagent.supportcopilot.common.TestTrustedActors;
 import com.cyagent.supportcopilot.ticket.TicketDtos.UpdateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDomain.Status;
 
@@ -29,8 +31,14 @@ class TicketUnassignServiceTests {
 
 	private String ticketId;
 
+	@BeforeEach
+	void authenticateAgent() {
+		TestTrustedActors.authenticate("ticket-unassign-test-agent", "SUPPORT_AGENT");
+	}
+
 	@AfterEach
 	void cleanUp() {
+		TestTrustedActors.clear();
 		if (ticketId != null) {
 			ticketRepository.deleteById(ticketId);
 		}

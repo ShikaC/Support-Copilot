@@ -14,6 +14,7 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - `demo`/`test` 使用隔离 H2；`local`/`pilot` 已准备 Flyway 管理的 MySQL 8 配置与 migration 契约，实库验证留待 Task 15。
 - Java Resource Server 已按 `SUPPORT_AGENT`、`SUPPORT_REVIEWER`、`SUPPORT_ADMIN` 执行 JWT 角色门禁；真实 pilot OIDC/MySQL 联调仍留待 Task 15。
 - Java 调用 Python 时使用仅服务端可见的 `X-Internal-Service-Token`；Python `/health` 公开，`/analyze` 在进入工作流前校验该凭据。
+- 工单创建/实际变更、分析持久化和人工审核会在同一事务写入不可编辑的可信审计事件；事件只保存 JWT/演示身份、受控动作与目标、版本、`traceId` 和白名单元数据。
 - FastAPI `mock`、`live` 和 `fallback` 三种运行模式。
 - Java 到 Python 的超时与业务降级。
 - OpenAI Responses API 结构化输出和进程内向量检索的 live 模式；2026-08-26 已在干净提交上完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
@@ -172,9 +173,10 @@ curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 | `/actuator/health` | 允许 | 允许 | 允许 | 允许 |
 | tickets、knowledge search、quality metrics | 401 | 允许 | 允许 | 允许 |
 | analysis reviews 读写 | 401 | 403 | 允许 | 允许 |
+| `GET /api/audit-events` | 401 | 403 | 允许 | 允许 |
 | 其他 `/actuator/**` | 401 | 403 | 403 | 允许 |
 
-401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核操作人来自 JWT subject，不读取浏览器 actor header/body；`demo` 只使用明确标记的匿名演示身份。当前 React 仍只支持匿名 demo 工作流，浏览器 JWT adapter 属于 Task 11；真实 OIDC issuer、MySQL 与 pilot 组合验收属于 Task 15。
+401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。当前 React 仍只支持匿名 demo 工作流，浏览器 JWT adapter 属于 Task 11；真实 OIDC issuer、MySQL 与 pilot 组合验收属于 Task 15。
 
 ### 3. React 前端
 
@@ -362,6 +364,14 @@ cd ../support-copilot-ai
 .venv/bin/pytest -q tests/test_internal_auth.py
 ```
 
+审计事务、脱敏、角色与 keyset 分页 focused tests：
+
+```bash
+cd services/support-copilot-api
+./gradlew test --tests '*AuditEventIntegrationTests' --no-daemon
+./gradlew test --tests '*FlywayMigrationContractTests' --tests '*PilotSecurityContractTests' --no-daemon
+```
+
 普通测试显式选择隔离的 `test` profile。也可以只验证四个非容器 profile/migration 契约：
 
 ```bash
@@ -458,7 +468,8 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 ## 当前限制
 
 - `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，但真实 MySQL 持久化仍待 Task 15 验证。
-- 回复审核会持久化原始建议、采纳后的内容或拒绝原因、动作、工单版本、`traceId` 和可信 actor。安全 profile 从 JWT subject 派生 actor；`demo` 使用明确标记的匿名演示 actor。通用 append-only 审计仍属于 Task 5。
+- 当前 append-only 审计覆盖已提交的工单创建/实际变更、分析持久化和 `APPROVED`/`EDITED`/`REJECTED` 审核；元数据白名单不保存工单正文、回复、拒绝原因、证据、provider payload、token 或异常消息。知识发布接入留待 Task 8。
+- 审计在 H2 `test` profile 已完成事务与真实 HTTP 验证，但 V2 migration 尚未在 MySQL 执行；checksum、索引与事务 parity 属于 Task 15，当前不构成生产或合规审计声明。
 - JWT endpoint policy 与合成 test decoder 已验证，但 React 登录/token adapter 尚未实现；真实 pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。

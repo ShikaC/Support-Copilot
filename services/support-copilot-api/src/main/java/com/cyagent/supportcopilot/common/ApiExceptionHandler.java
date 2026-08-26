@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.analysis.review.StaleAnalysisReviewException;
+import com.cyagent.supportcopilot.audit.AuditQueryException;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketStateConflictException;
@@ -27,6 +28,12 @@ public class ApiExceptionHandler {
 
 	public ApiExceptionHandler(TicketRepository ticketRepository) {
 		this.ticketRepository = ticketRepository;
+	}
+
+	@ExceptionHandler(AuditQueryException.class)
+	ResponseEntity<ApiError> handleAuditQuery(AuditQueryException exception, HttpServletRequest request) {
+		return ResponseEntity.badRequest()
+			.body(error("INVALID_AUDIT_QUERY", "审计查询参数不符合约束。", request));
 	}
 
 	@ExceptionHandler(EntityNotFoundException.class)

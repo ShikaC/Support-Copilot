@@ -147,6 +147,8 @@ Task 3 的修订范围是完成 demo/test/local/pilot 配置隔离、非破坏�
 
 Task 4 已把 Java 业务 API 收紧为 JWT role policy，并用合成签名 JWT 在 `test` profile 验证 agent/reviewer/admin 的 401、403、2xx 和授权后 409。审核 actor 来自 JWT subject；Java-to-Python `/analyze` 使用 `X-Internal-Service-Token`，Python 在 workflow/provider 前以常量时间比较拒绝错误凭据。`demo` 仍是唯一匿名业务模式。React JWT adapter、真实 OIDC、MySQL 与 pilot 组合 parity 留待 Task 11/15，当前不能描述为生产身份部署。
 
+Task 5 已为工单创建/实际变更、分析持久化和三种审核动作增加同事务 append-only `AuditEvent`。actor 来自统一 trusted actor provider，metadata 使用受控类型与 Jackson 白名单序列化；no-op、stale、冲突和同内容审核重放不增加事件。审计查询只允许 reviewer/admin，并使用 `createdAt + id` keyset cursor。H2 自动化与隔离 HTTP/数据库 canary 验证已通过；知识发布接入属于 Task 8，MySQL V2 migration/checksum/index/事务 parity 属于 Task 15，不能称为生产或合规审计。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
@@ -888,7 +890,7 @@ FALLBACK
 - 工单版本。
 - traceId。
 
-当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录操作身份、时间、分析 ID、原始建议、采纳后内容或拒绝原因、动作、工单版本和 `traceId`。安全 profile 的操作身份来自 JWT subject，只有 `demo` 使用明确匿名演示 actor；通用审计日志、审核请求并发幂等、真实 OIDC 和生产数据库尚未实现，因此仍不能称为生产审计能力。
+当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录完整业务审核内容；另有 append-only `AuditEvent` 只保存可信 actor、受控动作/目标、版本、`traceId` 和脱敏白名单 metadata。两者在同一事务提交，同内容重放不新增审核或审计行。知识发布审计、审核请求并发幂等、真实 OIDC 和 MySQL parity 尚未完成，因此仍不能称为生产或合规审计能力。
 
 ### P5-03 权限边界
 

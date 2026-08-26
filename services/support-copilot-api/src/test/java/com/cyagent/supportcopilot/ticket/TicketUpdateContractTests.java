@@ -39,7 +39,9 @@ import tools.jackson.databind.json.JsonMapper;
 import com.cyagent.supportcopilot.analysis.AnalysisService;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
+import com.cyagent.supportcopilot.audit.AuditEventRecorder;
 import com.cyagent.supportcopilot.common.ApiExceptionHandler;
+import com.cyagent.supportcopilot.common.TestTrustedActors;
 import com.cyagent.supportcopilot.ticket.TicketDomain.Priority;
 
 @SpringBootTest
@@ -63,6 +65,7 @@ class TicketUpdateContractTests {
 
 	@BeforeEach
 	void setUp() {
+		TestTrustedActors.authenticate("ticket-contract-test-agent", "SUPPORT_AGENT");
 		mockMvc = MockMvcBuilders
 			.standaloneSetup(new TicketController(ticketService, analysisService))
 			.setControllerAdvice(new ApiExceptionHandler(ticketRepository))
@@ -73,6 +76,7 @@ class TicketUpdateContractTests {
 
 	@AfterEach
 	void cleanUp() {
+		TestTrustedActors.clear();
 		if (ticketId != null) {
 			ticketRepository.deleteById(ticketId);
 		}
@@ -211,7 +215,8 @@ class TicketUpdateContractTests {
 		var service = new TicketService(
 			repository,
 			mock(AnalysisService.class),
-			mock(AnalysisReviewService.class)
+			mock(AnalysisReviewService.class),
+			mock(AuditEventRecorder.class)
 		);
 
 		assertThatThrownBy(() -> service.update(
@@ -384,6 +389,7 @@ class TicketUpdateContractTests {
 	private Object updateAfter(CountDownLatch start, String id, long expectedVersion, Priority priority) {
 		try {
 			start.await();
+			TestTrustedActors.authenticate("ticket-concurrency-test-agent", "SUPPORT_AGENT");
 			return ticketService.update(
 				id,
 				new TicketDtos.UpdateTicketRequest(null, priority, null, null, expectedVersion)
@@ -393,6 +399,8 @@ class TicketUpdateContractTests {
 		} catch (InterruptedException exception) {
 			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Concurrent contract test was interrupted", exception);
+		} finally {
+			TestTrustedActors.clear();
 		}
 	}
 

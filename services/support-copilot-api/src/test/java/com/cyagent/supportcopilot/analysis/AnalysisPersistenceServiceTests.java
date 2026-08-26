@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -17,6 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.common.TestTrustedActors;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -36,8 +38,14 @@ class AnalysisPersistenceServiceTests {
 
 	private String ticketId;
 
+	@BeforeEach
+	void authenticateAgent() {
+		TestTrustedActors.authenticate("analysis-persistence-test-agent", "SUPPORT_AGENT");
+	}
+
 	@AfterEach
 	void cleanUp() {
+		TestTrustedActors.clear();
 		if (ticketId != null) {
 			analysisRunRepository.findByTicketIdOrderByCreatedAtDesc(ticketId)
 				.forEach(analysisRunRepository::delete);
