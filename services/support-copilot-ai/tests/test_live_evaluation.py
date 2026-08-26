@@ -1,13 +1,14 @@
-from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+from app.errors import FallbackReason
 from evaluation.live_dataset import load_live_dataset
 from evaluation.live_models import LiveEvaluationReport, VerificationContext
+from evaluation.live_pricing import apply_pricing
 from evaluation.live_review import apply_review_worksheet, create_review_worksheet
-from evaluation.live_runner import apply_pricing
+from evaluation.live_runner import citations_valid, retrieval_succeeded
 from evaluation.live_verifier import verify_live_report
 
 
@@ -182,3 +183,10 @@ def test_cost_requires_explicit_model_bound_pricing_source(tmp_path: Path) -> No
     assert priced[0].cost is not None
     assert priced[0].cost.amount == 0.00004
     assert priced[0].cost.pricing_source == "synthetic-test-price-card"
+
+
+def test_no_evidence_success_requires_explicit_insufficient_evidence_fallback() -> None:
+    assert retrieval_succeeded(False, (), (), FallbackReason.INSUFFICIENT_EVIDENCE)
+    assert citations_valid(False, (), (), (), FallbackReason.INSUFFICIENT_EVIDENCE)
+    assert not retrieval_succeeded(False, (), (), FallbackReason.INVALID_MODEL_RESPONSE)
+    assert not citations_valid(False, (), (), (), FallbackReason.INVALID_MODEL_RESPONSE)

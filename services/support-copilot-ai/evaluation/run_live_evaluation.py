@@ -13,7 +13,8 @@ from app.workflow import AnalysisWorkflow
 from evaluation.live_dataset import load_live_dataset
 from evaluation.live_markdown import render_live_markdown
 from evaluation.live_review import create_review_worksheet
-from evaluation.live_runner import apply_pricing, build_live_report, run_live_cases
+from evaluation.live_pricing import apply_pricing
+from evaluation.live_runner import build_live_report, run_live_cases
 
 SERVICE_DIR = Path(__file__).parents[1]
 DEFAULT_DATASET = SERVICE_DIR / "evaluation" / "data" / "live-v1.json"
