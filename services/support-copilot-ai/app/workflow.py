@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import assert_never
 import uuid
 from datetime import UTC, datetime
 
@@ -65,6 +66,7 @@ class AnalysisWorkflow:
                     hits,
                     request.options.prompt_version,
                 )
+                self._retriever.readiness.record_live_generation_success()
             else:
                 draft = self._local_policy.draft(request, hits)
                 input_tokens, output_tokens = 0, 0
@@ -130,6 +132,13 @@ class AnalysisWorkflow:
         except RecoverableAiError as exc:
             if not live:
                 raise
+            match exc.operation:
+                case "embedding":
+                    self._retriever.readiness.record_live_retrieval_failure()
+                case "structured_generation":
+                    self._retriever.readiness.record_live_generation_failure()
+                case unreachable:
+                    assert_never(unreachable)
             logger.warning(
                 "analysis.external_failure",
                 extra={

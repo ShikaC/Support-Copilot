@@ -151,7 +151,7 @@ Task 5 已为工单创建/实际变更、分析持久化和三种审核动作增
 
 Task 6 为分析和全部人工审核写命令增加 durable `Idempotency-Key`。Flyway V3 保存全局唯一键、命令/路由、SHA-256 规范化指纹、PENDING/COMPLETED/FAILED 状态、owner lease、原始 HTTP 状态/响应和时间戳；相同命令重放不重复 provider、业务或审计，不同目标/动作/内容返回 409。业务、审计和完成响应同事务提交，owner 通过续租避免被活跃请求窃取，等待有明确上限，过期 owner 可恢复。React 为新命令生成 UUID，并只在未收到 HTTP 响应的网络失败后复用键。文件型 H2 的两个独立 Spring context、重启和故障场景已验证；MySQL V3 并发、重启、锁与事务 parity 明确留给 Task 15。
 
-Task 7 已在 Java-to-Python 边界增加单一总截止时间、仅针对 429/非 504 5xx 的有界重试、circuit、semaphore bulkhead 和低基数 Micrometer 指标；Python 504、4xx、认证、校验及成功响应契约错误不会重试，契约/程序错误不会转成 fallback。OpenAI SDK 实际重试固定为 0，避免与 Java 相乘。Python 保留 `/health` 并增加 liveness/readiness、稳定错误 envelope、响应 trace header 和脱敏结构化日志；`/analyze` 只接受 1 至 80 个安全 trace 字符，要求 header/body 相同，并在工作流前拒绝换行、超长或不匹配的 body trace。Java probe 公开但不显示组件详情。Wire-level 和隔离 HTTP 证据只证明本地单实例契约，不代表分布式保护、生产容量或 SLO。
+Task 7 已在 Java-to-Python 边界增加单一总截止时间、仅针对 429/非 504 5xx 的有界重试、circuit、semaphore bulkhead 和低基数 Micrometer 指标；Java 总尝试数配置只允许 1 至 2。Python 504、4xx、认证、校验及成功响应契约错误不会重试，契约/程序错误不会转成 fallback。OpenAI SDK 实际重试固定为 0，避免与 Java 相乘。Python 保留 `/health` 并增加 liveness/readiness、稳定错误 envelope、响应 trace header 和脱敏结构化日志；readiness 不探测外部 API，而由真实 live Embedding/索引与结构化生成的成功或类型化可恢复失败更新线程安全的进程内状态。`/analyze` 只接受 1 至 80 个安全 trace 字符，要求 header/body 相同，并在工作流前拒绝换行、超长或不匹配的 body trace。Java probe 公开但不显示组件详情。readiness 在首次 live 流量前只能反映已校验配置/corpus，重启后重新初始化；它不包含 Task 9 的 artifact 生命周期。Wire-level 和隔离 HTTP 证据只证明本地单实例契约，不代表分布式保护、生产容量或 SLO。
 
 ~~~text
 cd services/support-copilot-api

@@ -119,7 +119,7 @@ curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
 ```
 
-`/health` 保留原有 mode、liveReady 和知识片段字段；`/health/live` 只证明进程可响应，`/health/ready` 会在 live provider 配置或知识索引不可用时返回 `503` 和不含路径、凭据、正文的 degraded dependency 状态。所有响应都返回 `X-Trace-Id`。`/analyze` 的 header 与 body `traceId` 都只接受 1 至 80 个安全 ASCII 字符且必须相同；Python 只使用经过校验的 header trace 写响应和日志，不匹配时在进入工作流前返回 `400 TRACE_ID_MISMATCH`。认证、校验、处理超时和未处理程序错误使用稳定的顶层 `code`、`message`、`traceId`、`details` envelope；程序错误返回 500，不进入 AI fallback。
+`/health` 保留原有 mode、liveReady 和知识片段字段；`/health/live` 只证明进程可响应。`/health/ready` 不主动探测外部 API，而是读取线程安全的进程内运行状态：live Embedding/索引失败后 provider 与 index 均 degraded，结构化生成失败只让 provider degraded；对应阶段后续成功后恢复，degraded 时返回 `503`。状态启动值仍来自已校验配置和 corpus，只有实际 live 请求才能暴露惰性初始化或运行期故障；并发时每个阶段最后完成的已观察结果生效，进程重启后状态重新初始化。这不是 Task 9 的持久化索引生命周期。探针不返回路径、凭据或正文。所有响应都返回 `X-Trace-Id`。`/analyze` 的 header 与 body `traceId` 都只接受 1 至 80 个安全 ASCII 字符且必须相同；Python 只使用经过校验的 header trace 写响应和日志，不匹配时在进入工作流前返回 `400 TRACE_ID_MISMATCH`。认证、校验、处理超时和未处理程序错误使用稳定的顶层 `code`、`message`、`traceId`、`details` envelope；程序错误返回 500，不进入 AI fallback。
 
 API 文档：`http://localhost:8000/docs`
 
@@ -316,7 +316,7 @@ export MOCK_RETRIEVAL_MIN_SCORE=0.25
 export LIVE_RETRIEVAL_MIN_SCORE=0.35
 ```
 
-超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。`AI_SERVICE_RETRY_MAX_ATTEMPTS` 表示总尝试数，Bean Validation 只接受 1 至 2；值 3 会在配置绑定时拒绝启动。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
 
 Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes`、`fallbacks`、`timeouts`、`latency`、`circuit.rejected` 和 `bulkhead.rejected`。tag 只使用受控 outcome、reason、provider mode 和 stage，不使用 ticket、trace 或 user；trace 只进入结构化脱敏日志。circuit 与 bulkhead 是单 Java 实例内状态，不代表分布式限流或生产 SLO。
 

@@ -10,6 +10,7 @@ from app.errors import (
 from app.knowledge_source import KnowledgeChunk, load_knowledge_chunks
 from app.live_vector_index import LiveVectorIndex, RetrievalWindow
 from app.models import RetrievalHit, TicketInput
+from app.readiness import RuntimeDependencyReadiness
 
 
 class KnowledgeRetriever:
@@ -20,10 +21,18 @@ class KnowledgeRetriever:
             settings.knowledge_provenance_path,
         )
         self._live_index = LiveVectorIndex(settings, tuple(self._chunks))
+        self._readiness = RuntimeDependencyReadiness(
+            provider_ready=settings.effective_mode == "mock" or settings.live_ready,
+            index_ready=bool(self._chunks),
+        )
 
     @property
     def chunk_count(self) -> int:
         return len(self._chunks)
+
+    @property
+    def readiness(self) -> RuntimeDependencyReadiness:
+        return self._readiness
 
     async def search(
         self,
@@ -37,15 +46,19 @@ class KnowledgeRetriever:
         # live 模式会构建 embedding，并使用向量检索。
         if live:
             try:
-                return await self._live_index.search(
+                hits = await self._live_index.search(
                     ticket,
                     query,
                     RetrievalWindow(top_n=top_n, top_k=top_k),
                 )
             except APITimeoutError as exc:
+                self._readiness.record_live_retrieval_failure()
                 raise embedding_timeout_error(exc) from exc
             except OpenAIError as exc:
+                self._readiness.record_live_retrieval_failure()
                 raise EmbeddingApiError from exc
+            self._readiness.record_live_retrieval_success()
+            return hits
         return self._local_search(ticket, query, top_n, top_k)
 
     def _local_search(

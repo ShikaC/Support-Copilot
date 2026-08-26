@@ -14,7 +14,7 @@ import org.springframework.validation.annotation.Validated;
 public record AiServiceProperties(
 	@NotBlank String baseUrl,
 	@Min(50) @Max(120_000) long timeoutMs,
-	@Min(1) @Max(3) int retryMaxAttempts,
+	@Min(1) @Max(2) int retryMaxAttempts,
 	@Min(0) @Max(5_000) long retryWaitMs,
 	@Min(2) @Max(100) int circuitSlidingWindowSize,
 	@Min(2) @Max(100) int circuitMinimumCalls,

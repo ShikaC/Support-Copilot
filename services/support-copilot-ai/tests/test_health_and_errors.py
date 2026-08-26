@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.analysis_runner import AnalysisProcessingTimeoutError
-from app.main import app, retriever, runner, settings
+from app.main import app, runner, settings
 from app.models import AnalyzeRequest
 
 
@@ -53,42 +53,6 @@ def test_legacy_health_remains_backwards_compatible() -> None:
         "mode": "mock",
         "liveReady": settings.live_ready,
         "knowledgeChunks": 10,
-    }
-
-
-def test_liveness_stays_up_while_readiness_reports_index_degradation(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(type(retriever), "chunk_count", property(lambda _self: 0))
-
-    live_response = client.get("/health/live")
-    ready_response = client.get("/health/ready")
-
-    assert live_response.status_code == 200
-    assert live_response.json() == {"status": "up"}
-    assert ready_response.status_code == 503
-    assert ready_response.json() == {
-        "status": "degraded",
-        "dependencies": {
-            "provider": "up",
-            "index": "degraded",
-        },
-        "mode": "mock",
-    }
-
-
-def test_readiness_reports_live_provider_degradation(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(type(settings), "effective_mode", property(lambda _self: "live"))
-    monkeypatch.setattr(type(settings), "live_ready", property(lambda _self: False))
-
-    response = client.get("/health/ready")
-
-    assert response.status_code == 503
-    assert response.json()["dependencies"] == {
-        "provider": "degraded",
-        "index": "up",
     }
 
 

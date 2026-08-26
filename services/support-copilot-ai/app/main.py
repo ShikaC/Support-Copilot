@@ -188,16 +188,15 @@ async def liveness() -> dict[str, str]:
 
 @app.get("/health/ready")
 async def readiness() -> JSONResponse:
-    provider_ready = settings.effective_mode == "mock" or settings.live_ready
-    index_ready = retriever.chunk_count > 0
-    ready = provider_ready and index_ready
+    snapshot = retriever.readiness.snapshot()
+    ready = snapshot.provider_ready and snapshot.index_ready
     return JSONResponse(
         status_code=200 if ready else 503,
         content={
             "status": "up" if ready else "degraded",
             "dependencies": {
-                "provider": "up" if provider_ready else "degraded",
-                "index": "up" if index_ready else "degraded",
+                "provider": "up" if snapshot.provider_ready else "degraded",
+                "index": "up" if snapshot.index_ready else "degraded",
             },
             "mode": settings.effective_mode,
         },
