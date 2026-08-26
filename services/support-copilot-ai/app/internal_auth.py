@@ -2,10 +2,8 @@ import secrets
 from dataclasses import dataclass
 from typing import Annotated, Final
 
-from fastapi import Header
+from fastapi import Header, Request
 from pydantic import SecretStr
-
-from app.models import AnalyzeRequest
 
 INTERNAL_SERVICE_TOKEN_HEADER: Final = "X-Internal-Service-Token"
 
@@ -24,7 +22,7 @@ class InternalServiceAuthenticator:
 
     def require(
         self,
-        request: AnalyzeRequest,
+        request: Request,
         presented_token: Annotated[
             str | None,
             Header(alias=INTERNAL_SERVICE_TOKEN_HEADER),
@@ -37,4 +35,4 @@ class InternalServiceAuthenticator:
             expected.encode("utf-8"),
         )
         if not matches:
-            raise InternalServiceAuthenticationError(trace_id=request.trace_id)
+            raise InternalServiceAuthenticationError(trace_id=request.state.trace_id)

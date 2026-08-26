@@ -112,6 +112,69 @@ def test_validation_error_has_stable_envelope_and_trace_header() -> None:
     assert "input" not in body["details"]["errors"][0]
 
 
+@pytest.mark.parametrize(
+    "untrusted_trace_id",
+    ["trace_valid\nforged_event", "t" * 81],
+    ids=["newline", "oversized"],
+)
+def test_unsafe_body_trace_is_rejected_before_work_without_log_injection(
+    untrusted_trace_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: LogCaptureFixture,
+) -> None:
+    calls = 0
+
+    async def observe_work(_request: AnalyzeRequest) -> Never:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("invalid trace must not reach the workflow")
+
+    monkeypatch.setattr(runner, "run", observe_work)
+    payload = analyze_payload()
+    payload["traceId"] = untrusted_trace_id
+    caplog.set_level(logging.INFO)
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 422
+    assert response.headers["X-Trace-Id"] == TRACE_ID
+    assert response.json()["code"] == "REQUEST_VALIDATION_FAILED"
+    assert response.json()["traceId"] == TRACE_ID
+    assert calls == 0
+    assert untrusted_trace_id not in caplog.text
+    assert all(untrusted_trace_id not in record.getMessage() for record in caplog.records)
+
+
+def test_mismatched_body_trace_is_rejected_with_trusted_trace_before_work(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: LogCaptureFixture,
+) -> None:
+    calls = 0
+
+    async def observe_work(_request: AnalyzeRequest) -> Never:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("mismatched trace must not reach the workflow")
+
+    monkeypatch.setattr(runner, "run", observe_work)
+    payload = analyze_payload()
+    payload["traceId"] = "trace_untrusted_body"
+    caplog.set_level(logging.INFO)
+
+    response = client.post("/analyze", json=payload)
+
+    assert response.status_code == 400
+    assert response.headers["X-Trace-Id"] == TRACE_ID
+    assert response.json() == {
+        "code": "TRACE_ID_MISMATCH",
+        "message": "Body traceId must match X-Trace-Id.",
+        "traceId": TRACE_ID,
+        "details": {},
+    }
+    assert calls == 0
+    assert "trace_untrusted_body" not in caplog.text
+
+
 def test_authentication_error_has_stable_envelope_and_trace_header() -> None:
     response = client.post(
         "/analyze",

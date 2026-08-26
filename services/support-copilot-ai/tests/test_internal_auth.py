@@ -9,7 +9,7 @@ from app.main import app, runner
 from app.models import AnalyzeRequest, AnalyzeResponse
 
 INTERNAL_TOKEN = "synthetic-test-internal-service-token"
-client = TestClient(app)
+client = TestClient(app, headers={"X-Trace-Id": "trace_internal_auth"})
 
 
 def request_payload() -> dict[str, str | dict[str, str | int]]:

@@ -119,7 +119,7 @@ curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
 ```
 
-`/health` 保留原有 mode、liveReady 和知识片段字段；`/health/live` 只证明进程可响应，`/health/ready` 会在 live provider 配置或知识索引不可用时返回 `503` 和不含路径、凭据、正文的 degraded dependency 状态。所有响应都返回 `X-Trace-Id`。认证、校验、处理超时和未处理程序错误使用稳定的顶层 `code`、`message`、`traceId`、`details` envelope；程序错误返回 500，不进入 AI fallback。
+`/health` 保留原有 mode、liveReady 和知识片段字段；`/health/live` 只证明进程可响应，`/health/ready` 会在 live provider 配置或知识索引不可用时返回 `503` 和不含路径、凭据、正文的 degraded dependency 状态。所有响应都返回 `X-Trace-Id`。`/analyze` 的 header 与 body `traceId` 都只接受 1 至 80 个安全 ASCII 字符且必须相同；Python 只使用经过校验的 header trace 写响应和日志，不匹配时在进入工作流前返回 `400 TRACE_ID_MISMATCH`。认证、校验、处理超时和未处理程序错误使用稳定的顶层 `code`、`message`、`traceId`、`details` envelope；程序错误返回 500，不进入 AI fallback。
 
 API 文档：`http://localhost:8000/docs`
 
@@ -250,7 +250,7 @@ Vite 会把 `/api` 代理到 `http://localhost:8080`。如果 Java API 未启动
 SUPPORT_COPILOT_TRACE_ID=interview-flow-01 ./scripts/check-local-analysis-flow.sh --success
 ```
 
-Java 会在没有请求头时生成 `X-Trace-Id`，并将同一个值写入响应头、分析响应和日志上下文；Python 日志会记录该值以及分析模式和状态。
+Java 会在没有请求头时生成安全的 `X-Trace-Id`，并将同一个值写入 Python header/body、Java 响应头、分析响应和日志上下文；Python 会先验证两处值一致，再用结构化字段记录该值、分析模式和状态。
 
 分析、采纳/编辑回复和拒绝回复都要求 `Idempotency-Key`。键必须是 16 到 128 个 ASCII 字符，只允许字母、数字、`.`、`_`、`:`、`-`，并在全局唯一约束下绑定命令类型、路由/目标和规范化请求 SHA-256 指纹。相同键与相同命令会返回数据库中保存的原始成功结果；相同键绑定不同目标、动作或规范化内容会返回 `409 IDEMPOTENCY_KEY_CONFLICT`。浏览器为每个新命令生成 UUID；同一在途调用共享请求，只有未收到任何 HTTP 响应的网络失败才保留原键供重试，明确成功或 HTTP 错误后下一次命令使用新键。
 

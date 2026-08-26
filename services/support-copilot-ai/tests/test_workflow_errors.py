@@ -121,10 +121,23 @@ async def test_recoverable_ai_error_returns_fallback(
     assert result.mode == "fallback"
     assert result.fallback_reason == "structured_generation_response_timeout"
     assert result.decision.escalation_required is True
-    assert any(
-        "error_type=StructuredGenerationResponseTimeoutError" in record.message
+    external_failure = next(
+        record
         for record in caplog.records
+        if record.message == "analysis.external_failure"
     )
+    assert getattr(external_failure, "trace_id") == "trace_workflow_error"
+    assert getattr(external_failure, "error_type") == (
+        "StructuredGenerationResponseTimeoutError"
+    )
+    fallback = next(
+        record for record in caplog.records if record.message == "analysis.fallback"
+    )
+    assert getattr(fallback, "trace_id") == "trace_workflow_error"
+    assert getattr(fallback, "mode") == "fallback"
+    assert getattr(fallback, "status") == "FALLBACK"
+    assert getattr(fallback, "hit_count") == 1
+    assert getattr(fallback, "reason") == "structured_generation_response_timeout"
 
 
 @pytest.mark.asyncio

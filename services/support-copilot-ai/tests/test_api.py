@@ -12,7 +12,8 @@ from app.models import AnalyzeRequest
 client = TestClient(
     app,
     headers={
-        "X-Internal-Service-Token": "synthetic-test-internal-service-token"
+        "X-Internal-Service-Token": "synthetic-test-internal-service-token",
+        "X-Trace-Id": "trace_test_001",
     },
 )
 
@@ -84,11 +85,12 @@ def test_analysis_log_keeps_request_trace_id(caplog: LogCaptureFixture) -> None:
     )
 
     assert response.status_code == 200
-    assert any(
-        "analysis.completed" in record.message
-        and "trace_test_001" in record.message
-        for record in caplog.records
-    )
+    records = [record for record in caplog.records if record.message == "analysis.completed"]
+    assert len(records) == 1
+    assert getattr(records[0], "trace_id") == "trace_test_001"
+    assert getattr(records[0], "mode") == response.json()["mode"]
+    assert getattr(records[0], "status") == response.json()["status"]
+    assert isinstance(getattr(records[0], "hit_count"), int)
 
 
 def test_processing_timeout_returns_traceable_gateway_timeout(

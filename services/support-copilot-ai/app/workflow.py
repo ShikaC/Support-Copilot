@@ -116,11 +116,13 @@ class AnalysisWorkflow:
                 created_at=datetime.now(UTC),
             )
             logger.info(
-                "analysis.completed trace_id=%s mode=%s status=%s hit_count=%d",
-                request.trace_id,
-                response.mode,
-                response.status,
-                len(hits),
+                "analysis.completed",
+                extra={
+                    "trace_id": request.trace_id,
+                    "mode": response.mode,
+                    "status": response.status,
+                    "hit_count": len(hits),
+                },
             )
             return response
         # 只有经过外部依赖边界确认的可恢复错误才会降级。
@@ -129,9 +131,11 @@ class AnalysisWorkflow:
             if not live:
                 raise
             logger.warning(
-                "analysis.external_failure trace_id=%s error_type=%s",
-                request.trace_id,
-                type(exc).__name__,
+                "analysis.external_failure",
+                extra={
+                    "trace_id": request.trace_id,
+                    "error_type": type(exc).__name__,
+                },
             )
             return await self._fallback_after_error(
                 request,
@@ -191,12 +195,14 @@ class AnalysisWorkflow:
             created_at=datetime.now(UTC),
         )
         logger.warning(
-            "analysis.fallback trace_id=%s mode=%s status=%s hit_count=%d reason=%s",
-            request.trace_id,
-            response.mode,
-            response.status,
-            len(hits),
-            fallback_reason.value,
+            "analysis.fallback",
+            extra={
+                "trace_id": request.trace_id,
+                "mode": response.mode,
+                "status": response.status,
+                "hit_count": len(hits),
+                "reason": fallback_reason.value,
+            },
         )
         return response
 

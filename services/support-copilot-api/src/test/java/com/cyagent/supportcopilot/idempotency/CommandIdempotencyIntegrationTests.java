@@ -92,6 +92,7 @@ class CommandIdempotencyIntegrationTests {
 			var response = firstContext.getBean(MockAnalysisFactory.class).createMock(ticket);
 			rig.aiServer().respondWith(firstContext.getBean(ObjectMapper.class).writeValueAsString(response));
 			rig.aiServer().block();
+			com.cyagent.supportcopilot.analysis.AnalysisResponse original;
 
 			try (var executor = Executors.newFixedThreadPool(2)) {
 				var commandsReady = new CountDownLatch(2);
@@ -115,14 +116,15 @@ class CommandIdempotencyIntegrationTests {
 				assertThat(rig.aiServer().awaitInvocation()).isTrue();
 				assertThat(rig.awaitLeaseRenewal(firstContext, "analysis-shared-key-0001")).isTrue();
 				rig.aiServer().release();
-				assertThat(second.get(3, TimeUnit.SECONDS)).isEqualTo(first.get(3, TimeUnit.SECONDS));
+				original = first.get(3, TimeUnit.SECONDS);
+				assertThat(second.get(3, TimeUnit.SECONDS)).isEqualTo(original);
 				assertThat(rig.aiServer().invocations()).isEqualTo(1);
 			}
 
 			assertCounts(firstContext, 1, 0, 1, 1);
 			secondContext.close();
 			try (var restarted = rig.startContext()) {
-				assertThat(analyze(restarted, ticket.getId(), "analysis-shared-key-0001")).isEqualTo(response);
+				assertThat(analyze(restarted, ticket.getId(), "analysis-shared-key-0001")).isEqualTo(original);
 				assertThat(rig.aiServer().invocations()).isEqualTo(1);
 				assertCounts(restarted, 1, 0, 1, 1);
 				assertThatThrownBy(() -> analyze(restarted, "ticket-different", "analysis-shared-key-0001"))
@@ -184,7 +186,10 @@ class CommandIdempotencyIntegrationTests {
 			try (var recovered = rig.startContext()) {
 				var response = recovered.getBean(MockAnalysisFactory.class).createMock(ticket);
 				rig.aiServer().respondWith(recovered.getBean(ObjectMapper.class).writeValueAsString(response));
-				assertThat(analyze(recovered, ticket.getId(), "owner-recovery-key-0001")).isEqualTo(response);
+				assertThat(analyze(recovered, ticket.getId(), "owner-recovery-key-0001"))
+					.usingRecursiveComparison()
+					.ignoringFields("traceId")
+					.isEqualTo(response);
 				assertCounts(recovered, 1, 0, 1, 1);
 
 				var rollbackTicket = rig.ticket("ticket-completion-rollback");

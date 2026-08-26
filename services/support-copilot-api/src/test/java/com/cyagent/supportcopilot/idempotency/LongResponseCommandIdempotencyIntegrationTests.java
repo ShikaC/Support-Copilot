@@ -49,18 +49,23 @@ class LongResponseCommandIdempotencyIntegrationTests {
 				rig.aiServer().respondWith(serializedResponse);
 
 				original = analyze(first, ticket.getId(), idempotencyKey);
-				assertThat(original).isEqualTo(response);
+				assertThat(original)
+					.usingRecursiveComparison()
+					.ignoringFields("traceId")
+					.isEqualTo(response);
 				assertThat(rig.aiServer().invocations()).isEqualTo(1);
 				assertCounts(first, 1, 0, 1, 1);
 
 				var jdbc = first.getBean(JdbcTemplate.class);
+				var correlatedResponseJson = objectMapper.writeValueAsString(original);
 				originalResponseJson = commandResponseJson(jdbc, idempotencyKey);
 				originalResponseBytes = commandResponseBytes(jdbc, idempotencyKey);
 				testReporter.publishEntry(
 					"persistedCommandResponseUtf8Bytes",
 					Long.toString(originalResponseBytes)
 				);
-				assertThat(originalResponseJson.getBytes(UTF_8)).containsExactly(serializedResponse.getBytes(UTF_8));
+				assertThat(originalResponseJson.getBytes(UTF_8))
+					.containsExactly(correlatedResponseJson.getBytes(UTF_8));
 				assertThat(originalResponseBytes).isGreaterThan(ORDINARY_VARCHAR_LIMIT);
 				assertThat(analysisResponseBytes(jdbc, original.id())).isGreaterThan(ORDINARY_VARCHAR_LIMIT);
 				assertThat(commandState(jdbc, idempotencyKey)).isEqualTo("COMPLETED");

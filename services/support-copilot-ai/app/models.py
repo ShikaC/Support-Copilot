@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
@@ -9,6 +9,7 @@ from pydantic_core import PydanticCustomError
 from app.errors import FallbackReason
 
 PromptVersion = Literal["ticket-analysis-v1"]
+TRACE_ID_PATTERN: Final = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
 
 
 class ApiModel(BaseModel):
@@ -64,7 +65,7 @@ class AnalyzeOptions(ApiModel):
 
 class AnalyzeRequest(ApiModel):
     # Java 调用 /analyze 时必须交付：追踪标识、完整工单和检索选项。
-    trace_id: str
+    trace_id: str = Field(pattern=TRACE_ID_PATTERN)
     ticket: TicketInput
     options: AnalyzeOptions = AnalyzeOptions()
 

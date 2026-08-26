@@ -2,7 +2,6 @@ package com.cyagent.supportcopilot.idempotency;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -12,6 +11,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.sun.net.httpserver.HttpServer;
+
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import org.flywaydb.core.Flyway;
 import org.springframework.boot.WebApplicationType;
@@ -131,6 +133,7 @@ final class CommandIdempotencyTestRig implements AutoCloseable {
 	static final class CountingAiServer implements AutoCloseable {
 
 		private final HttpServer server;
+		private final ObjectMapper objectMapper = new ObjectMapper();
 		private final AtomicInteger invocations = new AtomicInteger();
 		private volatile String responseJson = "{}";
 		private volatile CountDownLatch started = new CountDownLatch(0);
@@ -140,13 +143,17 @@ final class CommandIdempotencyTestRig implements AutoCloseable {
 			server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 			server.createContext("/analyze", exchange -> {
 				invocations.incrementAndGet();
+				var request = objectMapper.readTree(exchange.getRequestBody());
+				var traceId = request.get("traceId").asText();
 				started.countDown();
 				try {
 					release.await(5, TimeUnit.SECONDS);
 				} catch (InterruptedException exception) {
 					Thread.currentThread().interrupt();
 				}
-				var body = responseJson.getBytes(StandardCharsets.UTF_8);
+				var response = (ObjectNode) objectMapper.readTree(responseJson);
+				response.put("traceId", traceId);
+				var body = objectMapper.writeValueAsBytes(response);
 				exchange.getResponseHeaders().set("Content-Type", "application/json");
 				exchange.sendResponseHeaders(200, body.length);
 				exchange.getResponseBody().write(body);

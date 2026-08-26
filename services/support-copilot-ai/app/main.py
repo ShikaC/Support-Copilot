@@ -16,13 +16,14 @@ from app.internal_auth import (
     InternalServiceAuthenticator,
 )
 from app.knowledge import KnowledgeRetriever
-from app.models import AnalyzeRequest, AnalyzeResponse
+from app.models import TRACE_ID_PATTERN, AnalyzeRequest, AnalyzeResponse
 from app.workflow import AnalysisWorkflow
 
 STRUCTURED_LOG_FORMAT: Final = (
     "%(asctime)s %(levelname)s %(name)s event=%(message)s "
     "trace_id=%(trace_id)s timeout_seconds=%(timeout_seconds)s "
-    "error_code=%(error_code)s error_type=%(error_type)s"
+    "error_code=%(error_code)s error_type=%(error_type)s "
+    "mode=%(mode)s status=%(status)s hit_count=%(hit_count)s reason=%(reason)s"
 )
 
 logging.basicConfig(level=logging.INFO, format=STRUCTURED_LOG_FORMAT)
@@ -35,6 +36,10 @@ class StructuredLogDefaults(logging.Filter):
             "timeout_seconds": "none",
             "error_code": "none",
             "error_type": "none",
+            "mode": "none",
+            "status": "none",
+            "hit_count": "none",
+            "reason": "none",
         }
         for name, value in defaults.items():
             if not hasattr(record, name):
@@ -48,7 +53,7 @@ for handler in logging.getLogger().handlers:
 
 logger = logging.getLogger(__name__)
 TRACE_HEADER: Final = "X-Trace-Id"
-SAFE_TRACE_ID: Final = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}")
+SAFE_TRACE_ID: Final = re.compile(TRACE_ID_PATTERN)
 JsonScalar = str | int | float | bool | None
 JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
@@ -104,7 +109,24 @@ async def propagate_trace_id(
 ) -> Response:
     trace_id = request_trace_id(request)
     request.state.trace_id = trace_id
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    # Sole HTTP conversion boundary: preserve a stable response without exposing fault details.
+    except Exception as exception:  # noqa: BROAD_EXCEPT_OK
+        logger.error(
+            "request.unhandled_error",
+            extra={
+                "trace_id": trace_id,
+                "error_code": "INTERNAL_SERVER_ERROR",
+                "error_type": type(exception).__name__,
+            },
+        )
+        response = error_response(
+            500,
+            "INTERNAL_SERVER_ERROR",
+            "The request could not be completed.",
+            trace_id,
+        )
     response.headers[TRACE_HEADER] = trace_id
     return response
 
@@ -148,25 +170,6 @@ async def request_validation_error(
     )
 
 
-@app.exception_handler(Exception)
-async def unhandled_error(request: Request, exception: Exception) -> JSONResponse:
-    trace_id = request.state.trace_id
-    logger.error(
-        "request.unhandled_error",
-        extra={
-            "trace_id": trace_id,
-            "error_code": "INTERNAL_SERVER_ERROR",
-            "error_type": type(exception).__name__,
-        },
-    )
-    return error_response(
-        500,
-        "INTERNAL_SERVER_ERROR",
-        "The request could not be completed.",
-        trace_id,
-    )
-
-
 @app.get("/health")
 async def health() -> dict[str, str | bool | int]:
     return {
@@ -204,13 +207,22 @@ async def readiness() -> JSONResponse:
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze(
     request: AnalyzeRequest,
+    http_request: Request,
     _authenticated: Annotated[
         None,
         Depends(internal_authenticator.require),
     ],
-) -> AnalyzeResponse:
+) -> AnalyzeResponse | JSONResponse:
     # FastAPI 会先用 AnalyzeRequest 校验传入 JSON，
     # 工作流返回后再用 AnalyzeResponse 校验响应结构。
+    trusted_trace_id = http_request.state.trace_id
+    if request.trace_id != trusted_trace_id:
+        return error_response(
+            400,
+            "TRACE_ID_MISMATCH",
+            "Body traceId must match X-Trace-Id.",
+            trusted_trace_id,
+        )
     try:
         return await runner.run(request)
     except AnalysisProcessingTimeoutError as exc:
