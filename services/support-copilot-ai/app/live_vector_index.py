@@ -95,8 +95,8 @@ class LiveVectorIndex:
                 return self._vector_store
 
             embeddings = OpenAIEmbeddings(
-                api_key=self._settings.openai_api_key,
-                base_url=self._settings.openai_base_url,
+                api_key=self._settings.embedding_api_key,
+                base_url=self._settings.embedding_base_url,
                 model=self._settings.openai_embedding_model,
                 max_retries=self._settings.openai_max_retries,
                 request_timeout=self._settings.openai_timeout_seconds,

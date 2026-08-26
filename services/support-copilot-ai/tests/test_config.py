@@ -44,6 +44,69 @@ def test_retrieval_score_defaults_are_explicit_and_bounded() -> None:
     assert settings.live_retrieval_min_score == 0.35
 
 
+def test_embedding_base_url_can_differ_from_chat_base_url() -> None:
+    # Given: chat and embedding providers are configured at different endpoints.
+    settings = Settings(
+        openai_base_url="https://chat.example.test/v1",
+        openai_embedding_base_url="https://embedding.example.test/v1",
+        _env_file=None,
+    )
+
+    # Then: each client receives its own endpoint and the embedding endpoint wins.
+    assert settings.openai_base_url == "https://chat.example.test/v1"
+    assert settings.embedding_base_url == "https://embedding.example.test/v1"
+
+
+def test_embedding_base_url_defaults_to_chat_base_url() -> None:
+    # Given: only the existing compatible gateway setting is configured.
+    settings = Settings(
+        openai_base_url="https://gateway.example.test/v1",
+        _env_file=None,
+    )
+
+    # Then: existing single-gateway configurations keep working for embeddings.
+    assert settings.embedding_base_url == "https://gateway.example.test/v1"
+
+
+def test_embedding_api_key_defaults_to_chat_api_key() -> None:
+    # Given: one provider key is shared by chat and embeddings.
+    settings = Settings(
+        openai_api_key="shared-provider-key",
+        _env_file=None,
+    )
+
+    # Then: the embedding client falls back to the shared key.
+    assert settings.embedding_api_key == "shared-provider-key"
+
+
+def test_dedicated_embedding_api_key_overrides_chat_api_key() -> None:
+    # Given: chat and embedding providers require different credentials.
+    settings = Settings(
+        openai_api_key="chat-provider-key",
+        openai_embedding_api_key="embedding-provider-key",
+        _env_file=None,
+    )
+
+    # Then: the embedding client receives only its dedicated credential.
+    assert settings.embedding_api_key == "embedding-provider-key"
+
+
+def test_embedding_base_url_reads_dedicated_environment_variable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given: the dedicated embedding endpoint is supplied at the environment boundary.
+    monkeypatch.setenv(
+        "OPENAI_EMBEDDING_BASE_URL",
+        "https://embedding.example.test/v1",
+    )
+
+    # When: settings parse the environment variables.
+    settings = Settings(_env_file=None)
+
+    # Then: the dedicated endpoint is available to the embedding client.
+    assert settings.embedding_base_url == "https://embedding.example.test/v1"
+
+
 def test_rejects_live_retrieval_score_outside_cosine_domain() -> None:
     # Given: a threshold outside the cosine similarity range.
     # When/Then: settings reject it before the live service starts.

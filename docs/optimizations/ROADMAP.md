@@ -137,6 +137,8 @@ cd services/support-copilot-ai
 
 第 55 轮在同一审核历史中增加 `REJECTED` 和必填拒绝原因。拒绝记录保留原始建议，但明确把审核后回复保存为 `null`，避免把未采纳内容误当成可发送回复；React 提供拒绝对话框和按需加载的审核历史，刷新后仍能看到拒绝原因。采纳与拒绝共用工单行锁、最新分析和版本检查，真实 HTTP 演练验证成功持久化及过期拒绝的结构化 `409`。当前三种人工审核动作已闭环，但可信身份、RBAC、通用审计日志、审核请求并发幂等和生产数据库仍未完成。
 
+第 59 轮将固定 mock 评估报告接入 Java `/api/metrics` 和 React 质量页。Java 只读取报告中的稳定字段；报告缺失、损坏或字段不兼容时保留其他指标并返回 `evaluation=null`。页面展示数据集、样本数、模型、Prompt 版本、Top N/K、Hit@K、MRR、引用覆盖率、无证据安全率、P95 和门禁状态，不再使用报告中不存在的 `groundedness` 或 `citationAccuracy` 字段。当前质量报告仍是文件来源，不是持久化评估运行表；真实 live RAG 和正式 Embedding 仍未完成。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

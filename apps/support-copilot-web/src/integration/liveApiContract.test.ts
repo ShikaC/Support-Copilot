@@ -33,6 +33,15 @@ it.skipIf(!CONTRACT_TEST_ENABLED)(
 
     // Then: runtime parsing preserved a valid non-negative ticket count.
     expect(metrics.summary.openTickets).toBeGreaterThanOrEqual(0)
+    expect(metrics.evaluation).toMatchObject({
+      datasetName: 'tickets.jsonl',
+      mode: 'mock',
+      totalCases: 31,
+      topN: 10,
+      topK: 3,
+      thresholdFailureCount: 0,
+      passed: true,
+    })
   },
 )
 

@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     app_name: str = "support-copilot-ai"
     ai_mode: Literal["mock", "live", "auto"] = "mock"
     openai_api_key: str | None = Field(default=None, repr=False)
+    openai_embedding_api_key: str | None = Field(default=None, repr=False)
     openai_base_url: str | None = None
+    openai_embedding_base_url: str | None = None
     openai_chat_model: str | None = None
     openai_embedding_model: str | None = None
     openai_timeout_seconds: float = Field(default=20.0, gt=0)
@@ -63,6 +65,14 @@ class Settings(BaseSettings):
             and self.openai_chat_model
             and self.openai_embedding_model
         )
+
+    @property
+    def embedding_base_url(self) -> str | None:
+        return self.openai_embedding_base_url or self.openai_base_url
+
+    @property
+    def embedding_api_key(self) -> str | None:
+        return self.openai_embedding_api_key or self.openai_api_key
 
     @property
     def effective_mode(self) -> Literal["mock", "live"]:

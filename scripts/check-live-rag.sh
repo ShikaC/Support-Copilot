@@ -92,12 +92,14 @@ provenance = (
     if provenance_path is not None
     else None
 )
-endpoint_type = (
-    "official"
-    if not settings.openai_base_url
-    or settings.openai_base_url.rstrip("/") == "https://api.openai.com/v1"
-    else "compatible"
-)
+def endpoint_type(base_url: str | None) -> str:
+    return (
+        "official"
+        if not base_url or base_url.rstrip("/") == "https://api.openai.com/v1"
+        else "compatible"
+    )
+chat_endpoint_type = endpoint_type(settings.openai_base_url)
+embedding_endpoint_type = endpoint_type(settings.embedding_base_url)
 print(
     json.dumps(
         {
@@ -108,7 +110,8 @@ print(
             "processingTimeoutSeconds": settings.ai_processing_timeout_seconds,
             "javaTimeoutMs": int(sys.argv[1]),
             "clientTimeoutSeconds": int(sys.argv[2]),
-            "endpointType": endpoint_type,
+            "endpointType": chat_endpoint_type,
+            "embeddingEndpointType": embedding_endpoint_type,
             "knowledgeSource": (
                 "repository-default"
                 if knowledge_path.resolve() == DEFAULT_KNOWLEDGE_PATH.resolve()
@@ -155,7 +158,8 @@ config = json.loads(sys.stdin.read())
 print(
     f"Live configuration: chatModel={config['"'"'chatModel'"'"']} "
     f"embeddingModel={config['"'"'embeddingModel'"'"']} "
-    f"endpoint={config['"'"'endpointType'"'"']} "
+    f"chatEndpoint={config['"'"'endpointType'"'"']} "
+    f"embeddingEndpoint={config['"'"'embeddingEndpointType'"'"']} "
     f"knowledgeSource={config['"'"'knowledgeSource'"'"']} "
     f"knowledgeFormat={config['"'"'knowledgeFormat'"'"']} "
     f"knowledgeChunks={config['"'"'knowledgeChunks'"'"']}"
@@ -296,7 +300,8 @@ content = "\n".join(
         f"- Validated at: `{validated_at}`",
         f"- Git commit: `{git_commit}`",
         "- Worktree dirty: `false`",
-        f"- Endpoint type: `{config['"'"'endpointType'"'"']}`",
+        f"- Chat endpoint type: `{config['"'"'endpointType'"'"']}`",
+        f"- Embedding endpoint type: `{config['"'"'embeddingEndpointType'"'"']}`",
         f"- Chat model: `{config['"'"'chatModel'"'"']}`",
         f"- Embedding model: `{config['"'"'embeddingModel'"'"']}`",
         f"- External request timeout: `{config['"'"'externalTimeoutSeconds'"'"']} s`",

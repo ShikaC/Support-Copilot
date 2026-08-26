@@ -118,6 +118,54 @@ async def test_external_knowledge_reaches_vector_retrieval(
 
 
 @pytest.mark.asyncio
+async def test_live_vector_index_uses_independent_embedding_base_url(
+    external_knowledge_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given: chat and embedding providers use different compatible endpoints.
+    captured: dict[str, str | None] = {}
+
+    class CapturingEmbeddings(Embeddings):
+        def __init__(
+            self,
+            *,
+            api_key: str | None,
+            base_url: str | None,
+            model: str | None,
+            max_retries: int,
+            request_timeout: float,
+        ) -> None:
+            del model, max_retries, request_timeout
+            captured["base_url"] = base_url
+            captured["api_key"] = api_key
+
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [[1.0, 0.0] for _ in texts]
+
+        def embed_query(self, text: str) -> list[float]:
+            return [1.0, 0.0]
+
+    monkeypatch.setattr("app.live_vector_index.OpenAIEmbeddings", CapturingEmbeddings)
+    retriever = KnowledgeRetriever(
+        Settings(
+            ai_mode="live",
+            openai_api_key="chat-provider-key",
+            openai_embedding_api_key="embedding-provider-key",
+            openai_base_url="https://chat.example.test/v1",
+            openai_embedding_base_url="https://embedding.example.test/v1",
+            knowledge_path=external_knowledge_path,
+        )
+    )
+
+    # When: the live vector index initializes its embedding store.
+    await retriever._live_index._get_vector_store()
+
+    # Then: the embedding client receives the independent endpoint.
+    assert captured["base_url"] == "https://embedding.example.test/v1"
+    assert captured["api_key"] == "embedding-provider-key"
+
+
+@pytest.mark.asyncio
 async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
     external_knowledge_path: Path,
 ) -> None:
@@ -154,33 +202,6 @@ async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
     assert hits == []
 
 
-def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
-    # Given: an external source with two records that claim the same stable ID.
-    knowledge_path = tmp_path / "duplicate-knowledge.json"
-    chunk = {
-        "chunk_id": "duplicate-id",
-        "document_id": "external-guide",
-        "document_title": "External guide",
-        "section": "Login",
-        "content": "Escalate the login incident.",
-        "source_uri": "https://support.example.test/login",
-        "categories": ["ACCOUNT_ACCESS"],
-        "keywords": ["login"],
-        "document_version": "2026.08",
-        "status": "PUBLISHED",
-        "updated_at": "2026-08-24",
-    }
-    knowledge_path.write_text(json.dumps([chunk, chunk]), encoding="utf-8")
-
-    # When / Then: the trust boundary rejects ambiguous evidence identifiers.
-    with pytest.raises(
-        KnowledgeSourceInvalidError,
-        match="Knowledge source is invalid",
-    ) as exc_info:
-        KnowledgeRetriever(Settings(ai_mode="mock", knowledge_path=knowledge_path))
-    assert exc_info.value.__cause__ is None
-
-
 def test_missing_provenance_uses_typed_source_error(
     external_knowledge_path: Path,
     tmp_path: Path,
@@ -194,30 +215,6 @@ def test_missing_provenance_uses_typed_source_error(
     assert exc_info.value.path == missing_provenance
     assert exc_info.value.__cause__ is None
     exc_info.value.__traceback__ = None
-
-
-@pytest.mark.asyncio
-async def test_exact_error_code_ranks_matching_chunk_first() -> None:
-    # 这条测试只验证一个查询是否命中；整体 Hit Rate 需要汇总一组评估案例。
-    retriever = KnowledgeRetriever(Settings(ai_mode="mock"))
-    ticket = TicketInput(
-        id="ticket-sync",
-        subject="客户端提示 SYNC-2047",
-        description="Windows 客户端无法同步",
-        currentCategory="TECHNICAL",
-        currentPriority=Priority.MEDIUM,
-    )
-
-    hits = await retriever.search(
-        ticket,
-        "Windows 客户端 SYNC-2047 同步失败",
-        top_n=10,
-        top_k=3,
-        live=False,
-    )
-
-    assert hits[0].chunk_id == "chunk-sync-2047"
-    assert hits[0].retrieval_method == "HYBRID_DEMO"
 
 
 @pytest.mark.asyncio

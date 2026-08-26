@@ -968,7 +968,7 @@ function OverviewView({ metrics, tickets }: { metrics: Metrics | null; tickets: 
               </div>
               <div className="quality-row">
                 <div>
-                  <div className="quality-name">证据忠实度</div>
+                  <div className="quality-name">无证据安全率</div>
                   <div className="quality-context">
                     {metrics.evaluation == null ? '暂无评估报告' : '来自离线评估集'}
                   </div>
@@ -976,7 +976,7 @@ function OverviewView({ metrics, tickets }: { metrics: Metrics | null; tickets: 
                 <span className="quality-value">
                   {metrics.evaluation == null
                     ? '--'
-                    : `${(metrics.evaluation.groundedness * 100).toFixed(1)}%`}
+                    : `${(metrics.evaluation.noEvidenceSafetyRate * 100).toFixed(1)}%`}
                 </span>
               </div>
             </div>
@@ -1114,8 +1114,8 @@ function QualityView({ metrics, metricsError }: { metrics: Metrics | null; metri
       <section className="quality-panel">
         <div className="quality-hero">
           <div className="quality-hero-item">
-            <span className="quality-hero-label">Hit Rate@3</span>
-            <span className="quality-hero-value">{(metrics.evaluation.hitRateAt3 * 100).toFixed(1)}%</span>
+            <span className="quality-hero-label">Hit@{metrics.evaluation.topK}</span>
+            <span className="quality-hero-value">{(metrics.evaluation.hitRateAtK * 100).toFixed(1)}%</span>
             <span className="quality-hero-note">来自后端评估报告</span>
           </div>
           <div className="quality-hero-item">
@@ -1124,20 +1124,22 @@ function QualityView({ metrics, metricsError }: { metrics: Metrics | null; metri
             <span className="quality-hero-note">来自后端评估报告</span>
           </div>
           <div className="quality-hero-item">
-            <span className="quality-hero-label">证据忠实度</span>
-            <span className="quality-hero-value">{(metrics.evaluation.groundedness * 100).toFixed(1)}%</span>
+            <span className="quality-hero-label">无证据安全率</span>
+            <span className="quality-hero-value">{(metrics.evaluation.noEvidenceSafetyRate * 100).toFixed(1)}%</span>
             <span className="quality-hero-note">样本数见评估报告</span>
           </div>
           <div className="quality-hero-item">
-            <span className="quality-hero-label">引用准确率</span>
-            <span className="quality-hero-value">{(metrics.evaluation.citationAccuracy * 100).toFixed(1)}%</span>
+            <span className="quality-hero-label">引用覆盖率</span>
+            <span className="quality-hero-value">{(metrics.evaluation.citationCoverage * 100).toFixed(1)}%</span>
             <span className="quality-hero-note">校验规则见评估报告</span>
           </div>
         </div>
         <div className="panel-header">
           <div className="panel-heading">
             <h2 className="panel-title">评估运行</h2>
-            <div className="panel-meta">后端评估报告尚未接入页面</div>
+            <div className="panel-meta">
+              {metrics.evaluation.datasetName} · {metrics.evaluation.totalCases} 条案例 · {metrics.evaluation.modelName}
+            </div>
           </div>
         </div>
         <div className="evaluation-table-wrap">
@@ -1146,8 +1148,8 @@ function QualityView({ metrics, metricsError }: { metrics: Metrics | null; metri
               <tr>
                 <th>评估集</th>
                 <th className="numeric">样本</th>
-                <th>检索策略</th>
-                <th className="numeric">Hit@3</th>
+                <th>配置</th>
+                <th className="numeric">Hit@{metrics.evaluation.topK}</th>
                 <th className="numeric">MRR</th>
                 <th className="numeric">p95</th>
                 <th>门禁</th>
@@ -1155,7 +1157,17 @@ function QualityView({ metrics, metricsError }: { metrics: Metrics | null; metri
             </thead>
             <tbody>
               <tr>
-                <td colSpan={7}>当前 Java 指标接口没有评估报告来源。</td>
+                <td>{metrics.evaluation.datasetName}</td>
+                <td className="numeric">{metrics.evaluation.totalCases}</td>
+                <td>{metrics.evaluation.mode} · top {metrics.evaluation.topN}/{metrics.evaluation.topK}</td>
+                <td className="numeric">{(metrics.evaluation.hitRateAtK * 100).toFixed(1)}%</td>
+                <td className="numeric">{metrics.evaluation.mrr.toFixed(3)}</td>
+                <td className="numeric">{metrics.evaluation.p95DurationMs} ms</td>
+                <td>
+                  <Tag color={metrics.evaluation.passed ? 'green' : 'red'}>
+                    {metrics.evaluation.passed ? '通过' : `未通过 · ${metrics.evaluation.thresholdFailureCount} 项`}
+                  </Tag>
+                </td>
               </tr>
             </tbody>
           </table>

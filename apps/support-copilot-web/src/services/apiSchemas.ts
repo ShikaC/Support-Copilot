@@ -203,10 +203,22 @@ export const metricsResponseSchema = z.strictObject({
   suggestionAcceptanceRate: rate.nullable(),
   evaluation: z
     .strictObject({
-      hitRateAt3: rate,
+      datasetName: nonEmptyString,
+      mode: z.enum(['mock', 'live']),
+      modelName: nonEmptyString,
+      promptVersion: nonEmptyString,
+      totalCases: z.number().int().positive(),
+      topN: z.number().int().positive(),
+      topK: z.number().int().positive(),
+      hitRateAtK: rate,
       mrr: rate,
-      groundedness: rate,
-      citationAccuracy: rate,
+      citationCoverage: rate,
+      noEvidenceSafetyRate: rate,
+      averageDurationMs: z.number().nonnegative(),
+      p95DurationMs: z.number().int().nonnegative(),
+      thresholdFailureCount: z.number().int().nonnegative(),
+      passed: z.boolean(),
+      generatedAt: timestamp,
     })
     .nullable(),
 })

@@ -61,3 +61,11 @@ cd services/support-copilot-ai
 此前的 2026-08-12 基线发现并修复过一个真实缺陷：没有 DATA_RECOVERY 知识覆盖的工单会误命中隐私知识片段，修复后无证据安全率恢复到 1.000。
 
 当前工作区在 2026-08-25 运行 31 条 mock 案例，所有门槛通过。当前结果只说明本地确定性规则在这 31 条人工维护样例上通过；真实 live 检索质量、模型质量和生产延迟仍未由这份报告证明。
+
+运行完成后，如果要让 Java 指标接口和 React 质量页读取这份报告，请从 `services/support-copilot-api/` 启动 Java，或显式配置：
+
+```bash
+export EVALUATION_REPORT_PATH='/absolute/path/to/services/support-copilot-ai/evaluation/reports/mock-latest.json'
+```
+
+Java 只读取报告中的稳定指标和来源元数据。报告缺失、JSON 损坏或必需字段不兼容时，`GET /api/metrics` 保留其他可用指标，并将 `evaluation` 返回为 `null`。

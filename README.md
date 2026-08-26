@@ -225,8 +225,11 @@ cd services/support-copilot-ai
 cd services/support-copilot-ai
 export AI_MODE=live
 export OPENAI_API_KEY='your-api-key'
+export OPENAI_EMBEDDING_API_KEY='your-embedding-api-key'
 export OPENAI_CHAT_MODEL='your-chat-model'
 export OPENAI_EMBEDDING_MODEL='your-embedding-model'
+export OPENAI_BASE_URL='https://your-chat-gateway.example/v1'
+export OPENAI_EMBEDDING_BASE_URL='https://your-embedding-gateway.example/v1'
 export KNOWLEDGE_PATH='/absolute/path/to/authorized-knowledge.json'
 export KNOWLEDGE_PROVENANCE_PATH='/absolute/path/to/authorized-knowledge.provenance.json'
 .venv/bin/uvicorn app.main:app --reload --port 8000
@@ -241,7 +244,12 @@ export KNOWLEDGE_PROVENANCE_PATH='/absolute/path/to/authorized-knowledge.provena
 可选配置：
 
 ```bash
-export OPENAI_BASE_URL='https://your-compatible-gateway.example/v1'
+# Chat/Responses endpoint. Omit for the official OpenAI endpoint.
+export OPENAI_BASE_URL='https://your-chat-gateway.example/v1'
+# Embeddings endpoint. Omit to reuse OPENAI_BASE_URL.
+export OPENAI_EMBEDDING_BASE_URL='https://your-embedding-gateway.example/v1'
+# Optional: use a different credential when the embedding provider is separate.
+export OPENAI_EMBEDDING_API_KEY='your-embedding-api-key'
 export OPENAI_TIMEOUT_SECONDS=20
 export OPENAI_MAX_RETRIES=1
 export AI_PROCESSING_TIMEOUT_SECONDS=90
@@ -253,7 +261,7 @@ export MOCK_RETRIEVAL_MIN_SCORE=0.25
 export LIVE_RETRIEVAL_MIN_SCORE=0.35
 ```
 
-超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒并最多重试 1 次，Python 整体分析在 90 秒停止，Java 最长等待 105 秒，live 验收客户端最长等待 120 秒。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型；Python 总截止时间优先于 SDK 的后续重试，避免 Java 已降级后 Python 仍继续消耗调用预算。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒并最多重试 1 次，Python 整体分析在 90 秒停止，Java 最长等待 105 秒，live 验收客户端最长等待 120 秒。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型；Python 总截止时间优先于 SDK 的后续重试，避免 Java 已降级后 Python 仍继续消耗调用预算。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
 
 在调用正式 API 前先执行只读预检；它不会发出外部请求：
 
@@ -316,6 +324,8 @@ cd services/support-copilot-ai
 
 评估报告会写入 `services/support-copilot-ai/evaluation/reports/`，并刷新 `mock-latest.json` 与 `mock-latest.md`。它只反映固定模拟工单上的 mock 工作流，不代表真实模型或生产 RAG 效果。报告逐案例保存 retrieved/cited chunk 映射。评估集维护说明见 [Mock 评估](services/support-copilot-ai/evaluation/README.md)；[2026-08-24 Mock 评估基线](docs/verification/mock-evaluation-2026-08-24.md) 是历史提交记录，不代表当前 HEAD。
 
+Java 指标接口会按 `EVALUATION_REPORT_PATH` 读取 `mock-latest.json`，再把报告中的数据集、样本数、模型、Prompt 版本、Top N/K、Hit@K、MRR、引用覆盖率、无证据安全率、P95 和门禁状态传给质量页面。默认路径是从 `services/support-copilot-api/` 启动 Java 时的 `../support-copilot-ai/evaluation/reports/mock-latest.json`；没有报告、报告损坏或字段不兼容时，接口仍返回工单指标，但 `evaluation` 为 `null`。
+
 ### 自动化 CI
 
 GitHub Actions 会在每次 `push` 和 Pull Request 时分别验证 Python AI 服务、Java 业务 API 和 React 前端。
@@ -369,7 +379,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 | POST | `/api/tickets/{id}/analyses/{analysisId}/reviews/reject` | 拒绝最新回复建议并记录必填原因 |
 | GET | `/api/tickets/{id}/analyses/{analysisId}/reviews` | 查询分析审核历史 |
 | GET | `/api/knowledge/search` | 调试知识检索 |
-| GET | `/api/metrics` | 查询当前工单和已持久化运行态指标；没有来源的数据返回空值 |
+| GET | `/api/metrics` | 查询当前工单、已持久化运行态指标和可追溯 mock 评估报告；没有来源的数据返回空值 |
 | POST | `/analyze` | Java 调用的 AI 服务内部接口 |
 
 ## 演示建议
@@ -379,13 +389,14 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 3. 打开“知识依据”，检查文档片段和引用。
 4. 打开“回复建议”，编辑后采纳，或拒绝建议并填写原因，再展开审核历史。
 5. 选择“能否恢复三个月前删除的项目”，展示无证据时的拒绝承诺与人工复核。
-6. 切换运营概览和质量评估，说明当前页面不会把未接入报告的质量数字展示成事实。
+6. 切换运营概览和质量评估，展示评估报告的来源、指标和门禁状态；删除或改坏报告后，页面会回到“暂无评估报告”，不会保留静态数字。
 
 ## 当前限制
 
 - V1 使用 H2 和内存向量存储，服务重启后业务数据会重新初始化。
 - 回复审核会持久化原始建议、采纳后的内容或拒绝原因、动作、工单版本和 `traceId`；当前审核人固定为未认证的演示身份，不代表已经具备登录、RBAC 或可信生产审计。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
+- 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。
 - V2 的 MySQL、Redis、向量数据库、Docker Compose 和自动化部署/CD 尚未实现；当前已有三条 GitHub CI，但不包含部署。

@@ -143,6 +143,7 @@ Python health: mode=live、liveReady=true
 
 ```text
 OPENAI_API_KEY
+OPENAI_EMBEDDING_API_KEY（可选；未配置时复用 OPENAI_API_KEY）
 OPENAI_CHAT_MODEL
 OPENAI_EMBEDDING_MODEL
 ```
@@ -151,6 +152,9 @@ OPENAI_EMBEDDING_MODEL
 
 ```text
 OPENAI_BASE_URL
+OPENAI_EMBEDDING_BASE_URL
 ```
+
+`OPENAI_BASE_URL` 控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求。后者未配置时回退到前者；两者都未配置时使用 SDK 的官方默认地址。
 
 密钥只能通过环境变量或未提交的本地 `.env` 提供。没有可用凭据时可以继续完成代码、测试和文档，但真实 live 验收必须标记为阻塞，不能宣称已经完成。

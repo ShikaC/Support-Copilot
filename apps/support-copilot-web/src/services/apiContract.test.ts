@@ -203,6 +203,30 @@ it('accepts nullable metrics when the backend has no report source', async () =>
   })
 })
 
+it('accepts traceable evaluation report metadata and measured fields', async () => {
+  // Given: Java 返回固定评估报告中的来源和实际测量字段。
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify(metricsResponsePayload), { status: 200 }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  // When: 浏览器读取质量指标。
+  const metricsRequest = fetchMetrics()
+
+  // Then: 页面可以展示报告来源、检索窗口和门禁结果。
+  await expect(metricsRequest).resolves.toMatchObject({
+    evaluation: {
+      datasetName: 'tickets.jsonl',
+      totalCases: 31,
+      topN: 10,
+      topK: 3,
+      noEvidenceSafetyRate: 1,
+      thresholdFailureCount: 0,
+      passed: true,
+    },
+  })
+})
+
 it('rejects a successful response when its body is not JSON', async () => {
   // Given: HTTP 状态成功，但响应体不是 JSON。
   const fetchMock = vi.fn().mockResolvedValue(new Response('not-json', { status: 200 }))

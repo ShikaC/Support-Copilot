@@ -18,15 +18,18 @@ public class MetricsService {
 	private final TicketRepository ticketRepository;
 	private final AnalysisRunRepository analysisRunRepository;
 	private final AnalysisReviewRepository analysisReviewRepository;
+	private final EvaluationReportReader evaluationReportReader;
 
 	public MetricsService(
 		TicketRepository ticketRepository,
 		AnalysisRunRepository analysisRunRepository,
-		AnalysisReviewRepository analysisReviewRepository
+		AnalysisReviewRepository analysisReviewRepository,
+		EvaluationReportReader evaluationReportReader
 	) {
 		this.ticketRepository = ticketRepository;
 		this.analysisRunRepository = analysisRunRepository;
 		this.analysisReviewRepository = analysisReviewRepository;
+		this.evaluationReportReader = evaluationReportReader;
 	}
 
 	public MetricsResponse snapshot() {
@@ -48,13 +51,38 @@ public class MetricsService {
 					|| review.getAction() == AnalysisReviewAction.EDITED)
 				.count() / (double) reviews.size();
 
+		var evaluation = evaluationReportReader.read()
+			.map(this::toEvaluation)
+			.orElse(null);
+
 		return new MetricsResponse(
 			new Summary(open, urgent, slaRisk, analysisSuccessRate),
 			List.of(),
 			categoryDistribution(categoryCounts),
 			null,
 			suggestionAcceptanceRate,
-			null
+			evaluation
+		);
+	}
+
+	private Evaluation toEvaluation(EvaluationReportReader.EvaluationSnapshot report) {
+		return new Evaluation(
+			report.datasetName(),
+			report.mode(),
+			report.modelName(),
+			report.promptVersion(),
+			report.totalCases(),
+			report.topN(),
+			report.topK(),
+			report.hitRateAtK(),
+			report.mrr(),
+			report.citationCoverage(),
+			report.noEvidenceSafetyRate(),
+			report.averageDurationMs(),
+			report.p95DurationMs(),
+			report.thresholdFailureCount(),
+			report.passed(),
+			report.generatedAt()
 		);
 	}
 
@@ -103,6 +131,23 @@ public class MetricsService {
 	public record Latency(long averageMs, long p95Ms) {
 	}
 
-	public record Evaluation(double hitRateAt3, double mrr, double groundedness, double citationAccuracy) {
+	public record Evaluation(
+		String datasetName,
+		String mode,
+		String modelName,
+		String promptVersion,
+		int totalCases,
+		int topN,
+		int topK,
+		double hitRateAtK,
+		double mrr,
+		double citationCoverage,
+		double noEvidenceSafetyRate,
+		double averageDurationMs,
+		int p95DurationMs,
+		int thresholdFailureCount,
+		boolean passed,
+		java.time.Instant generatedAt
+	) {
 	}
 }

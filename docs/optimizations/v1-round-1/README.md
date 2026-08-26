@@ -72,6 +72,9 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 54. [持久化回复建议的人工审核结果](./54-persist-analysis-review-decisions.md)
 55. [补齐回复建议拒绝与审核历史](./55-reject-analysis-review-with-history.md)
 56. [建立可追溯质量基线与无证据安全门](./56-traceable-quality-baseline-and-no-evidence-gate.md)
+57. [增加隔离端口的本地 mock smoke 验收](./57-local-smoke-orchestration.md)
+58. [扩充评估集并增加检索证据门禁](./58-evaluation-and-retrieval-safety.md)
+59. [将 mock 评估报告接入质量页面](./59-connect-evaluation-report-to-quality-page.md)
 
 ## 优化后的主流程
 

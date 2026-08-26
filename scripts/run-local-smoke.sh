@@ -24,6 +24,7 @@ Usage: ./scripts/run-local-smoke.sh
 
 Starts isolated mock services, runs startup, analysis, and frontend contract
 checks, then stops only the processes started by this script.
+The latest mock evaluation report is regenerated before services start.
 
 Override ports with SUPPORT_COPILOT_SMOKE_AI_PORT,
 SUPPORT_COPILOT_SMOKE_JAVA_PORT, and SUPPORT_COPILOT_SMOKE_WEB_PORT.
@@ -117,6 +118,13 @@ start_services() {
   PIDS+=("$!")
 }
 
+refresh_mock_evaluation() {
+  (
+    cd "$AI_DIR"
+    exec env AI_MODE=mock .venv/bin/python -m evaluation.run_mock_evaluation
+  )
+}
+
 wait_for_endpoint() {
   local service_name="$1"
   local url="$2"
@@ -159,6 +167,7 @@ main() {
   case "${1:---run}" in
     --run)
       assert_ports_are_free
+      refresh_mock_evaluation
       start_services
       wait_for_endpoint "Python AI" "$AI_BASE_URL/health" '"status":"up"'
       wait_for_endpoint "Java API" "$JAVA_BASE_URL/actuator/health" '"status":"UP"'
