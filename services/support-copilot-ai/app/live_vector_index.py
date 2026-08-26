@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 
 import anyio
 from langchain_core.documents import Document
@@ -9,6 +10,8 @@ from app.config import Settings
 from app.data_redaction import redact_sensitive_text
 from app.knowledge_source import KnowledgeChunk
 from app.models import RetrievalHit, TicketInput
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,9 +42,23 @@ class LiveVectorIndex:
             redact_sensitive_text(query),
             k=min(window.top_n, len(self._chunks)),
         )
+        eligible_results = [
+            (document, float(score))
+            for document, score in results
+            if float(score) >= self._settings.live_retrieval_min_score
+        ]
+        if not eligible_results:
+            best_score = max((float(score) for _, score in results), default=None)
+            logger.info(
+                "retrieval.insufficient_evidence method=VECTOR best_score=%s min_score=%s",
+                best_score,
+                self._settings.live_retrieval_min_score,
+            )
+            return []
+
         category = ticket.current_category
         ranked = sorted(
-            results,
+            eligible_results,
             key=lambda item: (
                 category not in item[0].metadata.get("categories", []),
                 -float(item[1]),

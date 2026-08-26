@@ -160,6 +160,14 @@ Vite 会把 `/api` 代理到 `http://localhost:8080`。如果 Java API 未启动
 
 健康检查只会在 Python、Java 和 React 三个 HTTP 地址都可访问且返回预期状态时通过。也可以使用 `--all` 连续执行启动前检查和健康检查。
 
+如果需要一次性验证 mock 模式的三服务链路，可以使用隔离端口运行 smoke 检查：
+
+```bash
+./scripts/run-local-smoke.sh
+```
+
+该脚本会启动临时的 Python、Java 和 React 进程，等待三个健康端点通过，再执行 mock 成功分析和前端运行时契约检查。默认使用 `18000`、`18080` 和 `15173`，不会占用常用的 `8000`、`8080` 和 `5173`；检查结束后只清理脚本自己启动的进程。端口被占用时脚本会直接失败，不会停止已有服务。可以通过 `SUPPORT_COPILOT_SMOKE_AI_PORT`、`SUPPORT_COPILOT_SMOKE_JAVA_PORT` 和 `SUPPORT_COPILOT_SMOKE_WEB_PORT` 覆盖默认端口。
+
 ### 跨服务分析流程检查
 
 三个服务启动后，通过 React 代理验证一次成功分析：
@@ -241,9 +249,11 @@ export AI_SERVICE_TIMEOUT_MS=105000
 export SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS=120
 export RETRIEVAL_TOP_N=10
 export RETRIEVAL_TOP_K=3
+export MOCK_RETRIEVAL_MIN_SCORE=0.25
+export LIVE_RETRIEVAL_MIN_SCORE=0.35
 ```
 
-超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒并最多重试 1 次，Python 整体分析在 90 秒停止，Java 最长等待 105 秒，live 验收客户端最长等待 120 秒。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型；Python 总截止时间优先于 SDK 的后续重试，避免 Java 已降级后 Python 仍继续消耗调用预算。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒并最多重试 1 次，Python 整体分析在 90 秒停止，Java 最长等待 105 秒，live 验收客户端最长等待 120 秒。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型；Python 总截止时间优先于 SDK 的后续重试，避免 Java 已降级后 Python 仍继续消耗调用预算。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
 
 在调用正式 API 前先执行只读预检；它不会发出外部请求：
 

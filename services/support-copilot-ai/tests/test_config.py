@@ -33,3 +33,19 @@ def test_rejects_unbounded_openai_retry_configuration() -> None:
     # When/Then: settings reject the unsafe retry count at the environment boundary.
     with pytest.raises(ValidationError, match="OPENAI_MAX_RETRIES"):
         Settings(openai_max_retries=2, _env_file=None)
+
+
+def test_retrieval_score_defaults_are_explicit_and_bounded() -> None:
+    # Given: the repository's default retrieval safety configuration.
+    settings = Settings(_env_file=None)
+
+    # Then: mock and live thresholds use their documented score domains.
+    assert settings.mock_retrieval_min_score == 0.25
+    assert settings.live_retrieval_min_score == 0.35
+
+
+def test_rejects_live_retrieval_score_outside_cosine_domain() -> None:
+    # Given: a threshold outside the cosine similarity range.
+    # When/Then: settings reject it before the live service starts.
+    with pytest.raises(ValidationError):
+        Settings(live_retrieval_min_score=1.1, _env_file=None)

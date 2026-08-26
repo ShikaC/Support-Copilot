@@ -19,6 +19,14 @@ class DeterministicTestEmbeddings(Embeddings):
         return [1.0, 0.0]
 
 
+class QueryAwareTestEmbeddings(Embeddings):
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [[1.0, 0.0] for _ in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0, 0.0] if "known" in text else [0.0, 1.0]
+
+
 @pytest.fixture
 def external_knowledge_path(tmp_path: Path) -> Path:
     knowledge_path = tmp_path / "authorized-knowledge.json"
@@ -107,6 +115,43 @@ async def test_external_knowledge_reaches_vector_retrieval(
     # Then: vector retrieval returns evidence from the external source.
     assert [hit.chunk_id for hit in hits] == ["external-login-runbook"]
     assert hits[0].retrieval_method == "VECTOR"
+
+
+@pytest.mark.asyncio
+async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
+    external_knowledge_path: Path,
+) -> None:
+    # Given: a vector store returns a zero-similarity match for an unrelated query.
+    retriever = KnowledgeRetriever(
+        Settings(
+            ai_mode="mock",
+            knowledge_path=external_knowledge_path,
+            live_retrieval_min_score=0.35,
+        )
+    )
+    retriever._live_index._vector_store = InMemoryVectorStore.from_documents(
+        [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
+        QueryAwareTestEmbeddings(),
+    )
+    ticket = TicketInput(
+        id="ticket-low-vector-score",
+        subject="Unrelated support question",
+        description="The user asks about an unsupported workflow.",
+        currentCategory="ACCOUNT_ACCESS",
+        currentPriority=Priority.MEDIUM,
+    )
+
+    # When: live retrieval evaluates the unrelated query.
+    hits = await retriever.search(
+        ticket,
+        "unrelated workflow",
+        top_n=10,
+        top_k=3,
+        live=True,
+    )
+
+    # Then: a low-confidence match is not exposed as evidence.
+    assert hits == []
 
 
 def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
@@ -226,4 +271,29 @@ async def test_uncovered_category_does_not_use_unrelated_knowledge_as_evidence()
         live=False,
     )
 
+    assert hits == []
+
+
+@pytest.mark.asyncio
+async def test_local_retrieval_rejects_generic_query_below_minimum_score() -> None:
+    # Given: a generic product question shares weak character bigrams with the corpus.
+    retriever = KnowledgeRetriever(Settings(ai_mode="mock"))
+    ticket = TicketInput(
+        id="ticket-generic-settings",
+        subject="通知设置咨询",
+        description="想确认是否支持自定义提醒时间，但没有具体产品模块和处理流程。",
+        currentCategory="UNCLASSIFIED",
+        currentPriority=Priority.MEDIUM,
+    )
+
+    # When: local retrieval evaluates the unsupported question.
+    hits = await retriever.search(
+        ticket,
+        "通知设置咨询 想确认是否支持自定义提醒时间，但没有具体产品模块和处理流程。",
+        top_n=10,
+        top_k=3,
+        live=False,
+    )
+
+    # Then: weak lexical overlap is not exposed as evidence.
     assert hits == []

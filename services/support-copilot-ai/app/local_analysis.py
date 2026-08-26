@@ -193,9 +193,9 @@ class LocalAnalysisPolicy:
             ("BILLING", ("重复扣款", "重复支付", "两笔扣款", "账单")),
             ("ACCOUNT_ACCESS", ("sso", "登录", "账号锁定")),
             ("INVOICE", ("发票", "抬头")),
+            ("PRIVACY", ("数据删除", "离职员工", "隐私", "授权材料")),
             ("DATA_EXPORT", ("导出", "处理中", "exp-")),
             ("SUBSCRIPTION", ("专业版", "套餐", "协作者", "成员上限")),
-            ("PRIVACY", ("数据删除", "离职员工", "隐私", "授权材料")),
             ("TECHNICAL", ("sync-", "错误码", "客户端")),
             ("DATA_RECOVERY", ("恢复", "误删", "备份")),
         ]

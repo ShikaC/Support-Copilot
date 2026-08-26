@@ -23,6 +23,7 @@ OPTIONS: Final = AnalyzeOptions(topN=10, topK=3)
 async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> None:
     # Given: 评估集包含两条超过标准的案例，以及一条恰好等于标准的案例。
     cases = load_evaluation_cases(DATASET_PATH)
+    case_count = len(cases)
     settings = Settings(ai_mode="mock")
     workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
     responses = await analyze_cases(cases, workflow.run, OPTIONS)
@@ -99,50 +100,55 @@ async def test_report_fails_when_one_high_risk_priority_downgrade_occurs() -> No
     assert performance[1].slow_case_rate == pytest.approx(1.0)
     assert performance[2].model_name == "model-y"
     assert performance[2].prompt_version == "ticket-analysis-v2"
-    assert performance[2].total_cases == 16
-    assert performance[2].classification_accuracy == pytest.approx(15 / 16)
+    assert performance[2].total_cases == len(cases) - 2
+    assert performance[2].classification_accuracy == pytest.approx(
+        (case_count - 3) / (case_count - 2)
+    )
     assert performance[2].priority_accuracy == pytest.approx(1.0)
     assert performance[2].high_risk_priority_downgrade_count == 0
     assert performance[2].high_risk_priority_downgrade_rate == pytest.approx(0.0)
     assert performance[2].slow_case_count == 0
     assert performance[2].slow_case_rate == pytest.approx(0.0)
-    assert report.metrics.total_cases == 18
-    assert report.metrics.classification_accuracy == pytest.approx(16 / 18)
-    assert report.metrics.priority_accuracy == pytest.approx(17 / 18)
+    assert report.metrics.total_cases == case_count
+    assert report.metrics.classification_accuracy == pytest.approx(
+        (case_count - 2) / case_count
+    )
+    assert report.metrics.priority_accuracy == pytest.approx((case_count - 1) / case_count)
     assert report.metrics.high_risk_priority_downgrade_count == 1
-    assert report.metrics.high_risk_priority_downgrade_rate == pytest.approx(1 / 18)
+    assert report.metrics.high_risk_priority_downgrade_rate == pytest.approx(1 / case_count)
     assert report.thresholds.max_high_risk_priority_downgrade_count == 0
     assert report.metrics.hit_rate_at_k == pytest.approx(1.0)
     assert report.metrics.no_evidence_safety_rate == pytest.approx(1.0)
     assert report.passed is False
     assert tuple(failure.metric for failure in report.threshold_failures) == (
-        "classification_accuracy",
         "high_risk_priority_downgrade_count",
     )
-    assert report.threshold_failures[0].actual == pytest.approx(16 / 18)
-    assert report.threshold_failures[0].comparison == "at_least"
-    assert report.threshold_failures[0].threshold == pytest.approx(0.90)
-    assert report.threshold_failures[1].actual == 1
-    assert report.threshold_failures[1].comparison == "at_most"
-    assert report.threshold_failures[1].threshold == 0
+    assert report.threshold_failures[0].actual == 1
+    assert report.threshold_failures[0].comparison == "at_most"
+    assert report.threshold_failures[0].threshold == 0
     assert report.failed_case_ids == ("billing-details-002", "billing-refund-003")
     assert report.metrics.slow_case_threshold_ms == 2_000
     assert report.metrics.slow_case_count == 2
-    assert report.metrics.slow_case_rate == pytest.approx(2 / 18)
+    assert report.metrics.slow_case_rate == pytest.approx(2 / case_count)
+    model_y_classification = (case_count - 3) / (case_count - 2)
     markdown = render_markdown(report)
     assert "> 模型：model-x, model-y" in markdown
     assert "> 提示词版本：ticket-analysis-v1, ticket-analysis-v2" in markdown
     assert "> 结论：未通过" in markdown
     assert "| model-x | ticket-analysis-v1 | 1 | 1.000 | 1.000 | 0 | 0.000 | 1 | 1.000 |" in markdown
     assert "| model-x | ticket-analysis-v2 | 1 | 0.000 | 0.000 | 1 | 1.000 | 1 | 1.000 |" in markdown
-    assert "| model-y | ticket-analysis-v2 | 16 | 0.938 | 1.000 | 0 | 0.000 | 0 | 0.000 |" in markdown
+    assert (
+        f"| model-y | ticket-analysis-v2 | {case_count - 2} | "
+        f"{model_y_classification:.3f} | 1.000 | 0 | 0.000 | 0 | 0.000 |"
+        in markdown
+    )
     assert "| 慢案例标准（毫秒） | > 2000 |" in markdown
     assert "| 高风险优先级降级数量 | 1 |" in markdown
-    assert "| 高风险优先级降级比例 | 0.056 |" in markdown
+    assert f"| 高风险优先级降级比例 | {1 / case_count:.3f} |" in markdown
     assert "| 允许最大高风险降级数量 | 0 |" in markdown
     assert "| 慢案例数量 | 2 |" in markdown
-    assert "| 慢案例比例 | 0.111 |" in markdown
-    assert "- 分类准确率：实际 0.889，要求至少 0.900" in markdown
+    assert f"| 慢案例比例 | {2 / case_count:.3f} |" in markdown
+    assert "- 分类准确率：实际" not in markdown
     assert "- 高风险优先级降级数量：实际 1，要求最多 0" in markdown
     assert (
         "### billing-details-002 - 支付争议需要补充什么资料" in markdown

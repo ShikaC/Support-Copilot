@@ -14,6 +14,7 @@ from app.models import RetrievalHit, TicketInput
 
 class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
+        self._settings = settings
         self._chunks = load_knowledge_chunks(
             settings.knowledge_path,
             settings.knowledge_provenance_path,
@@ -71,7 +72,8 @@ class KnowledgeRetriever:
         candidates = [
             (chunk, score, initial_rank)
             for initial_rank, (chunk, score) in enumerate(scored, start=1)
-            if score >= 0.18
+            if self._local_final_score(chunk, ticket, score)
+            >= self._settings.mock_retrieval_min_score
         ][:top_n]
         ranked = sorted(
             candidates,

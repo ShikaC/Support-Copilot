@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     knowledge_provenance_path: Path | None = None
     retrieval_top_n: int = 10
     retrieval_top_k: int = 3
+    # The local scorer uses a different scale from live cosine similarity.
+    mock_retrieval_min_score: float = Field(default=0.25, ge=0, le=1)
+    # InMemoryVectorStore returns cosine similarity; results below this value
+    # are treated as insufficient evidence instead of being sent to generation.
+    live_retrieval_min_score: float = Field(default=0.35, ge=-1, le=1)
 
     @field_validator("openai_max_retries")
     @classmethod
