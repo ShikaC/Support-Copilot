@@ -7,6 +7,7 @@ import re
 import shutil
 import tempfile
 
+import anyio
 import numpy as np
 from pydantic import ValidationError
 
@@ -51,17 +52,12 @@ class EmbeddingArtifactStore:
         self._chunking_version = settings.embedding_chunking_version
         self._expected_dimension = settings.embedding_vector_dimension
         self._corpus = corpus
+        self._build_lock = anyio.Lock()
 
     async def build(self, provider: EmbeddingProvider) -> EmbeddingArtifactManifest:
-        texts = [redact_sensitive_text(chunk.content) for chunk in self._corpus.chunks]
-        vectors = await provider.embed_documents(texts)
-        matrix = np.asarray(vectors, dtype=np.float32)
-        if matrix.ndim != 2 or matrix.shape[0] != len(texts) or matrix.shape[1] == 0:
-            raise EmbeddingArtifactError("provider-shape-mismatch")
-        if not np.isfinite(matrix).all():
-            raise EmbeddingArtifactError("provider-non-finite-vector")
-        if self._expected_dimension is not None and matrix.shape[1] != self._expected_dimension:
-            raise EmbeddingArtifactError("provider-dimension-mismatch")
+        dimension = self._expected_dimension
+        if dimension is None:
+            raise EmbeddingArtifactError("embedding-dimension-required")
         metadata = tuple(
             ArtifactChunkMetadata(
                 row=row,
@@ -74,54 +70,63 @@ class EmbeddingArtifactStore:
             for row, chunk in enumerate(self._corpus.chunks)
         )
         documents = self._document_records(metadata)
-        matrix_content_sha256 = sha256(matrix.tobytes(order="C")).hexdigest()
-        artifact_id = self._artifact_id(
-            matrix.shape[1], metadata, documents, matrix_content_sha256
-        )
+        artifact_id = self._artifact_id(dimension, metadata, documents)
         final_path = self._root / artifact_id
         if final_path.exists():
             return self.load(artifact_id).manifest
-        self._root.mkdir(parents=True, exist_ok=True)
-        temporary = Path(tempfile.mkdtemp(prefix=".candidate-", dir=self._root))
-        try:
-            matrix_path = temporary / "matrix.npy"
-            with matrix_path.open("wb") as stream:
-                np.save(stream, matrix, allow_pickle=False)
-                stream.flush()
-                os.fsync(stream.fileno())
-            metadata_path = temporary / "metadata.json"
-            self._write_bytes(metadata_path, self._metadata_bytes(metadata))
-            manifest = EmbeddingArtifactManifest(
-                schema_version=1,
-                artifact_id=artifact_id,
-                release_id=self._corpus.release_id,
-                release_version=self._corpus.release_version,
-                corpus_checksum=self._corpus.corpus_checksum,
-                provider_identity=self._provider_identity,
-                embedding_model=self._model,
-                vector_dimension=matrix.shape[1],
-                chunking_version=self._chunking_version,
-                row_count=matrix.shape[0],
-                matrix_sha256=file_checksum(matrix_path),
-                metadata_sha256=file_checksum(metadata_path),
-                documents=documents,
-            )
-            self._write_bytes(
-                temporary / "manifest.json",
-                (manifest.model_dump_json(indent=2) + "\n").encode(),
-            )
-            self._verify_path(temporary, artifact_id)
-            try:
-                os.replace(temporary, final_path)
-            except OSError:
-                if not final_path.exists():
-                    raise
+
+        async with self._build_lock:
+            if final_path.exists():
                 return self.load(artifact_id).manifest
-            fsync_directory(self._root)
-            return manifest
-        finally:
-            if temporary.exists():
-                shutil.rmtree(temporary)
+            texts = [redact_sensitive_text(chunk.content) for chunk in self._corpus.chunks]
+            matrix = np.asarray(await provider.embed_documents(texts), dtype=np.float32)
+            if matrix.ndim != 2 or matrix.shape[0] != len(texts) or matrix.shape[1] == 0:
+                raise EmbeddingArtifactError("provider-shape-mismatch")
+            if not np.isfinite(matrix).all():
+                raise EmbeddingArtifactError("provider-non-finite-vector")
+            if matrix.shape[1] != dimension:
+                raise EmbeddingArtifactError("provider-dimension-mismatch")
+            self._root.mkdir(parents=True, exist_ok=True)
+            temporary = Path(tempfile.mkdtemp(prefix=".candidate-", dir=self._root))
+            try:
+                matrix_path = temporary / "matrix.npy"
+                with matrix_path.open("wb") as stream:
+                    np.save(stream, matrix, allow_pickle=False)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                metadata_path = temporary / "metadata.json"
+                self._write_bytes(metadata_path, self._metadata_bytes(metadata))
+                manifest = EmbeddingArtifactManifest(
+                    schema_version=1,
+                    artifact_id=artifact_id,
+                    release_id=self._corpus.release_id,
+                    release_version=self._corpus.release_version,
+                    corpus_checksum=self._corpus.corpus_checksum,
+                    provider_identity=self._provider_identity,
+                    embedding_model=self._model,
+                    vector_dimension=matrix.shape[1],
+                    chunking_version=self._chunking_version,
+                    row_count=matrix.shape[0],
+                    matrix_sha256=file_checksum(matrix_path),
+                    metadata_sha256=file_checksum(metadata_path),
+                    documents=documents,
+                )
+                self._write_bytes(
+                    temporary / "manifest.json",
+                    (manifest.model_dump_json(indent=2) + "\n").encode(),
+                )
+                self._verify_path(temporary, artifact_id)
+                try:
+                    os.replace(temporary, final_path)
+                except OSError:
+                    if not final_path.exists():
+                        raise
+                    return self.load(artifact_id).manifest
+                fsync_directory(self._root)
+                return manifest
+            finally:
+                if temporary.exists():
+                    shutil.rmtree(temporary)
 
     def load_active(self) -> LoadedEmbeddingArtifact:
         pointer = self._load_pointer()
@@ -195,14 +200,10 @@ class EmbeddingArtifactStore:
         expected_pairs = tuple((row, chunk.chunk_id, chunk_checksum(chunk)) for row, chunk in enumerate(self._corpus.chunks))
         if chunk_pairs != expected_pairs or len(metadata) != manifest.row_count:
             raise EmbeddingArtifactError("chunk-order-mismatch")
-        matrix_content_sha256 = sha256(
-            np.asarray(matrix, dtype=np.float32).tobytes(order="C")
-        ).hexdigest()
         if self._artifact_id(
             manifest.vector_dimension,
             metadata,
             manifest.documents,
-            matrix_content_sha256,
         ) != manifest.artifact_id:
             raise EmbeddingArtifactError("artifact-identity-mismatch")
 
@@ -211,7 +212,6 @@ class EmbeddingArtifactStore:
         dimension: int,
         metadata: tuple[ArtifactChunkMetadata, ...],
         documents: tuple[ArtifactDocumentRecord, ...],
-        matrix_content_sha256: str,
     ) -> str:
         identity = {
             "schema_version": 1,
@@ -224,7 +224,6 @@ class EmbeddingArtifactStore:
             "chunking_version": self._chunking_version,
             "metadata_sha256": sha256(self._metadata_bytes(metadata)).hexdigest(),
             "documents_sha256": sha256(canonical_bytes([item.model_dump(mode="json") for item in documents])).hexdigest(),
-            "matrix_content_sha256": matrix_content_sha256,
         }
         return sha256(canonical_bytes(identity)).hexdigest()
 

@@ -118,6 +118,7 @@ def _live_settings(knowledge_path: Path) -> Settings:
         openai_chat_model="synthetic-chat-model",
         openai_embedding_model="synthetic-embedding-model",
         embedding_artifact_root=knowledge_path.parent / "embedding-artifacts",
+        embedding_vector_dimension=2,
         embedding_artifact_build_policy="build-if-missing",
     )
 

@@ -69,10 +69,9 @@ async def test_external_knowledge_reaches_vector_retrieval(
 ) -> None:
     # Given: the configured external chunk is indexed by a persisted matrix.
     settings = Settings(
-        ai_mode="mock",
-        knowledge_path=external_knowledge_path,
-        openai_embedding_model="test-model",
-        embedding_artifact_root=tmp_path / "artifacts",
+        ai_mode="mock", knowledge_path=external_knowledge_path,
+        openai_embedding_model="test-model", embedding_artifact_root=tmp_path / "artifacts",
+        embedding_vector_dimension=2,
     )
     retriever = KnowledgeRetriever(settings)
 
@@ -170,11 +169,10 @@ async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
 ) -> None:
     # Given: a vector store returns a zero-similarity match for an unrelated query.
     settings = Settings(
-            ai_mode="mock",
-            knowledge_path=external_knowledge_path,
+            ai_mode="mock", knowledge_path=external_knowledge_path,
             live_retrieval_min_score=0.35,
-            openai_embedding_model="test-model",
-            embedding_artifact_root=tmp_path / "artifacts",
+            openai_embedding_model="test-model", embedding_artifact_root=tmp_path / "artifacts",
+            embedding_vector_dimension=2,
     )
     retriever = KnowledgeRetriever(settings)
 

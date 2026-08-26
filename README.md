@@ -302,7 +302,7 @@ Java 以 `DRAFT -> APPROVED -> PUBLISHED -> ARCHIVED` 管理不可变的 release
 
 仓库内基线契约为 `support-copilot-bundled-v1`、版本 `1`、checksum `b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874`。该 checksum 是对规范化 chunks JSON 独立计算的 SHA-256，不是整个 `knowledge.json` 文件的原始 SHA；release 元数据不参与计算，避免自引用。Java 每次分析把 active release 与可信范围交给 Python，Python 在打分、Embedding 和 Prompt 前同时校验 release identity/checksum 并过滤无权片段。契约不一致返回 `409 KNOWLEDGE_RELEASE_MISMATCH`，不能转换成 AI fallback。
 
-Python live 检索使用版本化 file-backed Embedding artifact，不再在每次进程启动后重新嵌入文档。artifact 包含 `float32` matrix、按行排序的片段 ID/范围/checksum metadata 和 canonical manifest；不包含知识正文、API Key 或 provider 响应。identity 绑定 release id/version/corpus checksum、脱密后的 provider endpoint identity、Embedding model、精确维度、chunking version、片段顺序和 matrix 内容。
+Python live 检索使用版本化 file-backed Embedding artifact，不再在每次进程启动后重新嵌入文档。artifact 包含 `float32` matrix、按行排序的片段 ID/范围/checksum metadata 和 canonical manifest；不包含知识正文、API Key 或 provider 响应。identity 绑定 release id/version/corpus checksum、脱密后的 provider endpoint identity、Embedding model、精确维度、chunking version 和片段顺序，因此可在调用 provider 前确定目标；manifest 的 matrix/metadata SHA-256 仍单独校验实际文件内容。
 
 先使用明确的 corpus、artifact root、model 和维度构建，再验证并激活。以下命令中的维度必须与 provider 返回值一致：
 
@@ -329,7 +329,7 @@ cd services/support-copilot-ai
   --model 'your-embedding-model' --dimension 1536
 ```
 
-`inspect` 使用与 `verify` 相同参数并输出 release、row count 和 dimension。`rollback` 不接收 artifact id，而是验证 active pointer 记录的 previous artifact 后原子切回。构建先写唯一临时同级目录，关闭并 fsync 文件，验证 hashes/schema/matrix/order 后原子发布完整目录；activation 只在候选兼容且完整时原子替换小 pointer。失败不会替换原 pointer。默认 `EMBEDDING_ARTIFACT_BUILD_POLICY=require-active`；`build-if-missing` 只适合有界的首次部署或聚焦测试，不能静默替换不兼容 artifact。
+`inspect` 使用与 `verify` 相同参数并输出 release、row count 和 dimension。`rollback` 不接收 artifact id，而是验证 active pointer 记录的 previous artifact 后原子切回。构建先按确定的 identity 检查并完整验证已有目标；同一 store 的并发构建在锁内再次检查，只有缺失目标才请求一批文档 vectors。既有目标损坏或不兼容时直接返回脱敏 typed error，不调用 provider、覆盖/删除目标或替换 active pointer。新候选写入唯一临时同级目录，关闭并 fsync 文件，验证 hashes/schema/matrix/order 后原子发布完整目录；activation 只在候选兼容且完整时原子替换小 pointer。默认 `EMBEDDING_ARTIFACT_BUILD_POLICY=require-active`；`build-if-missing` 只适合有界的首次部署或聚焦测试，不能静默替换不兼容 artifact。
 
 启动 live 服务时同时配置 `EMBEDDING_ARTIFACT_ROOT`、`EMBEDDING_VECTOR_DIMENSION` 和默认的 `require-active`。首次 live 检索惰性验证 active artifact；验证前 readiness 的 index reason 为 `artifact-unverified`，损坏或不兼容时 liveness 保持 200、readiness 降级并返回稳定 reason，检索不会转成普通 AI fallback。query 每次仍调用 Embedding provider；空范围请求在 artifact load、文档 embedding 和 query embedding 前返回零命中。允许范围先映射为 row indices，再进行 cosine score。
 

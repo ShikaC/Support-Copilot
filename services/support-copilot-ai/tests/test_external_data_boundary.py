@@ -62,6 +62,7 @@ async def test_live_embedding_requests_redact_sensitive_data(
         knowledge_path=knowledge_path,
         openai_embedding_model="test-model",
         embedding_artifact_root=tmp_path / "artifacts",
+        embedding_vector_dimension=2,
     )
     retriever = KnowledgeRetriever(settings)
     embeddings = CapturingTestEmbeddings()

@@ -6,9 +6,9 @@ Task 8 的 live 检索在每个 Python 进程内按访问范围创建 `InMemoryV
 
 ## 修改层与流程
 
-Python 新增 typed artifact models、provider abstraction、file-backed store 和 lifecycle CLI。artifact identity 绑定 knowledge release、semantic corpus checksum、脱密 provider endpoint、model、精确 dimension、chunking/schema version、ordered chunk/document checksums 和 matrix 内容。matrix 使用 NumPy `float32` `.npy`；metadata 和 manifest 使用严格 JSON，不保存正文、凭据或 provider response。
+Python 新增 typed artifact models、provider abstraction、file-backed store 和 lifecycle CLI。artifact identity 绑定 knowledge release、semantic corpus checksum、脱密 provider endpoint、model、精确 dimension、chunking/schema version 与 ordered chunk/document checksums，因此 provider 调用前可确定目标；matrix 使用 NumPy `float32` `.npy`，其实际内容仍由 manifest 中的文件 SHA-256 完整校验。metadata 和 manifest 使用严格 JSON，不保存正文、凭据或 provider response。
 
-构建先请求一次 release 全量文档 vectors，验证 batch count、dimension 和 finiteness，再写唯一临时同级目录并 fsync。完整 candidate 自验证后原子 rename；activation 重新验证 candidate，再原子替换只含 active/previous identity 的 pointer。失败不会修改旧 pointer。rollback 只切回重新验证且与当前 corpus/model/config 兼容的 previous artifact。
+构建先按 identity 检查并完整验证已有目标；同一 store 的并发调用在进程内锁中再次检查，命中时不调用文档 Embedding。损坏或不兼容的既有目标返回 typed integrity error，不覆盖、删除或改变 active pointer。只有缺失目标才请求一次 release 全量文档 vectors，验证 batch count、dimension 和 finiteness，再写唯一临时同级目录并 fsync。完整 candidate 自验证后原子 rename；activation 重新验证 candidate，再原子替换只含 active/previous identity 的 pointer。失败不会修改旧 pointer。rollback 只切回重新验证且与当前 corpus/model/config 兼容的 previous artifact。
 
 live 检索首次访问才验证 active artifact。request release 仍先与已加载 corpus 比较；允许范围映射成 row indices 后才切片 matrix 并计算 cosine score。空范围在 artifact/provider 前返回零命中。artifact 错误降低 index readiness 并保留 liveness，不转换成 AI fallback。
 

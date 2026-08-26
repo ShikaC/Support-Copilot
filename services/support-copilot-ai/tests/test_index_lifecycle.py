@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -44,6 +45,7 @@ def _live_settings(knowledge_path: Path, artifact_root: Path) -> Settings:
         openai_chat_model="synthetic-chat-model",
         openai_embedding_model="synthetic-embedding-model",
         embedding_artifact_root=artifact_root,
+        embedding_vector_dimension=2,
         embedding_artifact_build_policy="build-if-missing",
         _env_file=None,
     )
@@ -112,10 +114,22 @@ async def test_activation_and_rollback_restore_ranking_without_reembedding(
         update={"embedding_artifact_build_policy": "require-active"}
     )
     store = EmbeddingArtifactStore(settings, load_knowledge_corpus(knowledge_path))
+    next_knowledge_path = tmp_path / "next-knowledge.json"
+    payload = json.loads(knowledge_path.read_text(encoding="utf-8"))
+    payload["release_version"] = 2
+    next_knowledge_path.write_text(json.dumps(payload), encoding="utf-8")
+    next_settings = _live_settings(
+        next_knowledge_path,
+        tmp_path / "artifacts",
+    ).model_copy(update={"embedding_artifact_build_policy": "require-active"})
+    next_store = EmbeddingArtifactStore(
+        next_settings,
+        load_knowledge_corpus(next_knowledge_path),
+    )
     first_provider = AsyncFakeProvider([[1.0, 0.0], [0.0, 1.0]], [1.0, 0.0])
     second_provider = AsyncFakeProvider([[0.0, 1.0], [1.0, 0.0]], [1.0, 0.0])
     first = await store.build(first_provider)
-    second = await store.build(second_provider)
+    second = await next_store.build(second_provider)
     ticket = TicketInput(
         id="ticket-rollback",
         subject="Support request",
@@ -129,8 +143,8 @@ async def test_activation_and_rollback_restore_ranking_without_reembedding(
     first_hits = await first_retriever.search(
         retrieval_request(first_retriever, ticket, "query", live=True)
     )
-    store.activate(second.artifact_id)
-    second_retriever = KnowledgeRetriever(settings)
+    next_store.activate(second.artifact_id)
+    second_retriever = KnowledgeRetriever(next_settings)
     second_retriever._live_index._provider = second_provider
     second_hits = await second_retriever.search(
         retrieval_request(second_retriever, ticket, "query", live=True)

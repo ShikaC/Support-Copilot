@@ -32,6 +32,7 @@ def artifact_settings(
     *,
     model: str = "fake-model",
     dimension: int | None = 2,
+    chunking_version: str = "knowledge-corpus-v2",
 ) -> Settings:
     return Settings(
         ai_mode="mock",
@@ -40,6 +41,7 @@ def artifact_settings(
         openai_embedding_model=model,
         openai_embedding_base_url="https://user:secret@example.test/v1?key=secret",
         embedding_vector_dimension=dimension,
+        embedding_chunking_version=chunking_version,
         _env_file=None,
     )
 
@@ -75,6 +77,7 @@ async def test_identity_reuses_unchanged_build_and_changes_with_release(
     )
 
     assert repeated.artifact_id == first.artifact_id
+    assert first_provider.document_calls == 1
     assert second.artifact_id != first.artifact_id
     assert sorted(path.name for path in (tmp_path / "root").iterdir()) == sorted(
         [first.artifact_id, second.artifact_id]
@@ -83,7 +86,7 @@ async def test_identity_reuses_unchanged_build_and_changes_with_release(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("filename", ["matrix.npy", "metadata.json", "manifest.json"])
-async def test_corrupt_artifact_is_rejected_without_pointer_change(
+async def test_corrupt_existing_target_is_rejected_without_provider_or_pointer_change(
     tmp_path: Path,
     filename: str,
 ) -> None:
@@ -93,9 +96,15 @@ async def test_corrupt_artifact_is_rejected_without_pointer_change(
     active = await store.build(
         FakeEmbeddingProvider([[1.0, 0.0], [0.0, 1.0]])
     )
-    candidate = await store.build(
-        FakeEmbeddingProvider([[0.0, 1.0], [1.0, 0.0]])
+    candidate_store = artifact_store(
+        artifact_settings(
+            knowledge_path,
+            tmp_path / "root",
+            chunking_version="knowledge-corpus-v3",
+        )
     )
+    candidate_provider = FakeEmbeddingProvider([[0.0, 1.0], [1.0, 0.0]])
+    candidate = await candidate_store.build(candidate_provider)
     store.activate(active.artifact_id)
     pointer_path = tmp_path / "root" / "active.json"
     pointer_before = pointer_path.read_bytes()
@@ -103,8 +112,9 @@ async def test_corrupt_artifact_is_rejected_without_pointer_change(
     (candidate_path / filename).write_bytes(b"corrupt")
 
     with pytest.raises(EmbeddingArtifactError):
-        store.activate(candidate.artifact_id)
+        await candidate_store.build(candidate_provider)
 
+    assert candidate_provider.document_calls == 1
     assert pointer_path.read_bytes() == pointer_before
     assert store.load_active().manifest.artifact_id == active.artifact_id
 
@@ -115,21 +125,31 @@ async def test_activation_and_rollback_switch_only_verified_artifacts(
 ) -> None:
     knowledge_path = tmp_path / "knowledge.json"
     write_canary_corpus(knowledge_path)
-    store = artifact_store(artifact_settings(knowledge_path, tmp_path / "root"))
-    first = await store.build(FakeEmbeddingProvider([[1.0, 0.0], [0.0, 1.0]]))
-    second = await store.build(FakeEmbeddingProvider([[0.0, 1.0], [1.0, 0.0]]))
+    root = tmp_path / "root"
+    first_store = artifact_store(artifact_settings(knowledge_path, root))
+    first = await first_store.build(
+        FakeEmbeddingProvider([[1.0, 0.0], [0.0, 1.0]])
+    )
+    next_knowledge_path = tmp_path / "next.json"
+    payload = json.loads(knowledge_path.read_text(encoding="utf-8"))
+    payload["release_version"] = 2
+    next_knowledge_path.write_text(json.dumps(payload), encoding="utf-8")
+    second_store = artifact_store(artifact_settings(next_knowledge_path, root))
+    second = await second_store.build(
+        FakeEmbeddingProvider([[0.0, 1.0], [1.0, 0.0]])
+    )
 
-    initial = store.activate(first.artifact_id)
-    switched = store.activate(second.artifact_id)
-    repeated = store.activate(second.artifact_id)
-    rolled_back = store.rollback()
+    initial = first_store.activate(first.artifact_id)
+    switched = second_store.activate(second.artifact_id)
+    repeated = second_store.activate(second.artifact_id)
+    rolled_back = first_store.rollback()
 
     assert initial.active_artifact_id == first.artifact_id
     assert switched.active_artifact_id == second.artifact_id
     assert switched.previous_artifact_id == first.artifact_id
     assert repeated == switched
     assert rolled_back.active_artifact_id == first.artifact_id
-    assert store.load_active().manifest.artifact_id == first.artifact_id
+    assert first_store.load_active().manifest.artifact_id == first.artifact_id
 
 
 @pytest.mark.asyncio
@@ -157,11 +177,10 @@ async def test_concurrent_builds_converge_on_one_complete_artifact(
     write_canary_corpus(knowledge_path)
     store = artifact_store(artifact_settings(knowledge_path, tmp_path / "root"))
     artifact_ids: list[str] = []
+    provider = FakeEmbeddingProvider([[1.0, 0.0], [0.0, 1.0]])
 
     async def build() -> None:
-        manifest = await store.build(
-            FakeEmbeddingProvider([[1.0, 0.0], [0.0, 1.0]])
-        )
+        manifest = await store.build(provider)
         artifact_ids.append(manifest.artifact_id)
 
     async with anyio.create_task_group() as tasks:
@@ -171,6 +190,7 @@ async def test_concurrent_builds_converge_on_one_complete_artifact(
     visible = [path for path in (tmp_path / "root").iterdir() if not path.name.startswith(".")]
     assert len(set(artifact_ids)) == 1
     assert len(visible) == 1
+    assert provider.document_calls == 1
     assert store.load(artifact_ids[0]).manifest.artifact_id == artifact_ids[0]
 
 
