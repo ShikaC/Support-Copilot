@@ -14,7 +14,7 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - H2 工单与分析运行持久化。
 - FastAPI `mock`、`live` 和 `fallback` 三种运行模式。
 - Java 到 Python 的超时与业务降级。
-- OpenAI Responses API 结构化输出和进程内向量检索的 live 模式骨架，尚未完成正式 API 成功验证。
+- OpenAI Responses API 结构化输出和进程内向量检索的 live 模式；2026-08-26 已在干净提交上完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
 
 ## 技术架构
 
@@ -398,5 +398,6 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
+- 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。
 - V2 的 MySQL、Redis、向量数据库、Docker Compose 和自动化部署/CD 尚未实现；当前已有三条 GitHub CI，但不包含部署。
