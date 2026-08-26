@@ -98,7 +98,8 @@ class LiveVectorIndex:
                 api_key=self._settings.embedding_api_key,
                 base_url=self._settings.embedding_base_url,
                 model=self._settings.openai_embedding_model,
-                max_retries=self._settings.openai_max_retries,
+                # Java owns bounded service retries; embedding SDK calls are single-attempt.
+                max_retries=0,
                 request_timeout=self._settings.openai_timeout_seconds,
             )
             documents = [self._as_document(chunk) for chunk in self._chunks]

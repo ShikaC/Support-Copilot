@@ -18,7 +18,9 @@ class OpenAIProvider:
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
             timeout=settings.openai_timeout_seconds,
-            max_retries=settings.openai_max_retries,
+            # Java owns bounded service retries. Keep the SDK at one attempt so
+            # an old validated OPENAI_MAX_RETRIES=1 setting cannot multiply them.
+            max_retries=0,
         )
 
     async def analyze(

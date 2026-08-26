@@ -37,7 +37,13 @@ public class SecurityConfig {
 			.cors(Customizer.withDefaults())
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-				.requestMatchers("/actuator/health", "/api/**", "/h2-console/**").permitAll()
+				.requestMatchers(
+					"/actuator/health",
+					"/actuator/health/liveness",
+					"/actuator/health/readiness",
+					"/api/**",
+					"/h2-console/**"
+				).permitAll()
 				.anyRequest().denyAll())
 			.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()))
 			.build();
@@ -54,7 +60,11 @@ public class SecurityConfig {
 			.cors(Customizer.withDefaults())
 			.authorizeHttpRequests(authorize -> authorize
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-				.requestMatchers("/actuator/health").permitAll()
+				.requestMatchers(
+					"/actuator/health",
+					"/actuator/health/liveness",
+					"/actuator/health/readiness"
+				).permitAll()
 				.requestMatchers("/api/audit-events/**")
 					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/api/tickets/*/analyses/*/reviews/**")

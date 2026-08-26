@@ -115,11 +115,11 @@ public class AnalysisService {
 		try {
 			response = aiServiceClient.analyze(ticket, traceId);
 		} catch (AiServiceCallException exception) {
-			log.warn(
-				"analysis.fallback ticket_id={} reason={}",
-				ticket.getId(),
-				exception.getFallbackReason().value()
-			);
+			log.atWarn()
+				.addKeyValue("trace_id", traceId)
+				.addKeyValue("ticket_id", ticket.getId())
+				.addKeyValue("reason", exception.getFallbackReason().value())
+				.log("analysis.fallback");
 			response = mockAnalysisFactory.createFallback(
 				ticket,
 				traceId,

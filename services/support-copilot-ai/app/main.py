@@ -1,8 +1,13 @@
 import logging
-from typing import Annotated
+import re
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Final
+from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.responses import Response
 
 from app.analysis_runner import AnalysisProcessingTimeoutError, AnalysisRunner
 from app.config import get_settings
@@ -14,10 +19,38 @@ from app.knowledge import KnowledgeRetriever
 from app.models import AnalyzeRequest, AnalyzeResponse
 from app.workflow import AnalysisWorkflow
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+STRUCTURED_LOG_FORMAT: Final = (
+    "%(asctime)s %(levelname)s %(name)s event=%(message)s "
+    "trace_id=%(trace_id)s timeout_seconds=%(timeout_seconds)s "
+    "error_code=%(error_code)s error_type=%(error_type)s"
 )
+
+logging.basicConfig(level=logging.INFO, format=STRUCTURED_LOG_FORMAT)
+
+
+class StructuredLogDefaults(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        defaults: dict[str, str] = {
+            "trace_id": "none",
+            "timeout_seconds": "none",
+            "error_code": "none",
+            "error_type": "none",
+        }
+        for name, value in defaults.items():
+            if not hasattr(record, name):
+                setattr(record, name, value)
+        return True
+
+
+for handler in logging.getLogger().handlers:
+    handler.addFilter(StructuredLogDefaults())
+    handler.setFormatter(logging.Formatter(STRUCTURED_LOG_FORMAT))
+
+logger = logging.getLogger(__name__)
+TRACE_HEADER: Final = "X-Trace-Id"
+SAFE_TRACE_ID: Final = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}")
+JsonScalar = str | int | float | bool | None
+JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
 settings = get_settings()
 internal_service_token = settings.require_internal_service_token()
@@ -35,18 +68,102 @@ app = FastAPI(
 )
 
 
-@app.exception_handler(InternalServiceAuthenticationError)
-async def internal_authentication_error(
-    _request: Request,
-    exception: InternalServiceAuthenticationError,
+def request_trace_id(request: Request) -> str:
+    return safe_trace_id(request.headers.get(TRACE_HEADER))
+
+
+def safe_trace_id(candidate: str | None) -> str:
+    if candidate is not None and SAFE_TRACE_ID.fullmatch(candidate):
+        return candidate
+    return f"trace_{uuid4().hex[:12]}"
+
+
+def error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    trace_id: str,
+    details: dict[str, JsonValue] | None = None,
 ) -> JSONResponse:
     return JSONResponse(
-        status_code=401,
+        status_code=status_code,
         content={
-            "code": "INTERNAL_SERVICE_AUTHENTICATION_REQUIRED",
-            "message": "A valid internal service credential is required.",
-            "traceId": exception.trace_id,
+            "code": code,
+            "message": message,
+            "traceId": trace_id,
+            "details": details or {},
         },
+        headers={TRACE_HEADER: trace_id},
+    )
+
+
+@app.middleware("http")
+async def propagate_trace_id(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    trace_id = request_trace_id(request)
+    request.state.trace_id = trace_id
+    response = await call_next(request)
+    response.headers[TRACE_HEADER] = trace_id
+    return response
+
+
+@app.exception_handler(InternalServiceAuthenticationError)
+async def internal_authentication_error(
+    request: Request,
+    exception: InternalServiceAuthenticationError,
+) -> JSONResponse:
+    trace_id = request.state.trace_id
+    if request.headers.get(TRACE_HEADER) is None:
+        trace_id = safe_trace_id(exception.trace_id)
+        request.state.trace_id = trace_id
+    return error_response(
+        401,
+        "INTERNAL_SERVICE_AUTHENTICATION_REQUIRED",
+        "A valid internal service credential is required.",
+        trace_id,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(
+    request: Request,
+    exception: RequestValidationError,
+) -> JSONResponse:
+    errors = [
+        {
+            "type": error["type"],
+            "loc": list(error["loc"]),
+            "msg": error["msg"],
+        }
+        for error in exception.errors()
+    ]
+    return error_response(
+        422,
+        "REQUEST_VALIDATION_FAILED",
+        "Request validation failed.",
+        request.state.trace_id,
+        {"errors": errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_error(request: Request, exception: Exception) -> JSONResponse:
+    trace_id = request.state.trace_id
+    logger.error(
+        "request.unhandled_error",
+        extra={
+            "trace_id": trace_id,
+            "error_code": "INTERNAL_SERVER_ERROR",
+            "error_type": type(exception).__name__,
+        },
+    )
+    return error_response(
+        500,
+        "INTERNAL_SERVER_ERROR",
+        "The request could not be completed.",
+        trace_id,
     )
 
 
@@ -59,6 +176,29 @@ async def health() -> dict[str, str | bool | int]:
         "liveReady": settings.live_ready,
         "knowledgeChunks": retriever.chunk_count,
     }
+
+
+@app.get("/health/live")
+async def liveness() -> dict[str, str]:
+    return {"status": "up"}
+
+
+@app.get("/health/ready")
+async def readiness() -> JSONResponse:
+    provider_ready = settings.effective_mode == "mock" or settings.live_ready
+    index_ready = retriever.chunk_count > 0
+    ready = provider_ready and index_ready
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={
+            "status": "up" if ready else "degraded",
+            "dependencies": {
+                "provider": "up" if provider_ready else "degraded",
+                "index": "up" if index_ready else "degraded",
+            },
+            "mode": settings.effective_mode,
+        },
+    )
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
@@ -74,16 +214,16 @@ async def analyze(
     try:
         return await runner.run(request)
     except AnalysisProcessingTimeoutError as exc:
-        logging.getLogger(__name__).error(
-            "analysis.processing_timeout trace_id=%s timeout_seconds=%g",
-            exc.trace_id,
-            exc.timeout_seconds,
-        )
-        raise HTTPException(
-            status_code=504,
-            detail={
-                "code": "AI_PROCESSING_TIMEOUT",
-                "message": "AI analysis exceeded its processing deadline.",
-                "traceId": exc.trace_id,
+        logger.error(
+            "analysis.processing_timeout",
+            extra={
+                "trace_id": exc.trace_id,
+                "timeout_seconds": exc.timeout_seconds,
             },
-        ) from exc
+        )
+        return error_response(
+            504,
+            "AI_PROCESSING_TIMEOUT",
+            "AI analysis exceeded its processing deadline.",
+            exc.trace_id,
+        )

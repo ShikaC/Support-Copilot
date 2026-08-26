@@ -22,9 +22,9 @@ def test_default_live_timeouts_have_a_bounded_retry_budget() -> None:
     # When: the service settings are loaded.
     settings = Settings(_env_file=None)
 
-    # Then: one external retry fits inside a larger whole-analysis deadline.
+    # Then: Java owns service retries, so the provider SDK makes one attempt.
     assert settings.openai_timeout_seconds == 20
-    assert settings.openai_max_retries == 1
+    assert settings.openai_max_retries == 0
     assert settings.ai_processing_timeout_seconds == 90
 
 
@@ -33,6 +33,12 @@ def test_rejects_unbounded_openai_retry_configuration() -> None:
     # When/Then: settings reject the unsafe retry count at the environment boundary.
     with pytest.raises(ValidationError, match="OPENAI_MAX_RETRIES"):
         Settings(openai_max_retries=2, _env_file=None)
+
+
+def test_bounded_legacy_retry_setting_remains_parseable() -> None:
+    settings = Settings(openai_max_retries=1, _env_file=None)
+
+    assert settings.openai_max_retries == 1
 
 
 def test_retrieval_score_defaults_are_explicit_and_bounded() -> None:

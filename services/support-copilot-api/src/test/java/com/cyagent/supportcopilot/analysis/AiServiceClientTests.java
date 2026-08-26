@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.Executors;
 
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import com.cyagent.supportcopilot.ticket.Ticket;
 
@@ -27,7 +28,7 @@ class AiServiceClientTests {
 		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			server.setExecutor(executor);
 			server.start();
-			var client = new AiServiceClient(
+			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				1_000,
 				"synthetic-mismatched-token"
@@ -54,7 +55,7 @@ class AiServiceClientTests {
 		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			server.setExecutor(executor);
 			server.start();
-			var client = new AiServiceClient(
+			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				1_000,
 				"synthetic-java-client-token"
@@ -93,7 +94,7 @@ class AiServiceClientTests {
 		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			server.setExecutor(executor);
 			server.start();
-			var client = new AiServiceClient(
+			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				1_000,
 				"synthetic-java-client-token"
@@ -135,7 +136,7 @@ class AiServiceClientTests {
 		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			server.setExecutor(executor);
 			server.start();
-			var client = new AiServiceClient(
+			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				1_000,
 				"synthetic-java-client-token"
@@ -143,10 +144,9 @@ class AiServiceClientTests {
 
 			try {
 				// When/Then: Java refuses to persist a result under the wrong idempotency key.
-				assertThatThrownBy(() -> client.analyze(ticket(), "trace-policy"))
-					.isInstanceOfSatisfying(AiServiceCallException.class, exception ->
-						assertThat(exception.getFallbackReason()).isEqualTo(FallbackReason.INVALID_AI_RESPONSE)
-					);
+					assertThatThrownBy(() -> client.analyze(ticket(), "trace-policy"))
+						.isInstanceOf(AiServiceContractException.class)
+						.isNotInstanceOf(AiServiceCallException.class);
 			} finally {
 				server.stop(0);
 			}
@@ -169,7 +169,7 @@ class AiServiceClientTests {
 		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			server.setExecutor(executor);
 			server.start();
-			var client = new AiServiceClient(
+			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				1_000,
 				"synthetic-java-client-token"
@@ -204,7 +204,7 @@ class AiServiceClientTests {
 		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			server.setExecutor(executor);
 			server.start();
-			var client = new AiServiceClient(
+			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				100,
 				"synthetic-java-client-token"
@@ -236,5 +236,13 @@ class AiServiceClientTests {
 		ticket.setPriority("HIGH");
 		ticket.setCreatedAt(Instant.now());
 		return ticket;
+	}
+
+	private AiServiceClient client(String baseUrl, long timeoutMs, String token) {
+		return new AiServiceClient(
+			new AiServiceProperties(baseUrl, timeoutMs, 1, 0, 2, 2, 50, 30_000, 1, 0),
+			token,
+			new SimpleMeterRegistry()
+		);
 	}
 }

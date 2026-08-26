@@ -14,7 +14,12 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import com.cyagent.supportcopilot.analysis.AiServiceAuthenticationException;
+import com.cyagent.supportcopilot.analysis.AiServiceContractException;
+import com.cyagent.supportcopilot.analysis.AiServiceRequestException;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.analysis.review.StaleAnalysisReviewException;
 import com.cyagent.supportcopilot.audit.AuditQueryException;
@@ -27,6 +32,8 @@ import com.cyagent.supportcopilot.idempotency.IdempotencyKeyException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+	private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
 	private final TicketRepository ticketRepository;
 
 	public ApiExceptionHandler(TicketRepository ticketRepository) {
@@ -63,6 +70,30 @@ public class ApiExceptionHandler {
 	ResponseEntity<ApiError> handleAuditQuery(AuditQueryException exception, HttpServletRequest request) {
 		return ResponseEntity.badRequest()
 			.body(error("INVALID_AUDIT_QUERY", "审计查询参数不符合约束。", request));
+	}
+
+	@ExceptionHandler(AiServiceAuthenticationException.class)
+	ResponseEntity<ApiError> handleAiAuthentication(
+		AiServiceAuthenticationException exception,
+		HttpServletRequest request
+	) {
+		return aiBoundaryError("AI_SERVICE_AUTHENTICATION_FAILED", request);
+	}
+
+	@ExceptionHandler(AiServiceRequestException.class)
+	ResponseEntity<ApiError> handleAiRequest(
+		AiServiceRequestException exception,
+		HttpServletRequest request
+	) {
+		return aiBoundaryError("AI_SERVICE_REQUEST_REJECTED", request);
+	}
+
+	@ExceptionHandler(AiServiceContractException.class)
+	ResponseEntity<ApiError> handleAiContract(
+		AiServiceContractException exception,
+		HttpServletRequest request
+	) {
+		return aiBoundaryError("AI_SERVICE_CONTRACT_ERROR", request);
 	}
 
 	@ExceptionHandler(EntityNotFoundException.class)
@@ -155,6 +186,22 @@ public class ApiExceptionHandler {
 
 	private ApiError error(String code, String message, HttpServletRequest request) {
 		return new ApiError(code, message, TraceId.from(request), Instant.now(), Map.of());
+	}
+
+	private ResponseEntity<ApiError> aiBoundaryError(String code, HttpServletRequest request) {
+		var traceId = TraceId.from(request);
+		log.atError()
+			.addKeyValue("trace_id", traceId)
+			.addKeyValue("error_code", code)
+			.log("ai.boundary.request_failed");
+		return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+			.body(new ApiError(
+				code,
+				"AI service response could not be accepted.",
+				traceId,
+				Instant.now(),
+				Map.of()
+			));
 	}
 
 	public record ApiError(

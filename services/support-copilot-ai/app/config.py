@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     openai_embedding_base_url: str | None = None
     openai_chat_model: str | None = None
     openai_embedding_model: str | None = None
-    openai_timeout_seconds: float = Field(default=20.0, gt=0)
-    openai_max_retries: int = Field(default=1, ge=0)
-    ai_processing_timeout_seconds: float = Field(default=90.0, gt=0)
+    openai_timeout_seconds: float = Field(default=20.0, gt=0, le=60)
+    openai_max_retries: int = Field(default=0, ge=0)
+    ai_processing_timeout_seconds: float = Field(default=90.0, gt=0, le=120)
     knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH
     knowledge_provenance_path: Path | None = None
     retrieval_top_n: int = 10

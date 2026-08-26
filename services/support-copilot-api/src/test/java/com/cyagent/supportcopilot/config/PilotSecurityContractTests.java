@@ -196,6 +196,20 @@ class PilotSecurityContractTests {
 	void healthIsPublicAndMinimal() throws Exception {
 		mockMvc.perform(get("/actuator/health"))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("UP"))
+			.andExpect(jsonPath("$.groups").isArray())
+			.andExpect(jsonPath("$.components").doesNotExist())
+			.andExpect(jsonPath("$.details").doesNotExist());
+	}
+
+	@ParameterizedTest
+	@org.junit.jupiter.params.provider.ValueSource(strings = {
+		"/actuator/health/liveness",
+		"/actuator/health/readiness"
+	})
+	void healthProbesArePublicAndMinimal(String endpoint) throws Exception {
+		mockMvc.perform(get(endpoint))
+			.andExpect(status().isOk())
 			.andExpect(content().string("{\"status\":\"UP\"}"));
 	}
 

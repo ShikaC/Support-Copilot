@@ -117,14 +117,15 @@ def test_processing_timeout_returns_traceable_gateway_timeout(
 
     # Then: Java can distinguish the 504 and correlate it with the original request.
     assert response.status_code == 504
-    assert response.json()["detail"] == {
+    assert response.json() == {
         "code": "AI_PROCESSING_TIMEOUT",
         "message": "AI analysis exceeded its processing deadline.",
         "traceId": "trace_test_001",
+        "details": {},
     }
     assert any(
-        "analysis.processing_timeout" in record.message
-        and "trace_test_001" in record.message
+        record.message == "analysis.processing_timeout"
+        and getattr(record, "trace_id") == "trace_test_001"
         for record in caplog.records
     )
 
@@ -167,7 +168,7 @@ def test_rejects_top_k_larger_than_top_n() -> None:
     response = client.post("/analyze", json=payload)
 
     assert response.status_code == 422
-    assert response.json()["detail"][0]["type"] == "top_k_exceeds_top_n"
+    assert response.json()["details"]["errors"][0]["type"] == "top_k_exceeds_top_n"
 
 
 def test_rejects_unimplemented_rerank_option() -> None:
@@ -186,7 +187,7 @@ def test_rejects_unimplemented_rerank_option() -> None:
     response = client.post("/analyze", json=payload)
 
     assert response.status_code == 422
-    assert response.json()["detail"][0]["type"] == "extra_forbidden"
+    assert response.json()["details"]["errors"][0]["type"] == "extra_forbidden"
 
 
 def test_rejects_unknown_prompt_version() -> None:
@@ -204,4 +205,4 @@ def test_rejects_unknown_prompt_version() -> None:
     response = client.post("/analyze", json=payload)
 
     assert response.status_code == 422
-    assert response.json()["detail"][0]["loc"][-1] == "promptVersion"
+    assert response.json()["details"]["errors"][0]["loc"][-1] == "promptVersion"

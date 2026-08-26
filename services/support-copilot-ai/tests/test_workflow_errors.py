@@ -38,6 +38,14 @@ def live_settings() -> Settings:
     )
 
 
+def test_provider_disables_sdk_retries_for_legacy_bounded_setting() -> None:
+    settings = live_settings().model_copy(update={"openai_max_retries": 1})
+
+    provider = OpenAIProvider(settings)
+
+    assert provider._client.max_retries == 0
+
+
 def analyze_request() -> AnalyzeRequest:
     return AnalyzeRequest(
         traceId="trace_workflow_error",

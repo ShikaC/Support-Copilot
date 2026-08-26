@@ -76,6 +76,7 @@ def test_missing_or_wrong_internal_token_is_rejected_before_work(
         "code": "INTERNAL_SERVICE_AUTHENTICATION_REQUIRED",
         "message": "A valid internal service credential is required.",
         "traceId": "trace_internal_auth",
+        "details": {},
     }
     assert calls == []
 

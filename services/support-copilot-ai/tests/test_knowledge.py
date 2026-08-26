@@ -123,7 +123,7 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Given: chat and embedding providers use different compatible endpoints.
-    captured: dict[str, str | None] = {}
+    captured: dict[str, str | int | None] = {}
 
     class CapturingEmbeddings(Embeddings):
         def __init__(
@@ -135,9 +135,10 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
             max_retries: int,
             request_timeout: float,
         ) -> None:
-            del model, max_retries, request_timeout
+            del model, request_timeout
             captured["base_url"] = base_url
             captured["api_key"] = api_key
+            captured["max_retries"] = max_retries
 
         def embed_documents(self, texts: list[str]) -> list[list[float]]:
             return [[1.0, 0.0] for _ in texts]
@@ -153,6 +154,7 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
             openai_embedding_api_key="embedding-provider-key",
             openai_base_url="https://chat.example.test/v1",
             openai_embedding_base_url="https://embedding.example.test/v1",
+            openai_max_retries=1,
             knowledge_path=external_knowledge_path,
         )
     )
@@ -163,6 +165,7 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
     # Then: the embedding client receives the independent endpoint.
     assert captured["base_url"] == "https://embedding.example.test/v1"
     assert captured["api_key"] == "embedding-provider-key"
+    assert captured["max_retries"] == 0
 
 
 @pytest.mark.asyncio

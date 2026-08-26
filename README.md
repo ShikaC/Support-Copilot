@@ -115,7 +115,11 @@ Python 服务在构造 FastAPI 应用时要求该变量存在且非空；缺失�
 
 ```bash
 curl http://localhost:8000/health
+curl http://localhost:8000/health/live
+curl http://localhost:8000/health/ready
 ```
+
+`/health` 保留原有 mode、liveReady 和知识片段字段；`/health/live` 只证明进程可响应，`/health/ready` 会在 live provider 配置或知识索引不可用时返回 `503` 和不含路径、凭据、正文的 degraded dependency 状态。所有响应都返回 `X-Trace-Id`。认证、校验、处理超时和未处理程序错误使用稳定的顶层 `code`、`message`、`traceId`、`details` envelope；程序错误返回 500，不进入 AI fallback。
 
 API 文档：`http://localhost:8000/docs`
 
@@ -148,7 +152,7 @@ export SUPPORT_COPILOT_JWT_ISSUER_URI='https://your-issuer.example'
 ./gradlew bootRun --args='--spring.profiles.active=pilot'
 ```
 
-AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS` 和 `EVALUATION_REPORT_PATH` 覆盖。`local`/`pilot` 缺少或留空 JWT 地址或服务间 token 时会在 datasource 创建前失败，不会回退到开放访问。`demo` 是唯一允许匿名业务 API 的 profile；`test` 使用显式合成 HMAC decoder，但执行与 `local`/`pilot` 相同的受保护 endpoint policy。
+AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS`、`AI_SERVICE_RETRY_MAX_ATTEMPTS`、`AI_SERVICE_RETRY_WAIT_MS`、`AI_SERVICE_CIRCUIT_*`、`AI_SERVICE_BULKHEAD_*` 和 `EVALUATION_REPORT_PATH` 覆盖。可靠性参数在启动时校验边界和交叉约束，非法值拒绝启动。`local`/`pilot` 缺少或留空 JWT 地址或服务间 token 时会在 datasource 创建前失败，不会回退到开放访问。`demo` 是唯一允许匿名业务 API 的 profile；`test` 使用显式合成 HMAC decoder，但执行与 `local`/`pilot` 相同的受保护 endpoint policy。
 
 以上 `local`/`pilot` 命令是配置契约，不是实库通过声明。MySQL schema、Flyway version/checksum、Hibernate 实库校验、LOB/time/`@Version` 映射、空库行为、stale schema 拒绝和 Java 重启持久化均未在本轮执行；它们统一由 Task 15 的 MySQL 8 运行时验收负责。
 
@@ -156,6 +160,8 @@ AI 服务与质量报告配置在四个 profile 中保持一致，可继续通�
 
 ```bash
 curl http://localhost:8080/actuator/health
+curl http://localhost:8080/actuator/health/liveness
+curl http://localhost:8080/actuator/health/readiness
 ```
 
 工单接口：
@@ -170,7 +176,7 @@ curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 
 | 路径 | 匿名 | `SUPPORT_AGENT` | `SUPPORT_REVIEWER` | `SUPPORT_ADMIN` |
 | --- | --- | --- | --- | --- |
-| `/actuator/health` | 允许 | 允许 | 允许 | 允许 |
+| `/actuator/health` 及 liveness/readiness | 允许 | 允许 | 允许 | 允许 |
 | tickets、knowledge search、quality metrics | 401 | 允许 | 允许 | 允许 |
 | analysis reviews 读写 | 401 | 403 | 允许 | 允许 |
 | `GET /api/audit-events` | 401 | 403 | 允许 | 允许 |
@@ -300,7 +306,7 @@ export OPENAI_EMBEDDING_BASE_URL='https://your-embedding-gateway.example/v1'
 # Optional: use a different credential when the embedding provider is separate.
 export OPENAI_EMBEDDING_API_KEY='your-embedding-api-key'
 export OPENAI_TIMEOUT_SECONDS=20
-export OPENAI_MAX_RETRIES=1
+export OPENAI_MAX_RETRIES=0
 export AI_PROCESSING_TIMEOUT_SECONDS=90
 export AI_SERVICE_TIMEOUT_MS=105000
 export SUPPORT_COPILOT_HTTP_TIMEOUT_SECONDS=120
@@ -310,7 +316,9 @@ export MOCK_RETRIEVAL_MIN_SCORE=0.25
 export LIVE_RETRIEVAL_MIN_SCORE=0.35
 ```
 
-超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒并最多重试 1 次，Python 整体分析在 90 秒停止，Java 最长等待 105 秒，live 验收客户端最长等待 120 秒。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型；Python 总截止时间优先于 SDK 的后续重试，避免 Java 已降级后 Python 仍继续消耗调用预算。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+
+Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes`、`fallbacks`、`timeouts`、`latency`、`circuit.rejected` 和 `bulkhead.rejected`。tag 只使用受控 outcome、reason、provider mode 和 stage，不使用 ticket、trace 或 user；trace 只进入结构化脱敏日志。circuit 与 bulkhead 是单 Java 实例内状态，不代表分布式限流或生产 SLO。
 
 在调用正式 API 前先执行只读预检；它不会发出外部请求：
 
