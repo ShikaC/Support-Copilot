@@ -367,7 +367,7 @@ print(f"Evidence record: {output_path}")
 
 run_success() {
   local health_file headers_file analysis_file history_file
-  local response_trace_header summary_json history_summary_json git_commit
+  local response_trace_header summary_json history_summary_json git_commit idempotency_key
 
   run_preflight
   new_temp_file health
@@ -378,6 +378,7 @@ run_success() {
   analysis_file="$NEW_TEMP_FILE"
   new_temp_file history
   history_file="$NEW_TEMP_FILE"
+  idempotency_key="$(python3 -c 'import uuid; print(uuid.uuid4())')"
 
   curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
     --output "$health_file" "$AI_BASE_URL/health"
@@ -387,6 +388,7 @@ run_success() {
     --dump-header "$headers_file" \
     --output "$analysis_file" \
     -X POST \
+    -H "Idempotency-Key: $idempotency_key" \
     -H "X-Trace-Id: $TRACE_ID" \
     "$WEB_BASE_URL/api/tickets/$TICKET_ID/analyze"
   response_trace_header="$(

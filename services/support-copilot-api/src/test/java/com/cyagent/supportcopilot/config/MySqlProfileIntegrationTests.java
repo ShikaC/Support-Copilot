@@ -174,7 +174,7 @@ class MySqlProfileIntegrationTests {
 		var migration = flyway.info().current();
 
 		assertThat(migration).isNotNull();
-		assertThat(migration.getVersion().getVersion()).isEqualTo("1");
+		assertThat(migration.getVersion().getVersion()).isEqualTo("3");
 		assertThat(migration.getChecksum()).isNotNull();
 		assertThat(flyway.migrate().migrationsExecuted).isZero();
 		assertThat(flyway.info().current().getChecksum()).isEqualTo(migration.getChecksum());

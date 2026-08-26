@@ -7,13 +7,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -32,6 +34,7 @@ public class CommandIdempotencyRecord {
 	@Column(nullable = false, length = 128)
 	private String idempotencyKey;
 
+	@JdbcTypeCode(SqlTypes.CHAR)
 	@Column(nullable = false, length = 64)
 	private String requestFingerprint;
 
@@ -55,8 +58,8 @@ public class CommandIdempotencyRecord {
 	@Column
 	private Integer responseHttpStatus;
 
-	@Lob
-	@Column
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(columnDefinition = "LONGTEXT")
 	private String responseJson;
 
 	@Column(nullable = false, updatable = false)

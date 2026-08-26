@@ -9,6 +9,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "audit_events")
 @Access(AccessType.FIELD)
@@ -42,6 +45,7 @@ public class AuditEvent {
 	@Column(nullable = false, updatable = false, length = 64)
 	private String traceId;
 
+	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(nullable = false, updatable = false, columnDefinition = "LONGTEXT")
 	private String metadataJson;
 

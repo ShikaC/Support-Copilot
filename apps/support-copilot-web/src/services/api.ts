@@ -12,6 +12,7 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 const inFlightAnalyses = new Map<string, Promise<AnalysisResult>>()
+const uncertainCommandKeys = new Map<string, string>()
 
 type ApiErrorPayload = {
   code?: string
@@ -111,6 +112,32 @@ async function request<Schema extends z.ZodType>(
   return parsed.data
 }
 
+async function requestIdempotentCommand<Schema extends z.ZodType>(
+  commandFingerprint: string,
+  path: string,
+  schema: Schema,
+  init: RequestInit,
+): Promise<z.output<Schema>> {
+  const idempotencyKey = uncertainCommandKeys.get(commandFingerprint) ?? crypto.randomUUID()
+  uncertainCommandKeys.set(commandFingerprint, idempotencyKey)
+  try {
+    const result = await request(path, schema, {
+      ...init,
+      headers: {
+        ...init.headers,
+        'Idempotency-Key': idempotencyKey,
+      },
+    })
+    uncertainCommandKeys.delete(commandFingerprint)
+    return result
+  } catch (error: unknown) {
+    if (!(error instanceof TypeError)) {
+      uncertainCommandKeys.delete(commandFingerprint)
+    }
+    throw error
+  }
+}
+
 export function fetchTickets(signal?: AbortSignal) {
   return request('/api/tickets', ticketResponseListSchema, { signal })
 }
@@ -127,9 +154,12 @@ export function analyzeTicket(ticketId: string) {
   const existing = inFlightAnalyses.get(ticketId)
   if (existing) return existing
 
-  const pending = request(`/api/tickets/${ticketId}/analyze`, analysisResultSchema, {
-    method: 'POST',
-  })
+  const pending = requestIdempotentCommand(
+    `ANALYZE:${ticketId}`,
+    `/api/tickets/${ticketId}/analyze`,
+    analysisResultSchema,
+    { method: 'POST' },
+  )
   const tracked = pending.finally(() => {
     if (inFlightAnalyses.get(ticketId) === tracked) {
       inFlightAnalyses.delete(ticketId)
@@ -160,14 +190,20 @@ export function unassignTicket(ticketId: string, expectedVersion: number) {
 }
 
 export function reviewAnalysisReply(ticketId: string, analysisId: string, replyContent: string) {
-  return request(`/api/tickets/${ticketId}/analyses/${analysisId}/reviews`, analysisReviewSchema, {
-    method: 'POST',
-    body: JSON.stringify({ replyContent }),
-  })
+  return requestIdempotentCommand(
+    `REVIEW:${ticketId}:${analysisId}:${JSON.stringify(replyContent.trim())}`,
+    `/api/tickets/${ticketId}/analyses/${analysisId}/reviews`,
+    analysisReviewSchema,
+    {
+      method: 'POST',
+      body: JSON.stringify({ replyContent }),
+    },
+  )
 }
 
 export function rejectAnalysisReply(ticketId: string, analysisId: string, reason: string) {
-  return request(
+  return requestIdempotentCommand(
+    `REJECT:${ticketId}:${analysisId}:${JSON.stringify(reason.trim())}`,
     `/api/tickets/${ticketId}/analyses/${analysisId}/reviews/reject`,
     analysisReviewSchema,
     {

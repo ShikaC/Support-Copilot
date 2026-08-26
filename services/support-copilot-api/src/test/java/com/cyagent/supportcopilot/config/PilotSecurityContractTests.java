@@ -13,14 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
 import java.util.UUID;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,6 +35,7 @@ import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
+import com.cyagent.supportcopilot.common.SyntheticJwt;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 
@@ -173,6 +168,7 @@ class PilotSecurityContractTests {
 
 		mockMvc.perform(post(reviewPath(analysisId))
 				.header("Authorization", "Bearer " + signedJwt("SUPPORT_REVIEWER", "trusted-reviewer-subject"))
+				.header("Idempotency-Key", "pilot-review-actor-key-0001")
 				.header("X-Review-Actor", "spoofed-browser-actor")
 				.contentType(APPLICATION_JSON)
 				.content("{\"replyContent\":\"请按知识步骤核验。\"}"))
@@ -228,16 +224,7 @@ class PilotSecurityContractTests {
 	}
 
 	private String signedJwt(String role, String subject) throws Exception {
-		var now = Instant.now();
-		var claims = new JWTClaimsSet.Builder()
-			.subject(subject)
-			.issueTime(Date.from(now))
-			.expirationTime(Date.from(now.plus(Duration.ofMinutes(5))))
-			.claim("roles", java.util.List.of(role))
-			.build();
-		var jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-		jwt.sign(new MACSigner(testJwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-		return jwt.serialize();
+		return SyntheticJwt.signed(testJwtSecret, role, subject);
 	}
 
 	private String reviewPath(String analysisId) {

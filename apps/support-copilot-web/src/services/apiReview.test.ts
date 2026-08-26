@@ -23,7 +23,10 @@ it('posts the reviewed reply to the explicit analysis review command', async () 
     {
       method: 'POST',
       body: JSON.stringify({ replyContent: '修改后的回复' }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+      },
     },
   )
   expect(review).toMatchObject({
@@ -86,7 +89,10 @@ it('posts a required reason when rejecting an analysis suggestion', async () => 
     {
       method: 'POST',
       body: JSON.stringify({ reason: '证据不足，需要人工重新起草' }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+      },
     },
   )
   expect(review).toMatchObject({

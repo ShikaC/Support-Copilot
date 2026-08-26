@@ -7,17 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -34,6 +25,7 @@ import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.common.TestTrustedActors;
+import com.cyagent.supportcopilot.common.SyntheticJwt;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -92,6 +84,7 @@ class ReviewActorIdentityContractTests {
 
 		mockMvc.perform(post(reviewPath(analysisId))
 				.header("Authorization", "Bearer " + signedJwt(role, subject))
+				.header("Idempotency-Key", "identity-" + scenario + "-key-0001")
 				.header("X-Trace-Id", traceId)
 				.header("X-Review-Actor", "spoofed-browser-actor")
 				.contentType(APPLICATION_JSON)
@@ -114,6 +107,7 @@ class ReviewActorIdentityContractTests {
 					"SUPPORT_REVIEWER",
 					"trusted-reviewer-control"
 				))
+				.header("Idempotency-Key", "identity-control-key-0001")
 				.header("X-Review-Actor", "spoofed-browser-actor")
 				.contentType(APPLICATION_JSON)
 				.content("{\"replyContent\":\"Synthetic reviewed reply.\"}"))
@@ -127,17 +121,7 @@ class ReviewActorIdentityContractTests {
 	}
 
 	private String signedJwt(String role, String subject) throws Exception {
-		var now = Instant.now();
-		var claims = new JWTClaimsSet.Builder()
-			.issueTime(Date.from(now))
-			.expirationTime(Date.from(now.plus(Duration.ofMinutes(5))))
-			.claim("roles", List.of(role));
-		if (subject != null) {
-			claims.subject(subject);
-		}
-		var jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims.build());
-		jwt.sign(new MACSigner(testJwtSecret.getBytes(StandardCharsets.UTF_8)));
-		return jwt.serialize();
+		return SyntheticJwt.signed(testJwtSecret, role, subject);
 	}
 
 	private String saveReviewableAnalysis() {

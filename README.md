@@ -246,7 +246,9 @@ SUPPORT_COPILOT_TRACE_ID=interview-flow-01 ./scripts/check-local-analysis-flow.s
 
 Java 会在没有请求头时生成 `X-Trace-Id`，并将同一个值写入响应头、分析响应和日志上下文；Python 日志会记录该值以及分析模式和状态。
 
-同一工单的重复在途请求会先在浏览器 API 层合并；Java 再按 `ticketId + sourceTicketVersion + analysisPolicyVersion` 保证单实例内只调用一次 Python 并保存一次结果。执行结束后会释放键，因此后续人工重试仍会真正运行。该能力不是跨实例的持久化幂等，完整边界见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
+分析、采纳/编辑回复和拒绝回复都要求 `Idempotency-Key`。键必须是 16 到 128 个 ASCII 字符，只允许字母、数字、`.`、`_`、`:`、`-`，并在全局唯一约束下绑定命令类型、路由/目标和规范化请求 SHA-256 指纹。相同键与相同命令会返回数据库中保存的原始成功结果；相同键绑定不同目标、动作或规范化内容会返回 `409 IDEMPOTENCY_KEY_CONFLICT`。浏览器为每个新命令生成 UUID；同一在途调用共享请求，只有未收到任何 HTTP 响应的网络失败才保留原键供重试，明确成功或 HTTP 错误后下一次命令使用新键。
+
+Java 的数据库记录、owner lease 和有界等待负责跨 Spring context 的正确性；原有 JVM single-flight 只保留为减少同实例重复工作的优化。文件型 H2 已验证并发收敛、活跃 owner 续租、过期 owner 恢复和重启重放。MySQL 8 并发、重启、锁和事务 parity 仍属于 Task 15，不能从 H2 结果推断。单实例优化背景见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
 
 React 不直接相信 Java 返回的 2xx JSON。工单、指标、分析和工单命令响应会先通过 Zod 运行时 Schema，缺字段、错误类型或未知枚举会在进入页面状态前转换为 `ApiContractError`；完整范围见 [前端运行时响应契约](docs/contracts/frontend-runtime-schema-contract.md)。工单 PATCH 必须携带当前 `expectedVersion`；匹配时版本递增，过期或并发写入返回 `409 VERSION_CONFLICT`，页面会保留错误详情并重新读取受影响工单。没有版本的本地 Demo 工单不会发送写请求。
 

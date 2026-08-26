@@ -79,6 +79,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 61. [隔离运行 profile 并建立 MySQL migration 基线](./61-profile-mysql-migration-baseline.md)
 62. [实施 JWT 角色与内部服务身份](./62-jwt-roles-and-internal-service-identity.md)
 63. [记录可信 append-only 审计事件](./63-trusted-append-only-audit-events.md)
+64. [持久化分析与审核命令幂等](./64-durable-command-idempotency.md)
 
 ## 优化后的主流程
 
@@ -106,7 +107,7 @@ Python 程序缺陷              -> 正常抛出错误 -> 日志暴露真实根�
 
 ## 当前边界
 
-取消负责人和其他工单 API 已受 JWT 角色门禁保护，审核与审计 actor 来自同一个 trusted actor provider；`demo` 仍保留明确标记的匿名演示身份。当前审计覆盖工单、分析持久化和审核动作；Task 8 才接入知识发布，Task 15 才验证 MySQL parity。React 登录/token adapter 和真实 OIDC 联调仍未实现，不能把当前合成 decoder/H2 证据描述成生产身份或合规审计系统。
+取消负责人和其他工单 API 已受 JWT 角色门禁保护，审核与审计 actor 来自同一个 trusted actor provider；`demo` 仍保留明确标记的匿名演示身份。分析和审核写命令现在使用数据库持久化幂等键、指纹、owner lease 和原始响应，H2 已验证跨 context 收敛与重启重放。当前审计覆盖工单、分析持久化和审核动作；Task 8 才接入知识发布，Task 15 才验证 MySQL parity。React 登录/token adapter 和真实 OIDC 联调仍未实现，不能把当前合成 decoder/H2 证据描述成生产身份、生产分布式幂等或合规审计系统。
 
 Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。后续接入更多外部服务时，应根据真实错误类型逐项扩充，不能重新使用宽泛的 `except Exception`。
 

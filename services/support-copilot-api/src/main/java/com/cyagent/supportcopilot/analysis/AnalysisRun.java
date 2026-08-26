@@ -7,12 +7,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "analysis_runs")
@@ -43,8 +45,8 @@ public class AnalysisRun {
 	@Column(length = 64)
 	private FallbackReason fallbackReason;
 
-	@Lob
-	@Column(nullable = false)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String responseJson;
 
 	@Column(nullable = false)

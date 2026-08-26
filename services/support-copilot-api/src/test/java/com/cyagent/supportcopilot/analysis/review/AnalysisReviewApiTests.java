@@ -110,6 +110,40 @@ class AnalysisReviewApiTests {
 		);
 	}
 
+	@Test
+	void requiresIdempotencyKeyForReviewedReply() throws Exception {
+		var service = mock(AnalysisReviewService.class);
+		var commandService = mock(AnalysisReviewCommandService.class);
+
+		mockMvc(service, commandService).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews")
+				.contentType(APPLICATION_JSON)
+				.content("{\"replyContent\":\"reviewed\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REQUIRED"))
+			.andExpect(jsonPath("$.traceId").isNotEmpty());
+
+		verify(commandService, never()).review(
+			anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.any()
+		);
+	}
+
+	@Test
+	void requiresIdempotencyKeyForRejection() throws Exception {
+		var service = mock(AnalysisReviewService.class);
+		var commandService = mock(AnalysisReviewCommandService.class);
+
+		mockMvc(service, commandService).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+				.contentType(APPLICATION_JSON)
+				.content("{\"reason\":\"not enough evidence\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REQUIRED"))
+			.andExpect(jsonPath("$.traceId").isNotEmpty());
+
+		verify(commandService, never()).reject(
+			anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.any()
+		);
+	}
+
 	private AnalysisReviewResponse response(
 		String id,
 		AnalysisReviewAction action,

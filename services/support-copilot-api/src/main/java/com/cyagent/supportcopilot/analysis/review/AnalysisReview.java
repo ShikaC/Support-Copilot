@@ -7,12 +7,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "analysis_reviews")
@@ -40,16 +42,16 @@ public class AnalysisReview {
 	@Column(nullable = false, length = 80)
 	private String reviewerLabel;
 
-	@Lob
-	@Column(nullable = false)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String originalReplyContent;
 
-	@Lob
-	@Column
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(columnDefinition = "LONGTEXT")
 	private String reviewedReplyContent;
 
-	@Lob
-	@Column
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(columnDefinition = "LONGTEXT")
 	private String reason;
 
 	@Column(nullable = false)

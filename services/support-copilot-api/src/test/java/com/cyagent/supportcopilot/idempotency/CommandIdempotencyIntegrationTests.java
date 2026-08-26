@@ -2,6 +2,7 @@ package com.cyagent.supportcopilot.idempotency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.cyagent.supportcopilot.idempotency.CommandIdempotencyAssertions.assertCounts;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -18,7 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -30,7 +31,6 @@ import com.cyagent.supportcopilot.analysis.IdempotentAnalysisPersistence;
 import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewCommandService;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewController;
-import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
 import com.cyagent.supportcopilot.common.ApiExceptionHandler;
 import com.cyagent.supportcopilot.common.TestTrustedActors;
@@ -51,7 +51,8 @@ class CommandIdempotencyIntegrationTests {
 
 		mvc.perform(post("/api/tickets/ticket-10042/analyze"))
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REQUIRED"));
+			.andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REQUIRED"))
+			.andExpect(jsonPath("$.traceId").isNotEmpty());
 		verify(commandService, never()).analyze(
 			org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()
 		);
@@ -71,7 +72,8 @@ class CommandIdempotencyIntegrationTests {
 				.contentType(APPLICATION_JSON)
 				.content("{\"replyContent\":\"reviewed\"}"))
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("INVALID_IDEMPOTENCY_KEY"));
+			.andExpect(jsonPath("$.code").value("INVALID_IDEMPOTENCY_KEY"))
+			.andExpect(jsonPath("$.traceId").isNotEmpty());
 		verify(commandService, never()).review(
 			org.mockito.ArgumentMatchers.anyString(),
 			org.mockito.ArgumentMatchers.anyString(),
@@ -92,13 +94,29 @@ class CommandIdempotencyIntegrationTests {
 			rig.aiServer().block();
 
 			try (var executor = Executors.newFixedThreadPool(2)) {
-				var first = executor.submit(() -> analyze(firstContext, ticket.getId(), "analysis-shared-key-0001"));
+				var commandsReady = new CountDownLatch(2);
+				var startCommands = new CountDownLatch(1);
+				var first = executor.submit(() -> {
+					commandsReady.countDown();
+					if (!startCommands.await(2, TimeUnit.SECONDS)) {
+						throw new IllegalStateException("Concurrent commands were not released");
+					}
+					return analyze(firstContext, ticket.getId(), "analysis-shared-key-0001");
+				});
+				var second = executor.submit(() -> {
+					commandsReady.countDown();
+					if (!startCommands.await(2, TimeUnit.SECONDS)) {
+						throw new IllegalStateException("Concurrent commands were not released");
+					}
+					return analyze(secondContext, ticket.getId(), "analysis-shared-key-0001");
+				});
+				assertThat(commandsReady.await(2, TimeUnit.SECONDS)).isTrue();
+				startCommands.countDown();
 				assertThat(rig.aiServer().awaitInvocation()).isTrue();
-				var second = executor.submit(() -> analyze(secondContext, ticket.getId(), "analysis-shared-key-0001"));
-				Thread.sleep(800);
-				assertThat(rig.aiServer().invocations()).isEqualTo(1);
+				assertThat(rig.awaitLeaseRenewal(firstContext, "analysis-shared-key-0001")).isTrue();
 				rig.aiServer().release();
 				assertThat(second.get(3, TimeUnit.SECONDS)).isEqualTo(first.get(3, TimeUnit.SECONDS));
+				assertThat(rig.aiServer().invocations()).isEqualTo(1);
 			}
 
 			assertCounts(firstContext, 1, 0, 1, 1);
@@ -142,9 +160,13 @@ class CommandIdempotencyIntegrationTests {
 				ticket.getId(), analysis.id(), "different reviewed content",
 				IdempotencyKey.parse("review-replay-key-0001")
 			)).isInstanceOf(IdempotencyConflictException.class);
+			assertThatThrownBy(() -> second.getBean(AnalysisReviewCommandService.class).reject(
+				ticket.getId(), analysis.id(), "different command",
+				IdempotencyKey.parse("review-replay-key-0001")
+			)).isInstanceOf(IdempotencyConflictException.class);
 			TestTrustedActors.clear();
 
-			assertCounts(first, 1, 1, 2, 2);
+			assertCounts(first, 1, 1, 2, 1);
 		}
 	}
 
@@ -179,21 +201,45 @@ class CommandIdempotencyIntegrationTests {
 				assertThat(recovered.getBean(AnalysisRunRepository.class).existsById(rollbackResponse.id())).isFalse();
 				assertThat(recovered.getBean(TicketRepository.class).findById(rollbackTicket.getId()).orElseThrow()
 					.getVersion()).isEqualTo(rollbackTicket.getVersion());
+				assertCounts(recovered, 1, 0, 1, 1);
 			}
 		}
 	}
 
 	@Test
-	void migrationCreatesAUniqueDurableCommandRecordWithoutDestructiveStatements() throws Exception {
-		var migration = new ClassPathResource("db/migration/V3__durable_command_idempotency.sql")
-			.getContentAsString(StandardCharsets.UTF_8).toLowerCase();
-		assertThat(migration)
-			.contains("create table command_idempotency")
-			.contains("idempotency_key", "request_fingerprint", "command_type", "route_scope")
-			.contains("status", "response_http_status", "response_json")
-			.contains("owner_token", "lease_expires_at", "created_at", "updated_at", "completed_at")
-			.contains("unique", "index")
-			.doesNotContain("drop table", "truncate table", "delete from", "update command_idempotency");
+	void migrationEnforcesGlobalKeyUniquenessAndCreatesOperationalIndexes() throws Exception {
+		try (var rig = new CommandIdempotencyTestRig(); var context = rig.startContext()) {
+			var jdbc = context.getBean(JdbcTemplate.class);
+			jdbc.update("""
+				insert into command_idempotency (
+				  id, idempotency_key, request_fingerprint, command_type, route_scope,
+				  status, owner_token, lease_expires_at, created_at, updated_at
+				) values (?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp, current_timestamp)
+				""",
+				"command-unique-1", "database-unique-key-0001", "a".repeat(64),
+				"ANALYZE_TICKET", "POST:/api/tickets/{ticketId}/analyze", "PENDING", "owner-1"
+			);
+			assertThatThrownBy(() -> jdbc.update("""
+				insert into command_idempotency (
+				  id, idempotency_key, request_fingerprint, command_type, route_scope,
+				  status, owner_token, lease_expires_at, created_at, updated_at
+				) values (?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp, current_timestamp)
+				""",
+				"command-unique-2", "database-unique-key-0001", "b".repeat(64),
+				"REVIEW_ANALYSIS", "POST:/different", "PENDING", "owner-2"
+			)).isInstanceOf(DataIntegrityViolationException.class);
+			assertThat(jdbc.queryForList("""
+				select index_name from information_schema.indexes
+				where table_name = 'COMMAND_IDEMPOTENCY'
+				""", String.class)).contains(
+				"IDX_COMMAND_IDEMPOTENCY_PENDING_LEASE",
+				"IDX_COMMAND_IDEMPOTENCY_UPDATED"
+			);
+			assertThat(jdbc.queryForObject("""
+				select count(*) from information_schema.table_constraints where table_name = 'COMMAND_IDEMPOTENCY'
+				and constraint_name = 'UK_COMMAND_IDEMPOTENCY_KEY' and constraint_type = 'UNIQUE'
+				""", Long.class)).isEqualTo(1);
+		}
 	}
 
 	private com.cyagent.supportcopilot.analysis.AnalysisResponse analyze(
@@ -209,19 +255,4 @@ class CommandIdempotencyIntegrationTests {
 		}
 	}
 
-	private void assertCounts(
-		ConfigurableApplicationContext context,
-		long analyses,
-		long reviews,
-		long audits,
-		long commands
-	) {
-		assertThat(context.getBean(AnalysisRunRepository.class).count()).isEqualTo(analyses);
-		assertThat(context.getBean(AnalysisReviewRepository.class).count()).isEqualTo(reviews);
-		var jdbc = context.getBean(JdbcTemplate.class);
-		assertThat(jdbc.queryForObject("select count(*) from audit_events", Long.class)).isEqualTo(audits);
-		assertThat(jdbc.queryForObject(
-			"select count(*) from command_idempotency", Long.class
-		)).isEqualTo(commands);
-	}
 }

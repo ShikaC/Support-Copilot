@@ -24,7 +24,10 @@ it('posts the selected ticket id to the analysis endpoint', async () => {
   expect(fetchMock).toHaveBeenCalledOnce()
   expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042/analyze', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+    },
   })
 })
 
@@ -73,6 +76,9 @@ it('allows a new analysis request after the previous request settles', async () 
   expect(first).toMatchObject({ id: 'analysis-first' })
   expect(retry).toMatchObject({ id: 'analysis-retry' })
   expect(fetchMock).toHaveBeenCalledTimes(2)
+  const firstHeaders = fetchMock.mock.calls[0]?.[1]?.headers
+  const retryHeaders = fetchMock.mock.calls[1]?.[1]?.headers
+  expect(firstHeaders).not.toEqual(retryHeaders)
 })
 
 it('allows retry after the shared request fails', async () => {
@@ -94,6 +100,9 @@ it('allows retry after the shared request fails', async () => {
   // Then: the failed Promise was removed and a new HTTP request was sent.
   expect(retry).toMatchObject({ id: 'analysis-after-failure' })
   expect(fetchMock).toHaveBeenCalledTimes(2)
+  const failedHeaders = fetchMock.mock.calls[0]?.[1]?.headers
+  const retryHeaders = fetchMock.mock.calls[1]?.[1]?.headers
+  expect(retryHeaders).toEqual(failedHeaders)
 })
 
 it('does not block another ticket while one analysis remains in flight', async () => {

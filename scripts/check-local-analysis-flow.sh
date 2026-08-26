@@ -127,10 +127,13 @@ run_flow() {
   local expected_mode="$1"
   local expected_status="$2"
   local expected_reason="$3"
+  local idempotency_key
   local response
+  idempotency_key="$(python3 -c 'import uuid; print(uuid.uuid4())')"
 
   response="$(curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
     -X POST \
+    -H "Idempotency-Key: $idempotency_key" \
     -H "X-Trace-Id: $TRACE_ID" \
     "$WEB_BASE_URL/api/tickets/$TICKET_ID/analyze")"
   assert_analysis "$expected_mode" "$expected_status" "$expected_reason" "$response"

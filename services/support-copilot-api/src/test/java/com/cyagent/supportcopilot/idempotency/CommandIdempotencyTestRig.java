@@ -17,6 +17,7 @@ import org.flywaydb.core.Flyway;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.cyagent.supportcopilot.SupportCopilotApiApplication;
 import com.cyagent.supportcopilot.ticket.Ticket;
@@ -40,9 +41,10 @@ final class CommandIdempotencyTestRig implements AutoCloseable {
 			.load()
 			.migrate();
 		return new SpringApplicationBuilder(SupportCopilotApiApplication.class)
-			.web(WebApplicationType.NONE)
+			.web(WebApplicationType.SERVLET)
 			.run(
 				"--spring.profiles.active=test",
+				"--server.port=0",
 				"--spring.datasource.url=" + databaseUrl(),
 				"--spring.jpa.hibernate.ddl-auto=validate",
 				"--spring.flyway.enabled=true",
@@ -79,6 +81,29 @@ final class CommandIdempotencyTestRig implements AutoCloseable {
 		ticket.setCreatedAt(now);
 		ticket.setUpdatedAt(now);
 		return ticket;
+	}
+
+	boolean awaitLeaseRenewal(ConfigurableApplicationContext context, String idempotencyKey)
+		throws InterruptedException {
+		var jdbc = context.getBean(JdbcTemplate.class);
+		var initial = jdbc.queryForMap(
+			"select owner_token, updated_at from command_idempotency where idempotency_key = ?",
+			idempotencyKey
+		);
+		var ownerToken = initial.get("OWNER_TOKEN");
+		var updatedAt = initial.get("UPDATED_AT");
+		var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+		while (System.nanoTime() < deadline) {
+			var current = jdbc.queryForMap(
+				"select owner_token, updated_at from command_idempotency where idempotency_key = ?",
+				idempotencyKey
+			);
+			if (ownerToken.equals(current.get("OWNER_TOKEN")) && !updatedAt.equals(current.get("UPDATED_AT"))) {
+				return true;
+			}
+			Thread.sleep(10);
+		}
+		return false;
 	}
 
 	@Override

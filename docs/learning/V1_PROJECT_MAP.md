@@ -304,6 +304,8 @@ usage                耗时和 token 信息
 - 回复建议的采纳或编辑后采纳会写入独立 `analysis_reviews` 记录，保存原始内容、审核后内容、动作、工单版本和 `traceId`；只有 Java 成功响应后前端才显示已记录。
 - 回复审核事务先锁定工单行，只接受当前工单的最新分析，并拒绝分析完成后又被修改过的工单；同内容的顺序重试复用已有记录。
 - 工单创建/实际变更、分析持久化和人工审核在各自业务事务内写入一条可信 `AuditEvent`；no-op、stale、冲突和同内容审核重放不写事件。
+- 分析、采纳/编辑回复和拒绝回复必须携带 16–128 字符的受限 ASCII `Idempotency-Key`。Java 将全局唯一键、命令/路由、SHA-256 请求指纹、owner lease、状态和原始成功响应保存到 `command_idempotency`；业务写、审计事件和 `COMPLETED` 响应在同一事务提交。
+- 相同键和相同规范化命令会在重启后重放原始结果，不再调用 Python、写业务或写审计；相同键改绑目标、动作或内容返回稳定的 409。两个共享文件 H2 的独立 Spring context 已验证一个 provider 调用、一个业务结果和一个审计事件。
 
 相关文档：`docs/optimizations/v1-round-1/`
 
@@ -315,8 +317,7 @@ usage                耗时和 token 信息
 - `GET /api/audit-events` 只允许 reviewer/admin，并使用 `createdAt + id` keyset 分页；事件 metadata 只允许变更字段、分析状态/模式/fallback、审核动作、来源版本和结果 ID。
 - `AnalysisReview` 是持久化审核记录，但工单页面中的 `TicketEventResponse` 仍是根据业务数据派生的响应 DTO，不是独立持久化的通用审计日志。
 - 知识发布审计接入留待 Task 8；V2 migration 的 MySQL checksum、索引和事务 parity 留待 Task 15。
-- 审核相同内容的顺序重试可复用记录，并发重试仍可能竞争；尚未使用持久化请求 ID 或数据库唯一约束保证跨实例幂等。
-- 独立的持久化幂等请求记录尚未实现；分析 single-flight 只覆盖单 Java 实例内的在途请求，取消负责人依靠“已经没有负责人时不再写入”实现状态幂等。
+- durable idempotency 的自动化和手工证据来自 H2；Task 15 仍需在 MySQL 8 重做并发 winner、重启重放、lease、唯一约束和事务 parity。JVM single-flight 不是正确性边界。
 - 工单和指标仍不是同一个后端快照，严格一致性需要统一初始化接口或明确统计时间范围。
 - Python/RAG 还需要更多真实案例和评估数据。
 - Java 指标接口只返回有持久化来源的运行态数据；固定 mock 评估报告现在可通过 `EVALUATION_REPORT_PATH` 接入质量页面，报告缺失或损坏时 `evaluation` 仍为空。

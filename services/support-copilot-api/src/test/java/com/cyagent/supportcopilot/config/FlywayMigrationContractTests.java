@@ -42,4 +42,19 @@ class FlywayMigrationContractTests {
 				"flyway clean"
 			);
 	}
+
+	@Test
+	void idempotencyMigrationCreatesUniqueLeaseIndexedRecordsWithoutDestructiveStatements() throws IOException {
+		var migration = new ClassPathResource("db/migration/V3__durable_command_idempotency.sql")
+			.getContentAsString(StandardCharsets.UTF_8)
+			.toLowerCase();
+
+		assertThat(migration)
+			.contains("create table command_idempotency")
+			.contains("constraint uk_command_idempotency_key unique")
+			.contains("idx_command_idempotency_pending_lease", "idx_command_idempotency_updated")
+			.doesNotContain(
+				"drop table", "truncate table", "delete from", "update command_idempotency", "flyway clean"
+			);
+	}
 }

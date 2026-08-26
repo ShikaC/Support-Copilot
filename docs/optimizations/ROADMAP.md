@@ -149,6 +149,8 @@ Task 4 已把 Java 业务 API 收紧为 JWT role policy，并用合成签名 JWT
 
 Task 5 已为工单创建/实际变更、分析持久化和三种审核动作增加同事务 append-only `AuditEvent`。actor 来自统一 trusted actor provider，metadata 使用受控类型与 Jackson 白名单序列化；no-op、stale、冲突和同内容审核重放不增加事件。审计查询只允许 reviewer/admin，并使用 `createdAt + id` keyset cursor。H2 自动化与隔离 HTTP/数据库 canary 验证已通过；知识发布接入属于 Task 8，MySQL V2 migration/checksum/index/事务 parity 属于 Task 15，不能称为生产或合规审计。
 
+Task 6 为分析和全部人工审核写命令增加 durable `Idempotency-Key`。Flyway V3 保存全局唯一键、命令/路由、SHA-256 规范化指纹、PENDING/COMPLETED/FAILED 状态、owner lease、原始 HTTP 状态/响应和时间戳；相同命令重放不重复 provider、业务或审计，不同目标/动作/内容返回 409。业务、审计和完成响应同事务提交，owner 通过续租避免被活跃请求窃取，等待有明确上限，过期 owner 可恢复。React 为新命令生成 UUID，并只在未收到 HTTP 响应的网络失败后复用键。文件型 H2 的两个独立 Spring context、重启和故障场景已验证；MySQL V3 并发、重启、锁与事务 parity 明确留给 Task 15。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
