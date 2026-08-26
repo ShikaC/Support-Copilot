@@ -14,6 +14,7 @@ from evaluation.live_verifier import verify_live_report
 DATASET = Path(__file__).parents[1] / "evaluation" / "data" / "live-v1.json"
 SHA = "a" * 64
 ARTIFACT = "b" * 64
+GIT_SHA = "c" * 40
 
 
 def _report_payload():
@@ -27,7 +28,7 @@ def _report_payload():
             "dataset_id": "support-copilot-live-synthetic",
             "dataset_version": "1.0.0",
             "dataset_checksum": SHA,
-            "git_commit": SHA,
+            "git_commit": GIT_SHA,
             "worktree_dirty": False,
             "prompt_version": "ticket-analysis-v1",
             "top_n": 10,
@@ -97,7 +98,7 @@ def _context() -> VerificationContext:
         corpus_checksum=SHA,
         artifact_id=ARTIFACT,
         artifact_manifest_sha256=SHA,
-        git_commit=SHA,
+        git_commit=GIT_SHA,
         worktree_dirty=False,
         known_chunk_ids=frozenset({"kb-sso-login-001"}),
     )
@@ -127,7 +128,7 @@ def test_versioned_dataset_is_synthetic_and_has_human_slots() -> None:
         (lambda p: p["cases"][0]["retrieved_chunk_ids"].clear(), "citation-not-retrieved"),
         (lambda p: p["provenance"].update({"knowledge_release_id": "unknown"}), "knowledge-release-mismatch"),
         (lambda p: p["provenance"]["embedding_artifact"].update({"artifact_id": "c" * 64}), "embedding-artifact-mismatch"),
-        (lambda p: p["run"].update({"git_commit": "d" * 64}), "git-commit-mismatch"),
+        (lambda p: p["run"].update({"git_commit": "d" * 40}), "git-commit-mismatch"),
         (lambda p: p["run"].update({"worktree_dirty": True}), "git-dirty-state-mismatch"),
         (lambda p: p["cases"][0].update({"response_text": "email user@example.com"}), "sensitive-content-detected"),
         (lambda p: p["cases"][0]["response_evidence"][0].update({"evidence_indexes": [2]}), "evidence-index-invalid"),

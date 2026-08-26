@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+GitCommit = Annotated[str, Field(pattern=r"^[a-f0-9]{40,64}$")]
 FactualSupport = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "NOT_REVIEWED"]
 
 
@@ -62,7 +63,7 @@ class RunProvenance(StrictModel):
     dataset_id: str
     dataset_version: str
     dataset_checksum: Sha256
-    git_commit: Sha256
+    git_commit: GitCommit
     worktree_dirty: bool
     prompt_version: str
     top_n: int = Field(gt=0)
@@ -171,7 +172,7 @@ class VerificationContext(StrictModel):
     corpus_checksum: Sha256
     artifact_id: Sha256 | None
     artifact_manifest_sha256: Sha256 | None
-    git_commit: Sha256
+    git_commit: GitCommit
     worktree_dirty: bool
     known_chunk_ids: frozenset[str]
 
