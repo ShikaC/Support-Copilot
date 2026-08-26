@@ -24,11 +24,11 @@ AI 只提供建议，Java 保存业务事实，React 负责让客服操作和查
 | --- | --- | --- |
 | React + TypeScript | 浏览器页面、按钮、状态和页面更新 | `apps/support-copilot-web/src/` |
 | Java + Spring Boot | HTTP 接口、业务编排、数据库保存和错误处理 | `services/support-copilot-api/src/main/java/` |
-| JPA + H2 | V1 本地保存工单和分析记录 | `services/support-copilot-api/src/main/` |
+| JPA + H2/MySQL 8 + Flyway | `demo`/`test` 隔离 H2；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，实库待 Task 15 验证 | `services/support-copilot-api/src/main/` |
 | Python + FastAPI | AI 分析、知识检索和结构化结果生成 | `services/support-copilot-ai/app/` |
 | OpenAI API | Python 的 live 模式中的外部模型能力 | `services/support-copilot-ai/app/openai_provider.py` |
 
-当前没有把认证、Redis、消息队列、MySQL、OpenTelemetry 等 V2 能力包装成已经完成的功能。
+当前已加入单机 pilot 的 MySQL migration 基线与失败关闭配置，但 MySQL 运行时、checksum、stale schema 和重启持久化证据均留待 Task 15；认证、Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
 
 ## 3. 服务边界
 
@@ -225,6 +225,8 @@ Java 返回 `AnalysisResponse` 后，React 会：
 
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/Ticket.java`
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketRepository.java`
+
+运行配置边界：`demo` 才加载演示工单并开放 H2 Console，`test` 使用空的随机内存库，`local` 和 `pilot` 要求非空 MySQL JDBC 环境变量并配置 Flyway 建表。未选择 profile 或数据库设置缺失/留空时，Java 会拒绝启动，不会回退到 H2；真实 MySQL 建表和持久化行为仍待 Task 15 验证。
 
 ### AnalysisRun
 

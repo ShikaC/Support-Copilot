@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -27,6 +28,7 @@ import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketService;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class AnalysisReviewServiceTests {
 
 	@Autowired

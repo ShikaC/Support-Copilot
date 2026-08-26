@@ -11,12 +11,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.ticket.TicketDtos.UpdateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDomain.Status;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class TicketUnassignServiceTests {
 
 	@Autowired

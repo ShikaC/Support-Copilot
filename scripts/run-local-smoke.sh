@@ -105,7 +105,7 @@ start_services() {
 
   (
     cd "$JAVA_DIR"
-    exec env SERVER_PORT="$JAVA_PORT" AI_SERVICE_BASE_URL="$AI_BASE_URL" \
+    exec env SPRING_PROFILES_ACTIVE=demo SERVER_PORT="$JAVA_PORT" AI_SERVICE_BASE_URL="$AI_BASE_URL" \
       ./gradlew bootRun --no-daemon
   ) >"$LOG_DIR/java.log" 2>&1 &
   PIDS+=("$!")

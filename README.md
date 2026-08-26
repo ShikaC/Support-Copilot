@@ -11,7 +11,7 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - 检索查询、Top K 知识片段、来源、分数和引用展示。
 - 建议回复编辑、采纳和风险提示。
 - 运营概览、知识目录演示页和质量评估占位视图；只有接入可追溯报告后才展示评估数字。
-- H2 工单与分析运行持久化。
+- `demo`/`test` 使用隔离 H2；`local`/`pilot` 已准备 Flyway 管理的 MySQL 8 配置与 migration 契约，实库验证留待 Task 15。
 - FastAPI `mock`、`live` 和 `fallback` 三种运行模式。
 - Java 到 Python 的超时与业务降级。
 - OpenAI Responses API 结构化输出和进程内向量检索的 live 模式；2026-08-26 已在干净提交上完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
@@ -23,7 +23,7 @@ React + TypeScript + Ant Design + ECharts
                     |
                     | /api
                     v
-       Java 21 + Spring Boot + JPA + H2
+  Java 21 + Spring Boot + JPA + H2/MySQL 8
                     |
                     | /analyze
                     v
@@ -55,7 +55,7 @@ RAG 理论课程、词汇表和学习记录保留在独立的 `CY-Agent` 学习�
 - Python 3.11
 - npm
 
-V1 默认使用 H2 和本地知识数据，不需要 Docker、MySQL 或 Redis。
+Java API 没有隐式数据库配置。必须明确选择 `demo`、`test`、`local` 或 `pilot`；不指定 profile 会因为缺少数据源而失败，避免意外打开 H2。
 
 ## 快速启动
 
@@ -115,8 +115,30 @@ API 文档：`http://localhost:8000/docs`
 
 ```bash
 cd services/support-copilot-api
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=demo'
 ```
+
+`demo` 使用内存 H2、`create-drop`、H2 Console 和 8 条演示工单，只适合本地演示。H2 Console 位于 `http://localhost:8080/h2-console`。`test` 也使用随机命名的隔离 H2 和 `create-drop`，但不加载演示数据且不开放 H2 Console；Gradle 集成测试通过 `@ActiveProfiles("test")` 显式选择它。
+
+`local` 和 `pilot` 都配置为连接 MySQL 8、执行 Flyway migration 并让 Hibernate 使用 `validate`，不加载演示数据，也不开放 H2 Console。两者都要求以下三个环境变量存在且非空：
+
+```bash
+cd services/support-copilot-api
+export SUPPORT_COPILOT_DB_URL='jdbc:mysql://127.0.0.1:3306/support_copilot?useSSL=false&serverTimezone=UTC'
+export SUPPORT_COPILOT_DB_USERNAME='your-database-user'
+export SUPPORT_COPILOT_DB_PASSWORD='your-database-password'
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+`pilot` 使用同一组环境变量，但没有任何 H2 或凭据回退；缺少或留空 JDBC 设置会拒绝启动：
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=pilot'
+```
+
+AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS` 和 `EVALUATION_REPORT_PATH` 覆盖。
+
+以上 `local`/`pilot` 命令是配置契约，不是实库通过声明。MySQL schema、Flyway version/checksum、Hibernate 实库校验、LOB/time/`@Version` 映射、空库行为、stale schema 拒绝和 Java 重启持久化均未在本轮执行；它们统一由 Task 15 的 MySQL 8 运行时验收负责。
 
 健康检查：
 
@@ -305,8 +327,18 @@ Java：
 
 ```bash
 cd services/support-copilot-api
-./gradlew test
+./gradlew test --no-daemon
 ```
+
+普通测试显式选择隔离的 `test` profile。也可以只验证四个非容器 profile/migration 契约：
+
+```bash
+cd services/support-copilot-api
+./gradlew test --tests '*ProfileConfigurationTests' --tests '*FlywayMigrationContractTests' --tests '*DemoProfileIntegrationTests' --tests '*TestProfileIntegrationTests' --no-daemon
+./gradlew compileTestJava --no-daemon
+```
+
+`MySqlProfileIntegrationTests` 源码随 `compileTestJava` 编译，但其三个运行时场景不计入 Task 3 通过数，也不在普通测试中冒充成功。Task 15 将负责 MySQL 8、Testcontainers、Compose、migration checksum、stale schema 和仅重启 Java 后的数据持久化验收；完成前不能声称 `local`/`pilot` 已通过真实 MySQL。
 
 Python：
 
@@ -350,7 +382,7 @@ Java API CI：
 -> 运行全部 Java 测试
 ```
 
-Java 工作流定义见 [`.github/workflows/java-api-ci.yml`](.github/workflows/java-api-ci.yml)。它使用内存 H2 和测试 mock，不需要另外启动 MySQL、Python 或 React。
+Java 工作流定义见 [`.github/workflows/java-api-ci.yml`](.github/workflows/java-api-ci.yml)。普通测试显式使用隔离 H2 和测试 mock，不需要 Python 或 React。`MySqlProfileIntegrationTests` 的运行时验收留待 Task 15，当前只保证测试源码可编译。
 
 React Web CI：
 
@@ -393,11 +425,11 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 
 ## 当前限制
 
-- V1 使用 H2 和内存向量存储，服务重启后业务数据会重新初始化。
+- `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，但真实 MySQL 持久化仍待 Task 15 验证。
 - 回复审核会持久化原始建议、采纳后的内容或拒绝原因、动作、工单版本和 `traceId`；当前审核人固定为未认证的演示身份，不代表已经具备登录、RBAC 或可信生产审计。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。
-- V2 的 MySQL、Redis、向量数据库、Docker Compose 和自动化部署/CD 尚未实现；当前已有三条 GitHub CI，但不包含部署。
+- MySQL 运行时、Redis、持久化向量数据库、Compose 和自动化部署/CD 尚未完成验收；当前已有三条 GitHub CI，但不包含部署。

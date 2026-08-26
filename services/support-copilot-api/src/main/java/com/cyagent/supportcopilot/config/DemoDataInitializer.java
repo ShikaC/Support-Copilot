@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.cyagent.supportcopilot.analysis.AnalysisService;
@@ -11,6 +13,8 @@ import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 
 @Component
+@Profile("demo")
+@ConditionalOnProperty(name = "support-copilot.demo-fixtures.enabled", havingValue = "true")
 public class DemoDataInitializer implements CommandLineRunner {
 
 	private final TicketRepository ticketRepository;

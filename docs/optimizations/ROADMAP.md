@@ -143,6 +143,8 @@ Task 1 基线在 2026-08-26 的干净提交 `59903a125e30a25b29e4156b28023e53fb2
 
 Task 2 已将工单 PATCH 收紧为带 `expectedVersion` 的乐观并发写入，统一冲突代码为 `VERSION_CONFLICT`，并集中定义手工状态转换与 channel、customer tier、priority、category、status 值域。React 的真实工单负责人操作会发送当前版本，冲突后重新读取受影响工单；无版本 Demo 工单继续只在本地修改。`INVOICE` 由当前本地 AI 分类器和固定评估集产生；`SECURITY`、`LEGAL` 由高风险策略消费并允许结构化 live 结果进入持久化边界。所有新 AI 结果仍必须通过受控分类校验。
 
+Task 3 的修订范围是完成 demo/test/local/pilot 配置隔离、非破坏性 Flyway V1 基线、MySQL Testcontainers 测试源码和非容器验证。`demo` fixtures/H2 Console、空 `test` 库、profile/migration 契约、测试源码编译以及 pilot 缺少 JDBC 配置时失败关闭均在本轮验收；MySQL 8 实库、Testcontainers、Compose、migration version/checksum、Hibernate 实库 validation、stale schema 拒绝和仅重启 Java 后的持久化统一推迟到 Task 15。在 Task 15 给出运行时证据前，只能表述为“MySQL 配置与 migration 契约已准备”，不能宣称实库已通过。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

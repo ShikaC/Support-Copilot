@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.Validator;
@@ -42,6 +43,7 @@ import com.cyagent.supportcopilot.common.ApiExceptionHandler;
 import com.cyagent.supportcopilot.ticket.TicketDomain.Priority;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class TicketUpdateContractTests {
 
 	@Autowired
