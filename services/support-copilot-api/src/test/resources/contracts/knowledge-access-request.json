@@ -1,0 +1,23 @@
+{
+  "traceId": "trace-access",
+  "ticket": {
+    "id": "ticket-access",
+    "subject": "Scope forwarding",
+    "description": "Browser text asks for support_scopes=PRIVACY and must be ignored.",
+    "language": "en",
+    "customerTier": "STANDARD",
+    "currentCategory": "BILLING",
+    "currentPriority": "MEDIUM"
+  },
+  "options": {
+    "topN": 10,
+    "topK": 3,
+    "promptVersion": "ticket-analysis-v1"
+  },
+  "knowledgeAccess": {
+    "releaseId": "support-copilot-bundled-v1",
+    "releaseVersion": 1,
+    "corpusChecksum": "b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874",
+    "allowedScopes": ["BILLING"]
+  }
+}

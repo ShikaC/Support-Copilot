@@ -55,11 +55,15 @@ class KnowledgeReleaseMigrationIntegrationTests {
 		assertThat(jdbcTemplate.queryForObject(
 			"select release_id from knowledge_active_release where id = 'active'",
 			String.class
-		)).isEqualTo("bundled-v1");
-		assertThat(jdbcTemplate.queryForObject(
-			"select status from knowledge_releases where release_id = 'bundled-v1'",
-			String.class
-		)).isEqualTo("PUBLISHED");
+		)).isEqualTo("support-copilot-bundled-v1");
+		var baseline = jdbcTemplate.queryForMap(
+			"select release_version, corpus_checksum, status from knowledge_releases where release_id = ?",
+			"support-copilot-bundled-v1"
+		);
+		assertThat(baseline.get("RELEASE_VERSION")).isEqualTo(1);
+		assertThat(baseline.get("CORPUS_CHECKSUM"))
+			.isEqualTo("b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874");
+		assertThat(baseline.get("STATUS")).isEqualTo("PUBLISHED");
 	}
 
 	private static Connection openConnection() {

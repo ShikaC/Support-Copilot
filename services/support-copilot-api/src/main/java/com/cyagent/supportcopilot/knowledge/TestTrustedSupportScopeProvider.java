@@ -1,6 +1,5 @@
 package com.cyagent.supportcopilot.knowledge;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.context.annotation.Profile;
@@ -19,8 +18,6 @@ public class TestTrustedSupportScopeProvider implements TrustedSupportScopeProvi
 			return List.of();
 		}
 		var claims = jwt.getToken().getClaimAsStringList("support_scopes");
-		return claims == null
-			? Arrays.asList(KnowledgeScope.values())
-			: JwtTrustedSupportScopeProvider.allowlisted(claims);
+		return claims == null ? List.of() : JwtTrustedSupportScopeProvider.allowlisted(claims);
 	}
 }

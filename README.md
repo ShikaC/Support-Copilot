@@ -178,11 +178,13 @@ curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 | --- | --- | --- | --- | --- |
 | `/actuator/health` 及 liveness/readiness | 允许 | 允许 | 允许 | 允许 |
 | tickets、knowledge search、quality metrics | 401 | 允许 | 允许 | 允许 |
+| knowledge release 查询 | 401 | 允许 | 允许 | 允许 |
+| knowledge release 创建、审批、发布、回滚 | 401 | 403 | 允许 | 允许 |
 | analysis reviews 读写 | 401 | 403 | 允许 | 允许 |
 | `GET /api/audit-events` | 401 | 403 | 允许 | 允许 |
 | 其他 `/actuator/**` | 401 | 403 | 403 | 允许 |
 
-401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。当前 React 仍只支持匿名 demo 工作流，浏览器 JWT adapter 属于 Task 11；真实 OIDC issuer、MySQL 与 pilot 组合验收属于 Task 15。
+401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。知识访问范围只读取 JWT 的 `support_scopes`，经过 `GENERAL`、`BILLING`、`ACCOUNT`、`PRIVACY`、`TECHNICAL` 白名单后再与当前发布范围求交集；缺失或空 claim 都表示零知识权限，工单正文不能扩展权限。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。当前 React 仍只支持匿名 demo 工作流，浏览器 JWT adapter 属于 Task 11；真实 OIDC issuer、MySQL 与 pilot 组合验收属于 Task 15。
 
 ### 3. React 前端
 
@@ -293,6 +295,14 @@ export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='inject-a-non-browser-service-toke
 `KNOWLEDGE_PATH` 不设置时继续使用仓库内的演示知识文件。设置后，Python 会在启动时读取仓库外的授权知识文件，并要求它是 JSON 数组；每个片段必须包含唯一的 `chunk_id`、`document_id`、`document_title`、`section`、`content`、`source_uri`、`categories`、`keywords`、`document_version`、`status` 和 `updated_at`。`ARCHIVED` 片段不会进入检索。可参考 [默认知识文件](services/support-copilot-ai/app/data/knowledge.json) 的结构。无效字段、空字段、未知字段和重复片段 ID 会直接阻止服务启动，原始知识正文不会写入校验错误。
 
 `KNOWLEDGE_PROVENANCE_PATH` 对手工预切分 JSON 是可选项；使用导入命令生成 corpus 时应同时配置。服务会检查 provenance 中的 corpus 哈希，文件缺失、结构非法或哈希漂移都会阻止启动。当前 PDF 导入只支持自带文本层的文件；扫描件需要后续 OCR 流程，不能静默当作空知识使用。
+
+### 知识发布与访问范围
+
+Java 以 `DRAFT -> APPROVED -> PUBLISHED -> ARCHIVED` 管理不可变的 release id、版本、语义 corpus checksum 和发布范围；转换要求当前 `expectedVersion`。发布和回滚会在同一数据库事务中切换唯一 active pointer、归档原发布并写一条受控审计事件，事务失败时指针、状态和审计一起回滚。
+
+仓库内基线契约为 `support-copilot-bundled-v1`、版本 `1`、checksum `b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874`。该 checksum 是对规范化 chunks JSON 独立计算的 SHA-256，不是整个 `knowledge.json` 文件的原始 SHA；release 元数据不参与计算，避免自引用。Java 每次分析把 active release 与可信范围交给 Python，Python 在打分、Embedding 和 Prompt 前同时校验 release identity/checksum 并过滤无权片段。契约不一致返回 `409 KNOWLEDGE_RELEASE_MISMATCH`，不能转换成 AI fallback。
+
+当前 Python 仍在启动时加载一个 file-backed corpus。Java 发布新 release 不会让运行中的 Python 热加载新文件；如果 active release 对应的 corpus 尚未部署，分析会稳定失败关闭。回滚到 Python 已加载的基线可恢复分析。持久化 Embedding artifact 的构建、部署、激活和回滚属于 Task 9，本轮没有实现或声称动态 artifact 切换。
 
 外部知识文件只应包含公开、已获授权或完成脱敏的数据，建议放在仓库外并使用绝对路径，不能把真实客户隐私或内部凭据提交到 Git。
 
@@ -463,6 +473,9 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 | POST | `/api/tickets/{id}/analyses/{analysisId}/reviews/reject` | 拒绝最新回复建议并记录必填原因 |
 | GET | `/api/tickets/{id}/analyses/{analysisId}/reviews` | 查询分析审核历史 |
 | GET | `/api/knowledge/search` | 调试知识检索 |
+| GET | `/api/knowledge/releases`、`/api/knowledge/releases/{id}`、`/api/knowledge/releases/active` | 查询不可变知识发布及当前 active pointer |
+| POST | `/api/knowledge/releases` | 创建 `DRAFT` release |
+| POST | `/api/knowledge/releases/{id}/approve`、`publish`、`rollback` | 携带 `expectedVersion` 执行受角色保护的合法转换 |
 | GET | `/api/metrics` | 查询当前工单、已持久化运行态指标和可追溯 mock 评估报告；没有来源的数据返回空值 |
 | POST | `/analyze` | Java 调用的 AI 服务内部接口；要求 `X-Internal-Service-Token`，不属于浏览器 API |
 
@@ -478,10 +491,11 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 ## 当前限制
 
 - `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，但真实 MySQL 持久化仍待 Task 15 验证。
-- 当前 append-only 审计覆盖已提交的工单创建/实际变更、分析持久化和 `APPROVED`/`EDITED`/`REJECTED` 审核；元数据白名单不保存工单正文、回复、拒绝原因、证据、provider payload、token 或异常消息。知识发布接入留待 Task 8。
+- 当前 append-only 审计覆盖已提交的工单创建/实际变更、分析持久化、`APPROVED`/`EDITED`/`REJECTED` 审核和知识 release 创建/审批/发布/回滚；元数据白名单不保存工单正文、回复、拒绝原因、证据、provider payload、token 或异常消息。
 - 审计在 H2 `test` profile 已完成事务与真实 HTTP 验证，但 V2 migration 尚未在 MySQL 执行；checksum、索引与事务 parity 属于 Task 15，当前不构成生产或合规审计声明。
 - JWT endpoint policy 与合成 test decoder 已验证，但 React 登录/token adapter 尚未实现；真实 pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
+- Java release 发布不会热加载 Python file-backed corpus；未部署 release 会让分析以 409 失败关闭，持久化 artifact 激活/回滚属于 Task 9。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。

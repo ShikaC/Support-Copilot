@@ -153,6 +153,8 @@ Task 6 为分析和全部人工审核写命令增加 durable `Idempotency-Key`�
 
 Task 7 已在 Java-to-Python 边界增加单一总截止时间、仅针对 429/非 504 5xx 的有界重试、circuit、semaphore bulkhead 和低基数 Micrometer 指标；Java 总尝试数配置只允许 1 至 2。Python 504、4xx、认证、校验及成功响应契约错误不会重试，契约/程序错误不会转成 fallback。OpenAI SDK 实际重试固定为 0，避免与 Java 相乘。Python 保留 `/health` 并增加 liveness/readiness、稳定错误 envelope、响应 trace header 和脱敏结构化日志；readiness 不探测外部 API，而由真实 live Embedding/索引与结构化生成的成功或类型化可恢复失败更新线程安全的进程内状态。`/analyze` 只接受 1 至 80 个安全 trace 字符，要求 header/body 相同，并在工作流前拒绝换行、超长或不匹配的 body trace。Java probe 公开但不显示组件详情。readiness 在首次 live 流量前只能反映已校验配置/corpus，重启后重新初始化；它不包含 Task 9 的 artifact 生命周期。Wire-level 和隔离 HTTP 证据只证明本地单实例契约，不代表分布式保护、生产容量或 SLO。
 
+Task 8 已增加 `DRAFT/APPROVED/PUBLISHED/ARCHIVED` 知识 release、`expectedVersion` 转换、唯一 active pointer、发布/回滚同事务审计，以及 JWT `support_scopes` 白名单与 release 范围交集。Java/Python 基线统一为 `support-copilot-bundled-v1` v1 和规范化 chunks 语义 checksum；共享 fixture 同时经过 Java 真实序列化比较与 Python 严格 Pydantic 解析。Python 在本地打分、向量构建和 Prompt 前过滤无权片段，缺失 scope 为零权限。真实本地 loopback 已验证 scoped success、零范围无证据 fallback、未部署 release 的非 fallback 409 和回滚基线恢复。Python 仍是启动时加载的 file-backed corpus，Java 发布不触发热加载；Task 9 才负责持久化 artifact 生命周期，Task 15 才验证 MySQL V4 migration/锁/事务 parity。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon
@@ -894,7 +896,7 @@ FALLBACK
 - 工单版本。
 - traceId。
 
-当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录完整业务审核内容；另有 append-only `AuditEvent` 只保存可信 actor、受控动作/目标、版本、`traceId` 和脱敏白名单 metadata。两者在同一事务提交，同内容重放不新增审核或审计行。知识发布审计、审核请求并发幂等、真实 OIDC 和 MySQL parity 尚未完成，因此仍不能称为生产或合规审计能力。
+当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录完整业务审核内容；另有 append-only `AuditEvent` 只保存可信 actor、受控动作/目标、版本、`traceId` 和脱敏白名单 metadata。两者在同一事务提交，同内容重放不新增审核或审计行。知识 release 创建、审批、发布和回滚也已接入同一 typed recorder，并与 active pointer/状态变更同事务提交。真实 OIDC 和 MySQL parity 尚未完成，因此仍不能称为生产或合规审计能力。
 
 ### P5-03 权限边界
 

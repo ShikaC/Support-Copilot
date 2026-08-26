@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -60,11 +62,15 @@ class KnowledgeAccessForwardingTests {
 		assertThat(knowledgeAccessProvider.currentAccess().allowedScopes()).containsExactly("BILLING");
 
 		var payload = captureRequest();
+		var expectedPayload = objectMapper.readTree(Files.readString(
+			Path.of("src", "test", "resources", "contracts", "knowledge-access-request.json")
+		));
+		assertThat(objectMapper.readTree(payload)).isEqualTo(expectedPayload);
 		var access = objectMapper.readTree(payload).get("knowledgeAccess");
-		assertThat(access.get("releaseId").asString()).isEqualTo("bundled-v1");
+		assertThat(access.get("releaseId").asString()).isEqualTo("support-copilot-bundled-v1");
 		assertThat(access.get("releaseVersion").asInt()).isEqualTo(1);
 		assertThat(access.get("corpusChecksum").asString())
-			.isEqualTo("859a2a9b58a69f115a2577a25c6d2c17af7fc9e44fc3f82e2c9010bfd1f4f9db");
+			.isEqualTo("b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874");
 		assertThat(access.get("allowedScopes").toString()).isEqualTo("[\"BILLING\"]");
 		assertThat(access.toString()).doesNotContain("SUPERUSER", "PRIVACY");
 	}
@@ -72,6 +78,15 @@ class KnowledgeAccessForwardingTests {
 	@Test
 	void explicitEmptyTrustedScopesRemainEmptyInProviderPayload() throws Exception {
 		authenticate(List.of());
+
+		var access = objectMapper.readTree(captureRequest()).get("knowledgeAccess");
+		assertThat(access.get("allowedScopes").isArray()).isTrue();
+		assertThat(access.get("allowedScopes").size()).isZero();
+	}
+
+	@Test
+	void missingTrustedScopesRemainEmptyInProviderPayload() throws Exception {
+		authenticateWithoutScopes();
 
 		var access = objectMapper.readTree(captureRequest()).get("knowledgeAccess");
 		assertThat(access.get("allowedScopes").isArray()).isTrue();
@@ -133,6 +148,17 @@ class KnowledgeAccessForwardingTests {
 			.header("alg", "none")
 			.subject("trusted-agent")
 			.claim("support_scopes", scopes)
+			.build();
+		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
+			jwt,
+			List.of(new SimpleGrantedAuthority("ROLE_SUPPORT_AGENT"))
+		));
+	}
+
+	private void authenticateWithoutScopes() {
+		var jwt = Jwt.withTokenValue("synthetic-no-scope-jwt")
+			.header("alg", "none")
+			.subject("trusted-agent")
 			.build();
 		SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(
 			jwt,
