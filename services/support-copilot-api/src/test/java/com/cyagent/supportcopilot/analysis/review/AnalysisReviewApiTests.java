@@ -19,16 +19,22 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
 import com.cyagent.supportcopilot.common.ApiExceptionHandler;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.idempotency.IdempotencyKey;
 
 class AnalysisReviewApiTests {
+	private static final String KEY = "review-command-key-0001";
 
 	@Test
 	void recordsReviewedReplyThroughExplicitCommand() throws Exception {
 		var service = mock(AnalysisReviewService.class);
+		var commandService = mock(AnalysisReviewCommandService.class);
 		var response = response("review-1", AnalysisReviewAction.EDITED, "修改后的回复");
-		when(service.review("ticket-10042", "analysis-1", "修改后的回复")).thenReturn(response);
+		when(commandService.review(
+			"ticket-10042", "analysis-1", "修改后的回复", IdempotencyKey.parse(KEY)
+		)).thenReturn(response);
 
-		mockMvc(service).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews")
+		mockMvc(service, commandService).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews")
+				.header("Idempotency-Key", KEY)
 				.contentType(APPLICATION_JSON)
 				.content("{\"replyContent\":\"修改后的回复\"}"))
 			.andExpect(status().isOk())
@@ -36,18 +42,22 @@ class AnalysisReviewApiTests {
 			.andExpect(jsonPath("$.action").value("EDITED"))
 			.andExpect(jsonPath("$.reviewerType").value("UNAUTHENTICATED_DEMO"));
 
-		verify(service).review("ticket-10042", "analysis-1", "修改后的回复");
+		verify(commandService).review(
+			"ticket-10042", "analysis-1", "修改后的回复", IdempotencyKey.parse(KEY)
+		);
 	}
 
 	@Test
 	void returnsStructuredConflictForStaleAnalysisReview() throws Exception {
 		var service = mock(AnalysisReviewService.class);
-		when(service.review("ticket-10042", "analysis-old", "回复"))
+		var commandService = mock(AnalysisReviewCommandService.class);
+		when(commandService.review("ticket-10042", "analysis-old", "回复", IdempotencyKey.parse(KEY)))
 			.thenThrow(new StaleAnalysisReviewException(
 				"ticket-10042", "analysis-old", "analysis-latest", 4L, 5L
 			));
 
-		mockMvc(service).perform(post("/api/tickets/ticket-10042/analyses/analysis-old/reviews")
+		mockMvc(service, commandService).perform(post("/api/tickets/ticket-10042/analyses/analysis-old/reviews")
+				.header("Idempotency-Key", KEY)
 				.header("X-Trace-Id", "trace-review-conflict")
 				.contentType(APPLICATION_JSON)
 				.content("{\"replyContent\":\"回复\"}"))
@@ -62,10 +72,14 @@ class AnalysisReviewApiTests {
 	@Test
 	void recordsRejectionWithRequiredReason() throws Exception {
 		var service = mock(AnalysisReviewService.class);
+		var commandService = mock(AnalysisReviewCommandService.class);
 		var response = response("review-rejected", AnalysisReviewAction.REJECTED, null, "证据不足");
-		when(service.reject("ticket-10042", "analysis-1", "证据不足")).thenReturn(response);
+		when(commandService.reject(
+			"ticket-10042", "analysis-1", "证据不足", IdempotencyKey.parse(KEY)
+		)).thenReturn(response);
 
-		mockMvc(service).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+		mockMvc(service, commandService).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+				.header("Idempotency-Key", KEY)
 				.contentType(APPLICATION_JSON)
 				.content("{\"reason\":\"证据不足\"}"))
 			.andExpect(status().isOk())
@@ -74,20 +88,26 @@ class AnalysisReviewApiTests {
 			.andExpect(jsonPath("$.reviewedReplyContent").value((Object) null))
 			.andExpect(jsonPath("$.reason").value("证据不足"));
 
-		verify(service).reject("ticket-10042", "analysis-1", "证据不足");
+		verify(commandService).reject(
+			"ticket-10042", "analysis-1", "证据不足", IdempotencyKey.parse(KEY)
+		);
 	}
 
 	@Test
 	void rejectsBlankRejectionReasonBeforeCallingTheService() throws Exception {
 		var service = mock(AnalysisReviewService.class);
+		var commandService = mock(AnalysisReviewCommandService.class);
 
-		mockMvc(service).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+		mockMvc(service, commandService).perform(post("/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject")
+				.header("Idempotency-Key", KEY)
 				.contentType(APPLICATION_JSON)
 				.content("{\"reason\":\"   \"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
-		verify(service, never()).reject(anyString(), anyString(), anyString());
+		verify(commandService, never()).reject(
+			anyString(), anyString(), anyString(), org.mockito.ArgumentMatchers.any()
+		);
 	}
 
 	private AnalysisReviewResponse response(
@@ -120,9 +140,12 @@ class AnalysisReviewApiTests {
 		);
 	}
 
-	private MockMvc mockMvc(AnalysisReviewService service) {
+	private MockMvc mockMvc(
+		AnalysisReviewService service,
+		AnalysisReviewCommandService commandService
+	) {
 		return MockMvcBuilders
-			.standaloneSetup(new AnalysisReviewController(service))
+			.standaloneSetup(new AnalysisReviewController(service, commandService))
 			.setControllerAdvice(new ApiExceptionHandler(mock(TicketRepository.class)))
 			.build();
 	}

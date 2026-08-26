@@ -20,7 +20,17 @@ public class AnalysisSingleFlightCoordinator {
 		String policyVersion,
 		Supplier<AnalysisResponse> operation
 	) {
-		var key = new AnalysisKey(ticketId, sourceTicketVersion, policyVersion);
+		return execute("legacy", ticketId, sourceTicketVersion, policyVersion, operation);
+	}
+
+	public Result execute(
+		String commandIdentity,
+		String ticketId,
+		long sourceTicketVersion,
+		String policyVersion,
+		Supplier<AnalysisResponse> operation
+	) {
+		var key = new AnalysisKey(commandIdentity, ticketId, sourceTicketVersion, policyVersion);
 		var candidate = new CompletableFuture<AnalysisResponse>();
 		var existing = inFlight.putIfAbsent(key, candidate);
 		if (existing != null) {
@@ -56,6 +66,11 @@ public class AnalysisSingleFlightCoordinator {
 	public record Result(AnalysisResponse response, boolean joined) {
 	}
 
-	private record AnalysisKey(String ticketId, long sourceTicketVersion, String policyVersion) {
+	private record AnalysisKey(
+		String commandIdentity,
+		String ticketId,
+		long sourceTicketVersion,
+		String policyVersion
+	) {
 	}
 }

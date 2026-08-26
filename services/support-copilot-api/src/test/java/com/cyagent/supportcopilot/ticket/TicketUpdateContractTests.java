@@ -37,6 +37,7 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import com.cyagent.supportcopilot.analysis.AnalysisService;
+import com.cyagent.supportcopilot.analysis.AnalysisCommandService;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
 import com.cyagent.supportcopilot.audit.AuditEventRecorder;
@@ -58,6 +59,9 @@ class TicketUpdateContractTests {
 	private AnalysisService analysisService;
 
 	@Autowired
+	private AnalysisCommandService analysisCommandService;
+
+	@Autowired
 	private Validator validator;
 
 	private MockMvc mockMvc;
@@ -67,7 +71,7 @@ class TicketUpdateContractTests {
 	void setUp() {
 		TestTrustedActors.authenticate("ticket-contract-test-agent", "SUPPORT_AGENT");
 		mockMvc = MockMvcBuilders
-			.standaloneSetup(new TicketController(ticketService, analysisService))
+			.standaloneSetup(new TicketController(ticketService, analysisService, analysisCommandService))
 			.setControllerAdvice(new ApiExceptionHandler(ticketRepository))
 			.setValidator(validator)
 			.setMessageConverters(strictJsonConverter())
@@ -247,7 +251,11 @@ class TicketUpdateContractTests {
 				new ObjectOptimisticLockingFailureException(Ticket.class, current.getId())
 			));
 		var mvc = MockMvcBuilders
-			.standaloneSetup(new TicketController(service, mock(AnalysisService.class)))
+			.standaloneSetup(new TicketController(
+				service,
+				mock(AnalysisService.class),
+				mock(AnalysisCommandService.class)
+			))
 			.setControllerAdvice(new ApiExceptionHandler(repository))
 			.setValidator(validator)
 			.setMessageConverters(strictJsonConverter())

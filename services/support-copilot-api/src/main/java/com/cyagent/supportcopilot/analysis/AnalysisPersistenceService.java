@@ -18,6 +18,7 @@ import com.cyagent.supportcopilot.audit.AuditEventCommand;
 import com.cyagent.supportcopilot.audit.AuditEventRecorder;
 import com.cyagent.supportcopilot.audit.AuditMetadata;
 import com.cyagent.supportcopilot.audit.AuditTargetType;
+import com.cyagent.supportcopilot.idempotency.CommandIdempotencyCompletion;
 
 @Service
 public class AnalysisPersistenceService {
@@ -26,21 +27,34 @@ public class AnalysisPersistenceService {
 	private final AnalysisRunRepository analysisRunRepository;
 	private final ObjectMapper objectMapper;
 	private final AuditEventRecorder auditEventRecorder;
+	private final CommandIdempotencyCompletion idempotencyCompletion;
 
 	public AnalysisPersistenceService(
 		TicketRepository ticketRepository,
 		AnalysisRunRepository analysisRunRepository,
 		ObjectMapper objectMapper,
-		AuditEventRecorder auditEventRecorder
+		AuditEventRecorder auditEventRecorder,
+		CommandIdempotencyCompletion idempotencyCompletion
 	) {
 		this.ticketRepository = ticketRepository;
 		this.analysisRunRepository = analysisRunRepository;
 		this.objectMapper = objectMapper;
 		this.auditEventRecorder = auditEventRecorder;
+		this.idempotencyCompletion = idempotencyCompletion;
 	}
 
 	@Transactional
 	public void persist(String ticketId, long expectedVersion, AnalysisResponse response) {
+		persistBusinessResult(ticketId, expectedVersion, response);
+	}
+
+	@Transactional
+	public void persistIdempotent(IdempotentAnalysisPersistence command) {
+		persistBusinessResult(command.ticketId(), command.expectedVersion(), command.response());
+		idempotencyCompletion.complete(command.ownership(), 200, command.response());
+	}
+
+	private void persistBusinessResult(String ticketId, long expectedVersion, AnalysisResponse response) {
 		// AI 调用不在这个事务中。这里只执行短时间的版本检查和数据库写入。
 		var ticket = ticketRepository.findById(ticketId)
 			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + ticketId));

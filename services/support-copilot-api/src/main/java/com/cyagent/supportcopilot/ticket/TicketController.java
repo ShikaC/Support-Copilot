@@ -10,13 +10,16 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
+import com.cyagent.supportcopilot.analysis.AnalysisCommandService;
 import com.cyagent.supportcopilot.analysis.AnalysisService;
+import com.cyagent.supportcopilot.idempotency.IdempotencyKey;
 import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
 import com.cyagent.supportcopilot.ticket.TicketDtos.TicketResponse;
 import com.cyagent.supportcopilot.ticket.TicketDtos.UnassignTicketRequest;
@@ -28,10 +31,16 @@ public class TicketController {
 
 	private final TicketService ticketService;
 	private final AnalysisService analysisService;
+	private final AnalysisCommandService analysisCommandService;
 
-	public TicketController(TicketService ticketService, AnalysisService analysisService) {
+	public TicketController(
+		TicketService ticketService,
+		AnalysisService analysisService,
+		AnalysisCommandService analysisCommandService
+	) {
 		this.ticketService = ticketService;
 		this.analysisService = analysisService;
+		this.analysisCommandService = analysisCommandService;
 	}
 
 	@GetMapping
@@ -70,10 +79,13 @@ public class TicketController {
 
 	@PostMapping("/{id}/analyze")
 	// 从 URL 的 {id} 位置取出工单编号，例如 ticket-10042。
-	AnalysisResponse analyze(@PathVariable String id) {
+	AnalysisResponse analyze(
+		@PathVariable String id,
+		@RequestHeader(name = "Idempotency-Key", required = false) String rawIdempotencyKey
+	) {
 		// Controller 只负责暴露 HTTP 接口。
 		// 真正的业务编排逻辑在 AnalysisService 里。
-		return analysisService.analyze(id);
+		return analysisCommandService.analyze(id, IdempotencyKey.parse(rawIdempotencyKey));
 	}
 
 	@GetMapping("/{id}/analyses")

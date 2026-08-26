@@ -26,6 +26,7 @@ import com.cyagent.supportcopilot.audit.AuditMetadata;
 import com.cyagent.supportcopilot.audit.AuditTargetType;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.idempotency.CommandIdempotencyCompletion;
 
 @Service
 public class AnalysisReviewService {
@@ -36,6 +37,7 @@ public class AnalysisReviewService {
 	private final ObjectMapper objectMapper;
 	private final TrustedActorProvider trustedActorProvider;
 	private final AuditEventRecorder auditEventRecorder;
+	private final CommandIdempotencyCompletion idempotencyCompletion;
 
 	public AnalysisReviewService(
 		AnalysisReviewRepository analysisReviewRepository,
@@ -43,7 +45,8 @@ public class AnalysisReviewService {
 		TicketRepository ticketRepository,
 		ObjectMapper objectMapper,
 		TrustedActorProvider trustedActorProvider,
-		AuditEventRecorder auditEventRecorder
+		AuditEventRecorder auditEventRecorder,
+		CommandIdempotencyCompletion idempotencyCompletion
 	) {
 		this.analysisReviewRepository = analysisReviewRepository;
 		this.analysisRunRepository = analysisRunRepository;
@@ -51,10 +54,26 @@ public class AnalysisReviewService {
 		this.objectMapper = objectMapper;
 		this.trustedActorProvider = trustedActorProvider;
 		this.auditEventRecorder = auditEventRecorder;
+		this.idempotencyCompletion = idempotencyCompletion;
 	}
 
 	@Transactional
 	public AnalysisReviewResponse review(String ticketId, String analysisId, String replyContent) {
+		return reviewBusinessResult(ticketId, analysisId, replyContent);
+	}
+
+	@Transactional
+	public AnalysisReviewResponse reviewIdempotent(IdempotentAnalysisReview command) {
+		var response = reviewBusinessResult(command.ticketId(), command.analysisId(), command.content());
+		idempotencyCompletion.complete(command.ownership(), 200, response);
+		return response;
+	}
+
+	private AnalysisReviewResponse reviewBusinessResult(
+		String ticketId,
+		String analysisId,
+		String replyContent
+	) {
 		var context = prepareReview(ticketId, analysisId);
 		var reviewedReply = replyContent.trim();
 		var existing = analysisReviewRepository.findFirstByAnalysisIdOrderByCreatedAtDesc(analysisId);
@@ -78,6 +97,17 @@ public class AnalysisReviewService {
 
 	@Transactional
 	public AnalysisReviewResponse reject(String ticketId, String analysisId, String reason) {
+		return rejectBusinessResult(ticketId, analysisId, reason);
+	}
+
+	@Transactional
+	public AnalysisReviewResponse rejectIdempotent(IdempotentAnalysisReview command) {
+		var response = rejectBusinessResult(command.ticketId(), command.analysisId(), command.content());
+		idempotencyCompletion.complete(command.ownership(), 200, response);
+		return response;
+	}
+
+	private AnalysisReviewResponse rejectBusinessResult(String ticketId, String analysisId, String reason) {
 		var normalizedReason = reason.trim();
 		if (normalizedReason.isEmpty()) {
 			throw new IllegalArgumentException("拒绝原因不能为空");

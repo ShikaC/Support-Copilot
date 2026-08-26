@@ -13,8 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.cyagent.supportcopilot.analysis.AnalysisService;
+import com.cyagent.supportcopilot.analysis.AnalysisCommandService;
 import com.cyagent.supportcopilot.analysis.TicketVersionConflictException;
 import com.cyagent.supportcopilot.common.ApiExceptionHandler;
+import com.cyagent.supportcopilot.idempotency.IdempotencyKey;
 
 class TicketAnalysisConflictApiTests {
 
@@ -22,12 +24,15 @@ class TicketAnalysisConflictApiTests {
 	void returnsStructuredConflictWhenAnalysisUsesAnOldTicketVersion() throws Exception {
 		var ticketService = mock(TicketService.class);
 		var analysisService = mock(AnalysisService.class);
-		var mockMvc = mockMvc(ticketService, analysisService);
-		when(analysisService.analyze("ticket-10042"))
+		var analysisCommandService = mock(AnalysisCommandService.class);
+		var mockMvc = mockMvc(ticketService, analysisService, analysisCommandService);
+		when(analysisCommandService.analyze("ticket-10042", IdempotencyKey.parse("analysis-conflict-key-10042")))
 			.thenThrow(new TicketVersionConflictException("ticket-10042", 3, 4));
 
 		// 模拟旧版本分析到达接口，接口应把业务冲突转换为 409。
-		mockMvc.perform(post("/api/tickets/ticket-10042/analyze").header("X-Trace-Id", "trace-test"))
+		mockMvc.perform(post("/api/tickets/ticket-10042/analyze")
+				.header("Idempotency-Key", "analysis-conflict-key-10042")
+				.header("X-Trace-Id", "trace-test"))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("VERSION_CONFLICT"))
 			.andExpect(jsonPath("$.traceId").value("trace-test"))
@@ -40,7 +45,7 @@ class TicketAnalysisConflictApiTests {
 	void exposesExplicitUnassignCommand() throws Exception {
 		var ticketService = mock(TicketService.class);
 		var analysisService = mock(AnalysisService.class);
-		var mockMvc = mockMvc(ticketService, analysisService);
+		var mockMvc = mockMvc(ticketService, analysisService, mock(AnalysisCommandService.class));
 		var updated = new TicketDtos.TicketResponse(
 			"ticket-10042", "SC-10042", "EMAIL", "测试客户", "测试公司", "STANDARD",
 			"测试主题", "测试描述", "zh-CN", "BILLING", "HIGH", "IN_PROGRESS", null,
@@ -57,9 +62,13 @@ class TicketAnalysisConflictApiTests {
 		verify(ticketService).unassign("ticket-10042", 3);
 	}
 
-	private MockMvc mockMvc(TicketService ticketService, AnalysisService analysisService) {
+	private MockMvc mockMvc(
+		TicketService ticketService,
+		AnalysisService analysisService,
+		AnalysisCommandService analysisCommandService
+	) {
 		return MockMvcBuilders
-			.standaloneSetup(new TicketController(ticketService, analysisService))
+			.standaloneSetup(new TicketController(ticketService, analysisService, analysisCommandService))
 			.setControllerAdvice(new ApiExceptionHandler(mock(TicketRepository.class)))
 			.build();
 	}

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.common.TraceId;
+import com.cyagent.supportcopilot.idempotency.CommandOwnership;
 
 @Service
 public class AnalysisService {
@@ -70,7 +71,43 @@ public class AnalysisService {
 		return execution.response();
 	}
 
+	public AnalysisResponse analyzeOwned(String ticketId, CommandOwnership ownership) {
+		var ticket = ticketRepository.findById(ticketId)
+			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + ticketId));
+		var sourceTicketVersion = ticket.getVersion();
+		var traceId = TraceId.currentOrCreate();
+		return singleFlightCoordinator.execute(
+			ownership.idempotencyKey(),
+			ticketId,
+			sourceTicketVersion,
+			AnalysisPolicy.VERSION,
+			() -> executeOwnedAnalysis(ticket, sourceTicketVersion, traceId, ownership)
+		).response();
+	}
+
 	private AnalysisResponse executeAnalysis(Ticket ticket, long sourceTicketVersion, String traceId) {
+		var response = requestAnalysis(ticket, traceId);
+		analysisPersistenceService.persist(ticket.getId(), sourceTicketVersion, response);
+		return response;
+	}
+
+	private AnalysisResponse executeOwnedAnalysis(
+		Ticket ticket,
+		long sourceTicketVersion,
+		String traceId,
+		CommandOwnership ownership
+	) {
+		var response = requestAnalysis(ticket, traceId);
+		analysisPersistenceService.persistIdempotent(new IdempotentAnalysisPersistence(
+			ticket.getId(),
+			sourceTicketVersion,
+			response,
+			ownership
+		));
+		return response;
+	}
+
+	private AnalysisResponse requestAnalysis(Ticket ticket, String traceId) {
 		// AI 是辅助能力，不是业务事实的来源。
 		// 工单已经保存在 Java/H2 中；如果 Python 服务失败，
 		// 系统会返回 fallback 分析，而不是让整个流程不可用。
@@ -90,7 +127,6 @@ public class AnalysisService {
 			);
 		}
 
-		analysisPersistenceService.persist(ticket.getId(), sourceTicketVersion, response);
 		return response;
 	}
 

@@ -21,6 +21,9 @@ import com.cyagent.supportcopilot.audit.AuditQueryException;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketStateConflictException;
+import com.cyagent.supportcopilot.idempotency.IdempotencyConflictException;
+import com.cyagent.supportcopilot.idempotency.IdempotencyInProgressException;
+import com.cyagent.supportcopilot.idempotency.IdempotencyKeyException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -28,6 +31,32 @@ public class ApiExceptionHandler {
 
 	public ApiExceptionHandler(TicketRepository ticketRepository) {
 		this.ticketRepository = ticketRepository;
+	}
+
+	@ExceptionHandler(IdempotencyKeyException.class)
+	ResponseEntity<ApiError> handleIdempotencyKey(
+		IdempotencyKeyException exception,
+		HttpServletRequest request
+	) {
+		return ResponseEntity.badRequest().body(error(exception.getCode(), exception.getMessage(), request));
+	}
+
+	@ExceptionHandler(IdempotencyConflictException.class)
+	ResponseEntity<ApiError> handleIdempotencyConflict(
+		IdempotencyConflictException exception,
+		HttpServletRequest request
+	) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(error("IDEMPOTENCY_KEY_CONFLICT", exception.getMessage(), request));
+	}
+
+	@ExceptionHandler(IdempotencyInProgressException.class)
+	ResponseEntity<ApiError> handleIdempotencyInProgress(
+		IdempotencyInProgressException exception,
+		HttpServletRequest request
+	) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(error("IDEMPOTENCY_REQUEST_IN_PROGRESS", exception.getMessage(), request));
 	}
 
 	@ExceptionHandler(AuditQueryException.class)
