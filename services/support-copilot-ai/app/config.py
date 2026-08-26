@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Final, Literal
@@ -7,6 +8,13 @@ from pydantic_core import PydanticCustomError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_KNOWLEDGE_PATH: Final = Path(__file__).parent / "data" / "knowledge.json"
+INTERNAL_SERVICE_TOKEN_ENV: Final = "SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN"
+
+
+@dataclass(frozen=True, slots=True)
+class MissingInternalServiceTokenError(RuntimeError):
+    def __str__(self) -> str:
+        return f"{INTERNAL_SERVICE_TOKEN_ENV} must be configured with a non-blank value."
 
 
 class Settings(BaseSettings):
@@ -70,6 +78,12 @@ class Settings(BaseSettings):
             and self.openai_chat_model
             and self.openai_embedding_model
         )
+
+    def require_internal_service_token(self) -> SecretStr:
+        token = self.internal_service_token
+        if token is None or not token.get_secret_value().strip():
+            raise MissingInternalServiceTokenError
+        return token
 
     @property
     def embedding_base_url(self) -> str | None:

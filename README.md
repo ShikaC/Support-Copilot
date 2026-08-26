@@ -108,6 +108,8 @@ export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='synthetic-local-development-token
 
 同一次本地运行中的 Java 和 Python 必须使用相同的 `SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN`。该值只属于服务间身份，不得放进 React 环境变量、浏览器请求、日志或错误响应。`/health` 不需要该 header；直接调用 `/analyze` 必须发送精确 header `X-Internal-Service-Token`。
 
+Python 服务在构造 FastAPI 应用时要求该变量存在且非空；缺失或空值会以包含变量名的配置错误终止启动，因此错误配置的进程不会开放 `/health`。`.env.example` 只保留空占位，不提供生产默认值。
+
 健康检查：
 
 ```bash
@@ -274,6 +276,7 @@ export OPENAI_BASE_URL='https://your-chat-gateway.example/v1'
 export OPENAI_EMBEDDING_BASE_URL='https://your-embedding-gateway.example/v1'
 export KNOWLEDGE_PATH='/absolute/path/to/authorized-knowledge.json'
 export KNOWLEDGE_PROVENANCE_PATH='/absolute/path/to/authorized-knowledge.provenance.json'
+export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='inject-a-non-browser-service-token'
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 

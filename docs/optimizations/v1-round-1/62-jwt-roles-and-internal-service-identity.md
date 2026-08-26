@@ -12,6 +12,8 @@ Java 原先对全部请求 `permitAll`，审核 actor 固定为演示用户；�
 - JWT roles：agent/reviewer/admin 可访问 tickets、knowledge search 和 metrics；reviews 只允许 reviewer/admin；非 health actuator 只允许 admin。
 - 审核 actor：安全 profile 只从 `JwtAuthenticationToken` subject 读取，不读取请求 header/body。
 - Java-to-Python：Java 每次 `/analyze` 都发送 `X-Internal-Service-Token` 和原 `X-Trace-Id`；Python 使用 `secrets.compare_digest`，在 workflow/provider 前拒绝缺失或错误 token。
+- Python 启动：FastAPI 应用构造要求内部 token 非空；缺失或空值时进程在开放 `/health` 前失败，错误只包含配置变量名，不包含凭据。
+- 审核 subject：安全 profile 在持久化前拒绝缺失、空串或纯空白 JWT subject，返回稳定 403 且不回退到 demo actor。
 
 401/403 和 Python 401 都返回稳定且不含凭据的 JSON。Python `/health` 与 Java `/actuator/health` 保持公开；Java health 只返回 `status`。
 

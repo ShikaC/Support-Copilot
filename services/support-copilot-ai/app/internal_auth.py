@@ -19,7 +19,7 @@ class InternalServiceAuthenticationError(Exception):
 
 
 class InternalServiceAuthenticator:
-    def __init__(self, expected_token: SecretStr | None) -> None:
+    def __init__(self, expected_token: SecretStr) -> None:
         self._expected_token = expected_token
 
     def require(
@@ -30,15 +30,11 @@ class InternalServiceAuthenticator:
             Header(alias=INTERNAL_SERVICE_TOKEN_HEADER),
         ] = None,
     ) -> None:
-        expected = (
-            self._expected_token.get_secret_value()
-            if self._expected_token is not None
-            else ""
-        )
+        expected = self._expected_token.get_secret_value()
         presented = presented_token or ""
         matches = secrets.compare_digest(
             presented.encode("utf-8"),
             expected.encode("utf-8"),
         )
-        if not expected or not matches:
+        if not matches:
             raise InternalServiceAuthenticationError(trace_id=request.trace_id)

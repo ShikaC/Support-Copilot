@@ -20,11 +20,12 @@ logging.basicConfig(
 )
 
 settings = get_settings()
+internal_service_token = settings.require_internal_service_token()
 retriever = KnowledgeRetriever(settings)
 workflow = AnalysisWorkflow(settings, retriever)
 runner = AnalysisRunner(settings, workflow)
 internal_authenticator = InternalServiceAuthenticator(
-    settings.internal_service_token
+    internal_service_token
 )
 
 app = FastAPI(

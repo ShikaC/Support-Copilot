@@ -19,6 +19,10 @@ public class JwtReviewActorProvider implements ReviewActorProvider {
 			|| !authentication.isAuthenticated()) {
 			throw new AccessDeniedException("An authenticated JWT subject is required for review actions.");
 		}
-		return new ReviewActor("AUTHENTICATED_JWT", jwtAuthentication.getToken().getSubject());
+		var subject = jwtAuthentication.getToken().getSubject();
+		if (subject == null || subject.isBlank()) {
+			throw new AccessDeniedException("A non-blank JWT subject is required for review actions.");
+		}
+		return new ReviewActor("AUTHENTICATED_JWT", subject);
 	}
 }
