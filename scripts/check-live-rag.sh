@@ -232,6 +232,7 @@ summary = {
     "mode": body["mode"],
     "status": body["status"],
     "modelName": body["modelName"],
+    "retrievalMethod": hits[0]["retrievalMethod"],
     "category": body["classification"]["category"],
     "escalationRequired": body["decision"]["escalationRequired"],
     "inputTokens": usage["inputTokens"],
@@ -270,13 +271,19 @@ if (
     or latest.get("status") != "SUCCEEDED"
 ):
     raise SystemExit("Java did not persist the verified live analysis as the latest record")
-print("Java history: latest mode=live status=SUCCEEDED traceId=preserved")
+print(json.dumps({
+    "persisted": True,
+    "traceId": latest["traceId"],
+    "mode": latest["mode"],
+    "status": latest["status"],
+}, separators=(",", ":")))
 ' "$history_file" "$TRACE_ID"
 }
 
 write_evidence() {
   local summary_json="$1"
-  local git_commit="$2"
+  local history_summary_json="$2"
+  local git_commit="$3"
 
   python3 -c '
 import json
@@ -285,8 +292,19 @@ from pathlib import Path
 
 config = json.loads(sys.argv[1])
 summary = json.loads(sys.argv[2])
-output_path = Path(sys.argv[3])
-validated_at, git_commit, ticket_id = sys.argv[4:7]
+history = json.loads(sys.argv[3])
+output_path = Path(sys.argv[4])
+validated_at, git_commit, ticket_id = sys.argv[5:8]
+
+if summary["retrievalMethod"] != "VECTOR":
+    raise SystemExit("refusing to write success evidence without verified VECTOR retrieval")
+if (
+    history["persisted"] is not True
+    or history["mode"] != "live"
+    or history["status"] != "SUCCEEDED"
+    or history["traceId"] != summary["traceId"]
+):
+    raise SystemExit("refusing to write success evidence without verified Java history persistence")
 
 chunk_lines = [
     f"- `{chunk['"'"'chunkId'"'"']}` rank={chunk['"'"'rank'"'"']} source=`{chunk['"'"'sourceUri'"'"']}`"
@@ -319,6 +337,10 @@ content = "\n".join(
         f"- Ticket ID: `{ticket_id}`",
         f"- Trace ID: `{summary['"'"'traceId'"'"']}`",
         f"- Mode/status: `{summary['"'"'mode'"'"']}` / `{summary['"'"'status'"'"']}`",
+        f"- Retrieval method: `{summary['"'"'retrievalMethod'"'"']}`",
+        "- Java history persistence: `verified`",
+        f"- Java history mode/status: `{history['"'"'mode'"'"']}` / `{history['"'"'status'"'"']}`",
+        f"- Java history trace ID: `{history['"'"'traceId'"'"']}` (preserved)",
         f"- Category: `{summary['"'"'category'"'"']}`",
         f"- Escalation required: `{str(summary['"'"'escalationRequired'"'"']).lower()}`",
         f"- Tokens: input `{summary['"'"'inputTokens'"'"']}`, output `{summary['"'"'outputTokens'"'"']}`",
@@ -340,12 +362,12 @@ content = "\n".join(
 output_path.parent.mkdir(parents=True, exist_ok=True)
 output_path.write_text(content, encoding="utf-8")
 print(f"Evidence record: {output_path}")
-' "$CONFIG_JSON" "$summary_json" "$EVIDENCE_PATH" "$VALIDATED_AT" "$git_commit" "$TICKET_ID"
+' "$CONFIG_JSON" "$summary_json" "$history_summary_json" "$EVIDENCE_PATH" "$VALIDATED_AT" "$git_commit" "$TICKET_ID"
 }
 
 run_success() {
   local health_file headers_file analysis_file history_file
-  local response_trace_header summary_json git_commit
+  local response_trace_header summary_json history_summary_json git_commit
 
   run_preflight
   new_temp_file health
@@ -380,10 +402,11 @@ run_success() {
 
   curl --fail --silent --show-error --max-time "$HTTP_TIMEOUT_SECONDS" \
     --output "$history_file" "$JAVA_BASE_URL/api/tickets/$TICKET_ID/analyses"
-  assert_persisted_live "$history_file"
+  history_summary_json="$(assert_persisted_live "$history_file")"
+  printf 'Java history: latest mode=live status=SUCCEEDED traceId=preserved\n'
 
   git_commit="$(git -C "$ROOT_DIR" rev-parse HEAD)"
-  write_evidence "$summary_json" "$git_commit"
+  write_evidence "$summary_json" "$history_summary_json" "$git_commit"
 }
 
 main() {
