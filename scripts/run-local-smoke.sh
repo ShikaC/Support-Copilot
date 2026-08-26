@@ -14,6 +14,7 @@ STARTUP_TIMEOUT_SECONDS="${SUPPORT_COPILOT_SMOKE_STARTUP_TIMEOUT_SECONDS:-120}"
 AI_BASE_URL="http://127.0.0.1:${AI_PORT}"
 JAVA_BASE_URL="http://127.0.0.1:${JAVA_PORT}"
 WEB_BASE_URL="http://127.0.0.1:${WEB_PORT}"
+INTERNAL_SERVICE_TOKEN="${SUPPORT_COPILOT_SMOKE_INTERNAL_SERVICE_TOKEN:-synthetic-local-smoke-service-token}"
 
 LOG_DIR=""
 PIDS=()
@@ -98,7 +99,8 @@ start_services() {
 
   (
     cd "$AI_DIR"
-    exec env AI_MODE=mock .venv/bin/python -m uvicorn app.main:app \
+    exec env AI_MODE=mock SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN="$INTERNAL_SERVICE_TOKEN" \
+      .venv/bin/python -m uvicorn app.main:app \
       --host 127.0.0.1 --port "$AI_PORT"
   ) >"$LOG_DIR/ai.log" 2>&1 &
   PIDS+=("$!")
@@ -106,6 +108,7 @@ start_services() {
   (
     cd "$JAVA_DIR"
     exec env SPRING_PROFILES_ACTIVE=demo SERVER_PORT="$JAVA_PORT" AI_SERVICE_BASE_URL="$AI_BASE_URL" \
+      SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN="$INTERNAL_SERVICE_TOKEN" \
       ./gradlew bootRun --no-daemon
   ) >"$LOG_DIR/java.log" 2>&1 &
   PIDS+=("$!")

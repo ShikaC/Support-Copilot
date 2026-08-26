@@ -219,9 +219,9 @@ public class TicketService {
 
 	private String reviewDescription(AnalysisReviewResponse review) {
 		return switch (review.action()) {
-			case APPROVED -> "未认证演示用户已采纳原始回复建议";
-			case EDITED -> "未认证演示用户已编辑并采纳回复建议";
-			case REJECTED -> "未认证演示用户已拒绝回复建议：" + review.reason();
+			case APPROVED -> review.reviewerLabel() + "已采纳原始回复建议";
+			case EDITED -> review.reviewerLabel() + "已编辑并采纳回复建议";
+			case REJECTED -> review.reviewerLabel() + "已拒绝回复建议：" + review.reason();
 		};
 	}
 }

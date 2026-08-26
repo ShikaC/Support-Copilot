@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.Executors;
 
 import com.sun.net.httpserver.HttpServer;
@@ -14,6 +15,108 @@ import org.junit.jupiter.api.Test;
 import com.cyagent.supportcopilot.ticket.Ticket;
 
 class AiServiceClientTests {
+
+	@Test
+	void pythonAuthenticationFailureIsNotConvertedToFallback() throws Exception {
+		// Given: Python rejects Java's configured internal credential.
+		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/analyze", exchange -> {
+			exchange.sendResponseHeaders(401, -1);
+			exchange.close();
+		});
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			server.setExecutor(executor);
+			server.start();
+			var client = new AiServiceClient(
+				"http://127.0.0.1:" + server.getAddress().getPort(),
+				1_000,
+				"synthetic-mismatched-token"
+			);
+
+			try {
+				// When/Then: auth failure escapes the fallback exception boundary.
+				assertThatThrownBy(() -> client.analyze(ticket(), "trace-auth-failure"))
+					.isInstanceOf(IllegalStateException.class)
+					.isNotInstanceOf(AiServiceCallException.class);
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
+
+	@Test
+	void pythonRequestValidationFailureIsNotConvertedToFallback() throws Exception {
+		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/analyze", exchange -> {
+			exchange.sendResponseHeaders(422, -1);
+			exchange.close();
+		});
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			server.setExecutor(executor);
+			server.start();
+			var client = new AiServiceClient(
+				"http://127.0.0.1:" + server.getAddress().getPort(),
+				1_000,
+				"synthetic-java-client-token"
+			);
+
+			try {
+				assertThatThrownBy(() -> client.analyze(ticket(), "trace-validation-failure"))
+					.isInstanceOf(IllegalStateException.class)
+					.isNotInstanceOf(AiServiceCallException.class);
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
+
+	@Test
+	void analyzeRequestSendsInternalCredentialAndPreservesJavaPythonShapeAndTrace() throws Exception {
+		// Given: a real HTTP boundary captures the request Java currently sends to Python.
+		var requestBody = new AtomicReference<String>();
+		var traceHeader = new AtomicReference<String>();
+		var internalTokenHeader = new AtomicReference<String>();
+		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/analyze", exchange -> {
+			requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+			traceHeader.set(exchange.getRequestHeaders().getFirst("X-Trace-Id"));
+			internalTokenHeader.set(exchange.getRequestHeaders().getFirst("X-Internal-Service-Token"));
+			var body = """
+				{"id":"analysis-shape","traceId":"trace-shape","status":"SUCCEEDED",\
+				"mode":"mock","modelName":"mock-rules","promptVersion":"ticket-analysis-v1"}
+				""".getBytes(StandardCharsets.UTF_8);
+			exchange.getResponseHeaders().add("Content-Type", "application/json");
+			exchange.sendResponseHeaders(200, body.length);
+			exchange.getResponseBody().write(body);
+			exchange.close();
+		});
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			server.setExecutor(executor);
+			server.start();
+			var client = new AiServiceClient(
+				"http://127.0.0.1:" + server.getAddress().getPort(),
+				1_000,
+				"synthetic-java-client-token"
+			);
+
+			try {
+				// When: Java makes its normal analysis request.
+				client.analyze(ticket(), "trace-shape");
+
+				// Then: the body contract and trace remain stable while the server-only credential is added.
+				assertThat(requestBody.get())
+					.contains("\"traceId\":\"trace-shape\"")
+					.contains("\"id\":\"ticket-timeout\"")
+					.contains("\"topN\":10")
+					.contains("\"topK\":3")
+					.contains("\"promptVersion\":\"ticket-analysis-v1\"");
+				assertThat(traceHeader.get()).isEqualTo("trace-shape");
+				assertThat(internalTokenHeader.get()).isEqualTo("synthetic-java-client-token");
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
 
 	@Test
 	void responseWithADifferentPolicyVersionIsRejected() throws Exception {
@@ -34,7 +137,8 @@ class AiServiceClientTests {
 			server.start();
 			var client = new AiServiceClient(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
-				1_000
+				1_000,
+				"synthetic-java-client-token"
 			);
 
 			try {
@@ -67,7 +171,8 @@ class AiServiceClientTests {
 			server.start();
 			var client = new AiServiceClient(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
-				1_000
+				1_000,
+				"synthetic-java-client-token"
 			);
 
 			try {
@@ -101,7 +206,8 @@ class AiServiceClientTests {
 			server.start();
 			var client = new AiServiceClient(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
-				100
+				100,
+				"synthetic-java-client-token"
 			);
 			var started = Instant.now();
 

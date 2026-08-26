@@ -12,6 +12,8 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - 建议回复编辑、采纳和风险提示。
 - 运营概览、知识目录演示页和质量评估占位视图；只有接入可追溯报告后才展示评估数字。
 - `demo`/`test` 使用隔离 H2；`local`/`pilot` 已准备 Flyway 管理的 MySQL 8 配置与 migration 契约，实库验证留待 Task 15。
+- Java Resource Server 已按 `SUPPORT_AGENT`、`SUPPORT_REVIEWER`、`SUPPORT_ADMIN` 执行 JWT 角色门禁；真实 pilot OIDC/MySQL 联调仍留待 Task 15。
+- Java 调用 Python 时使用仅服务端可见的 `X-Internal-Service-Token`；Python `/health` 公开，`/analyze` 在进入工作流前校验该凭据。
 - FastAPI `mock`、`live` 和 `fallback` 三种运行模式。
 - Java 到 Python 的超时与业务降级。
 - OpenAI Responses API 结构化输出和进程内向量检索的 live 模式；2026-08-26 已在干净提交上完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
@@ -100,8 +102,11 @@ python3 -m venv .venv
 
 ```bash
 cd services/support-copilot-ai
+export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='synthetic-local-development-token'
 .venv/bin/python -m uvicorn app.main:app --reload --port 8000
 ```
+
+同一次本地运行中的 Java 和 Python 必须使用相同的 `SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN`。该值只属于服务间身份，不得放进 React 环境变量、浏览器请求、日志或错误响应。`/health` 不需要该 header；直接调用 `/analyze` 必须发送精确 header `X-Internal-Service-Token`。
 
 健康检查：
 
@@ -115,18 +120,22 @@ API 文档：`http://localhost:8000/docs`
 
 ```bash
 cd services/support-copilot-api
+export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='synthetic-local-development-token'
 ./gradlew bootRun --args='--spring.profiles.active=demo'
 ```
 
 `demo` 使用内存 H2、`create-drop`、H2 Console 和 8 条演示工单，只适合本地演示。H2 Console 位于 `http://localhost:8080/h2-console`。`test` 也使用随机命名的隔离 H2 和 `create-drop`，但不加载演示数据且不开放 H2 Console；Gradle 集成测试通过 `@ActiveProfiles("test")` 显式选择它。
 
-`local` 和 `pilot` 都配置为连接 MySQL 8、执行 Flyway migration 并让 Hibernate 使用 `validate`，不加载演示数据，也不开放 H2 Console。两者都要求以下三个环境变量存在且非空：
+`local` 和 `pilot` 都配置为连接 MySQL 8、执行 Flyway migration 并让 Hibernate 使用 `validate`，不加载演示数据，也不开放 H2 Console。两者要求数据库配置、服务间 token，以及 JWT issuer 或 JWK Set 地址存在且非空：
 
 ```bash
 cd services/support-copilot-api
 export SUPPORT_COPILOT_DB_URL='jdbc:mysql://127.0.0.1:3306/support_copilot?useSSL=false&serverTimezone=UTC'
 export SUPPORT_COPILOT_DB_USERNAME='your-database-user'
 export SUPPORT_COPILOT_DB_PASSWORD='your-database-password'
+export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='inject-a-non-browser-service-token'
+export SUPPORT_COPILOT_JWT_ISSUER_URI='https://your-issuer.example'
+# 也可以改用 SUPPORT_COPILOT_JWT_JWK_SET_URI；两者至少配置一个。
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
@@ -136,7 +145,7 @@ export SUPPORT_COPILOT_DB_PASSWORD='your-database-password'
 ./gradlew bootRun --args='--spring.profiles.active=pilot'
 ```
 
-AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS` 和 `EVALUATION_REPORT_PATH` 覆盖。
+AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS` 和 `EVALUATION_REPORT_PATH` 覆盖。`local`/`pilot` 缺少或留空 JWT 地址或服务间 token 时会在 datasource 创建前失败，不会回退到开放访问。`demo` 是唯一允许匿名业务 API 的 profile；`test` 使用显式合成 HMAC decoder，但执行与 `local`/`pilot` 相同的受保护 endpoint policy。
 
 以上 `local`/`pilot` 命令是配置契约，不是实库通过声明。MySQL schema、Flyway version/checksum、Hibernate 实库校验、LOB/time/`@Version` 映射、空库行为、stale schema 拒绝和 Java 重启持久化均未在本轮执行；它们统一由 Task 15 的 MySQL 8 运行时验收负责。
 
@@ -153,6 +162,17 @@ curl http://localhost:8080/api/tickets
 curl http://localhost:8080/api/metrics
 curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 ```
+
+以上匿名工单命令只适用于 `demo`。受保护 profile 的角色矩阵如下：
+
+| 路径 | 匿名 | `SUPPORT_AGENT` | `SUPPORT_REVIEWER` | `SUPPORT_ADMIN` |
+| --- | --- | --- | --- | --- |
+| `/actuator/health` | 允许 | 允许 | 允许 | 允许 |
+| tickets、knowledge search、quality metrics | 401 | 允许 | 允许 | 允许 |
+| analysis reviews 读写 | 401 | 403 | 允许 | 允许 |
+| 其他 `/actuator/**` | 401 | 403 | 403 | 允许 |
+
+401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核操作人来自 JWT subject，不读取浏览器 actor header/body；`demo` 只使用明确标记的匿名演示身份。当前 React 仍只支持匿名 demo 工作流，浏览器 JWT adapter 属于 Task 11；真实 OIDC issuer、MySQL 与 pilot 组合验收属于 Task 15。
 
 ### 3. React 前端
 
@@ -330,6 +350,15 @@ cd services/support-copilot-api
 ./gradlew test --no-daemon
 ```
 
+认证与服务身份 focused tests：
+
+```bash
+cd services/support-copilot-api
+./gradlew test --tests '*PilotSecurityContractTests' --tests '*AiServiceClientTests' --tests '*RuntimeProfileIntegrationTests' --no-daemon
+cd ../support-copilot-ai
+.venv/bin/pytest -q tests/test_internal_auth.py
+```
+
 普通测试显式选择隔离的 `test` profile。也可以只验证四个非容器 profile/migration 契约：
 
 ```bash
@@ -412,7 +441,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 | GET | `/api/tickets/{id}/analyses/{analysisId}/reviews` | 查询分析审核历史 |
 | GET | `/api/knowledge/search` | 调试知识检索 |
 | GET | `/api/metrics` | 查询当前工单、已持久化运行态指标和可追溯 mock 评估报告；没有来源的数据返回空值 |
-| POST | `/analyze` | Java 调用的 AI 服务内部接口 |
+| POST | `/analyze` | Java 调用的 AI 服务内部接口；要求 `X-Internal-Service-Token`，不属于浏览器 API |
 
 ## 演示建议
 
@@ -426,7 +455,8 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 ## 当前限制
 
 - `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，但真实 MySQL 持久化仍待 Task 15 验证。
-- 回复审核会持久化原始建议、采纳后的内容或拒绝原因、动作、工单版本和 `traceId`；当前审核人固定为未认证的演示身份，不代表已经具备登录、RBAC 或可信生产审计。
+- 回复审核会持久化原始建议、采纳后的内容或拒绝原因、动作、工单版本、`traceId` 和可信 actor。安全 profile 从 JWT subject 派生 actor；`demo` 使用明确标记的匿名演示 actor。通用 append-only 审计仍属于 Task 5。
+- JWT endpoint policy 与合成 test decoder 已验证，但 React 登录/token adapter 尚未实现；真实 pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。

@@ -26,16 +26,25 @@ class ProfileConfigurationTests {
 		assertThat(demo)
 			.containsEntry("spring.jpa.hibernate.ddl-auto", "create-drop")
 			.containsEntry("spring.h2.console.enabled", "true")
-			.containsEntry("support-copilot.demo-fixtures.enabled", "true");
+			.containsEntry("support-copilot.demo-fixtures.enabled", "true")
+			.containsEntry("support-copilot.security.business-access", "anonymous-demo")
+			.containsKey("support-copilot.security.internal-service-token");
 		assertThat(test)
 			.containsEntry("spring.jpa.hibernate.ddl-auto", "create-drop")
 			.containsEntry("spring.h2.console.enabled", "false")
-			.containsEntry("support-copilot.demo-fixtures.enabled", "false");
+			.containsEntry("support-copilot.demo-fixtures.enabled", "false")
+			.containsEntry("support-copilot.security.business-access", "jwt")
+			.containsKeys(
+				"support-copilot.security.internal-service-token",
+				"support-copilot.security.test-jwt-secret"
+			);
 
 		assertMySqlProfile(local);
 		assertMySqlProfile(pilot);
 		assertRequiredDatabaseEnvironment(local);
 		assertRequiredDatabaseEnvironment(pilot);
+		assertRequiredSecurityEnvironment(local);
+		assertRequiredSecurityEnvironment(pilot);
 	}
 
 	@Test
@@ -59,6 +68,23 @@ class ProfileConfigurationTests {
 			.containsEntry("spring.datasource.url", "${SUPPORT_COPILOT_DB_URL}")
 			.containsEntry("spring.datasource.username", "${SUPPORT_COPILOT_DB_USERNAME}")
 			.containsEntry("spring.datasource.password", "${SUPPORT_COPILOT_DB_PASSWORD}");
+	}
+
+	private static void assertRequiredSecurityEnvironment(Properties properties) {
+		assertThat(properties)
+			.containsEntry("support-copilot.security.business-access", "jwt")
+			.containsEntry(
+				"support-copilot.security.internal-service-token",
+				"${SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN}"
+			)
+			.containsEntry(
+				"spring.security.oauth2.resourceserver.jwt.issuer-uri",
+				"${SUPPORT_COPILOT_JWT_ISSUER_URI:}"
+			)
+			.containsEntry(
+				"spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
+				"${SUPPORT_COPILOT_JWT_JWK_SET_URI:}"
+			);
 	}
 
 	private static void assertMySqlProfile(Properties properties) {

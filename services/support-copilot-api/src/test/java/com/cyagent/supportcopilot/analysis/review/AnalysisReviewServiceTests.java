@@ -3,15 +3,13 @@ package com.cyagent.supportcopilot.analysis.review;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.UUID;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +31,23 @@ class AnalysisReviewServiceTests {
 
 	@Autowired
 	private AnalysisReviewService analysisReviewService;
+
+	@Test
+	void reviewPersistsTheAuthenticatedJwtSubject() {
+		// Given: an analysis that can be reviewed through the secured test policy.
+		var analysis = saveAnalysis();
+
+		// When: the authenticated reviewer approves the reply.
+		var review = analysisReviewService.review(
+			ticketId,
+			analysis.id(),
+			analysis.suggestedReply().content()
+		);
+
+		// Then: the persisted actor is derived from the JWT subject.
+		assertThat(review.reviewerType()).isEqualTo("AUTHENTICATED_JWT");
+		assertThat(review.reviewerLabel()).isEqualTo("service-test-reviewer");
+	}
 
 	@Autowired
 	private AnalysisReviewRepository analysisReviewRepository;
@@ -57,6 +72,11 @@ class AnalysisReviewServiceTests {
 
 	private String ticketId;
 
+	@BeforeEach
+	void authenticateReviewer() {
+		AnalysisReviewTestFixture.authenticateReviewer();
+	}
+
 	@AfterEach
 	void cleanUp() {
 		if (ticketId != null) {
@@ -65,6 +85,7 @@ class AnalysisReviewServiceTests {
 				.forEach(analysisRunRepository::delete);
 			ticketRepository.deleteById(ticketId);
 		}
+		AnalysisReviewTestFixture.clearAuthentication();
 	}
 
 	@Test
@@ -78,7 +99,7 @@ class AnalysisReviewServiceTests {
 		);
 
 		assertThat(review.action()).isEqualTo(AnalysisReviewAction.APPROVED);
-		assertThat(review.reviewerType()).isEqualTo("UNAUTHENTICATED_DEMO");
+		assertThat(review.reviewerType()).isEqualTo("AUTHENTICATED_JWT");
 		assertThat(review.traceId()).isEqualTo(analysis.traceId());
 		assertThat(analysisReviewRepository.findById(review.id())).isPresent();
 	}
@@ -135,7 +156,7 @@ class AnalysisReviewServiceTests {
 			.filteredOn(event -> event.id().equals(review.id()))
 			.singleElement()
 			.extracting(event -> event.detail())
-			.isEqualTo("未认证演示用户已拒绝回复建议：证据不足");
+			.isEqualTo("service-test-reviewer已拒绝回复建议：证据不足");
 	}
 
 	@Test
@@ -265,24 +286,8 @@ class AnalysisReviewServiceTests {
 	}
 
 	private Ticket saveTicket() {
-		var now = Instant.now();
-		var ticket = new Ticket();
-		ticketId = "ticket-" + UUID.randomUUID();
-		ticket.setId(ticketId);
-		ticket.setTicketNo("SC-REVIEW-" + UUID.randomUUID().toString().substring(0, 8));
-		ticket.setChannel("EMAIL");
-		ticket.setCustomerName("审核测试客户");
-		ticket.setCustomerCompany("审核测试公司");
-		ticket.setCustomerTier("STANDARD");
-		ticket.setSubject("回复审核测试");
-		ticket.setDescription("用于验证 AI 建议经过人工审核后才形成业务记录。");
-		ticket.setLanguage("zh-CN");
-		ticket.setCategory("BILLING");
-		ticket.setPriority("HIGH");
-		ticket.setStatus("NEW");
-		ticket.setSlaDeadline(now.plus(Duration.ofHours(8)));
-		ticket.setCreatedAt(now);
-		ticket.setUpdatedAt(now);
+		var ticket = AnalysisReviewTestFixture.ticket();
+		ticketId = ticket.getId();
 		return ticketRepository.saveAndFlush(ticket);
 	}
 }

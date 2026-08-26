@@ -73,7 +73,7 @@ React + TypeScript + Ant Design + ECharts
 - Java 对 AI 服务调用失败提供本地 fallback。
 - 前端展示分类、置信度、分析轨迹、检索证据、引用、建议回复、人工升级原因和分析模式。
 - 当前知识数据是本地 JSON 文件，当前向量存储是进程内存实现。
-- Java Security 当前为演示用开放配置，尚未提供真实身份认证和 RBAC。
+- Java 已实现 Resource Server JWT 角色门禁；`demo` 是唯一匿名业务 profile，`test` 使用合成 decoder。真实 OIDC、浏览器登录和 pilot parity 尚未完成。
 - H2 当前为内存数据库，应用重启后数据会重新初始化。
 
 ### 2.3 本次基线检查结果
@@ -144,6 +144,8 @@ Task 1 基线在 2026-08-26 的干净提交 `59903a125e30a25b29e4156b28023e53fb2
 Task 2 已将工单 PATCH 收紧为带 `expectedVersion` 的乐观并发写入，统一冲突代码为 `VERSION_CONFLICT`，并集中定义手工状态转换与 channel、customer tier、priority、category、status 值域。React 的真实工单负责人操作会发送当前版本，冲突后重新读取受影响工单；无版本 Demo 工单继续只在本地修改。`INVOICE` 由当前本地 AI 分类器和固定评估集产生；`SECURITY`、`LEGAL` 由高风险策略消费并允许结构化 live 结果进入持久化边界。所有新 AI 结果仍必须通过受控分类校验。
 
 Task 3 的修订范围是完成 demo/test/local/pilot 配置隔离、非破坏性 Flyway V1 基线、MySQL Testcontainers 测试源码和非容器验证。独立门禁发现首个提交 `83e9b03` 在未选择 profile 时仍会自动打开随机 H2，因此该提交不能单独视为通过；后续增加了 context initializer 早期门禁，要求且只允许一个 `demo`、`test`、`local` 或 `pilot` profile，并为缺失、`default`、未知和多 profile 启动增加真实应用回归。`demo` fixtures/H2 Console、空 `test` 库、profile/migration 契约、测试源码编译以及 pilot 缺少/留空 JDBC 配置时失败关闭均已重新验收。MySQL 8 实库、Testcontainers、Compose、migration version/checksum、Hibernate 实库 validation、stale schema 拒绝和仅重启 Java 后的持久化统一推迟到 Task 15；在 Task 15 给出运行时证据前，不能宣称实库已通过。
+
+Task 4 已把 Java 业务 API 收紧为 JWT role policy，并用合成签名 JWT 在 `test` profile 验证 agent/reviewer/admin 的 401、403、2xx 和授权后 409。审核 actor 来自 JWT subject；Java-to-Python `/analyze` 使用 `X-Internal-Service-Token`，Python 在 workflow/provider 前以常量时间比较拒绝错误凭据。`demo` 仍是唯一匿名业务模式。React JWT adapter、真实 OIDC、MySQL 与 pilot 组合 parity 留待 Task 11/15，当前不能描述为生产身份部署。
 
 ~~~text
 cd services/support-copilot-api
@@ -886,19 +888,17 @@ FALLBACK
 - 工单版本。
 - traceId。
 
-当前 V1.5 已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录操作身份、时间、分析 ID、原始建议、采纳后内容或拒绝原因、动作、工单版本和 `traceId`。操作身份仍明确标记为未认证演示用户；可信用户身份、RBAC、通用审计日志、审核请求并发幂等和生产数据库尚未实现，因此 P5-02 的本地演示闭环已完成，但生产审计能力尚未完成。
+当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录操作身份、时间、分析 ID、原始建议、采纳后内容或拒绝原因、动作、工单版本和 `traceId`。安全 profile 的操作身份来自 JWT subject，只有 `demo` 使用明确匿名演示 actor；通用审计日志、审核请求并发幂等、真实 OIDC 和生产数据库尚未实现，因此仍不能称为生产审计能力。
 
 ### P5-03 权限边界
 
-当前 permitAll 只能作为本地演示配置。若进入真实数据或部署阶段，至少需要：
+匿名业务访问现在仅存在于 `demo`。当前安全 profile 使用三个 pilot 角色：
 
-- 一线客服：查看和处理分配给自己的工单。
-- 主管：审核高风险结果和查看指标。
-- 知识库管理员：维护知识文档和索引。
-- 审计人员：查看分析历史和操作记录。
-- 系统管理员：管理配置和服务状态。
+- `SUPPORT_AGENT`：tickets、knowledge search、quality metrics。
+- `SUPPORT_REVIEWER`：agent 能力加 analysis review 读写。
+- `SUPPORT_ADMIN`：reviewer 能力加非 health actuator。
 
-如果暂时不实现登录，应在 README 中明确写成“演示环境开放配置”，并把认证列为后续范围，不能声称已有权限系统。
+React 登录/token adapter 和真实 OIDC 尚未实现；README 必须把已验证的 Resource Server policy、匿名 demo 和 Task 15 OIDC parity 分开，不能声称已有生产身份系统。
 
 ### P5-04 生产配置隔离
 

@@ -9,21 +9,31 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import com.cyagent.supportcopilot.ticket.Ticket;
+import com.cyagent.supportcopilot.common.TraceId;
 
 @Component
 public class AiServiceClient {
 
 	private final RestClient restClient;
+	private final String internalServiceToken;
 
 	public AiServiceClient(
 		@Value("${ai.service.base-url}") String baseUrl,
-		@Value("${ai.service.timeout-ms}") long timeoutMs
+		@Value("${ai.service.timeout-ms}") long timeoutMs,
+		@Value("${support-copilot.security.internal-service-token}") String internalServiceToken
 	) {
+		if (internalServiceToken.isBlank()) {
+			throw new IllegalStateException(
+				"SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN must be configured with a non-blank value."
+			);
+		}
+		this.internalServiceToken = internalServiceToken;
 		var timeout = Duration.ofMillis(timeoutMs);
 		var httpClient = HttpClient.newBuilder()
 			// 这里要强制使用普通 HTTP/1.1。
@@ -59,6 +69,8 @@ public class AiServiceClient {
 		try {
 			var response = restClient.post()
 				.uri("/analyze")
+				.header("X-Internal-Service-Token", internalServiceToken)
+				.header(TraceId.HEADER_NAME, traceId)
 				.body(request)
 				.retrieve()
 				.body(AnalysisResponse.class);
@@ -68,6 +80,10 @@ public class AiServiceClient {
 			return response;
 		} catch (HttpServerErrorException.GatewayTimeout exception) {
 			throw new AiServiceCallException(FallbackReason.PROCESSING_TIMEOUT, exception);
+		} catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+			throw new AiServiceAuthenticationException(exception);
+		} catch (HttpClientErrorException exception) {
+			throw new AiServiceRequestException(exception.getStatusCode().value(), exception);
 		} catch (ResourceAccessException exception) {
 			var reason = hasTimeoutCause(exception)
 				? FallbackReason.AI_SERVICE_TIMEOUT

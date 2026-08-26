@@ -24,24 +24,24 @@ import com.cyagent.supportcopilot.ticket.TicketRepository;
 @Service
 public class AnalysisReviewService {
 
-	private static final String REVIEWER_TYPE = "UNAUTHENTICATED_DEMO";
-	private static final String REVIEWER_LABEL = "演示管理员";
-
 	private final AnalysisReviewRepository analysisReviewRepository;
 	private final AnalysisRunRepository analysisRunRepository;
 	private final TicketRepository ticketRepository;
 	private final ObjectMapper objectMapper;
+	private final ReviewActorProvider reviewActorProvider;
 
 	public AnalysisReviewService(
 		AnalysisReviewRepository analysisReviewRepository,
 		AnalysisRunRepository analysisRunRepository,
 		TicketRepository ticketRepository,
-		ObjectMapper objectMapper
+		ObjectMapper objectMapper,
+		ReviewActorProvider reviewActorProvider
 	) {
 		this.analysisReviewRepository = analysisReviewRepository;
 		this.analysisRunRepository = analysisRunRepository;
 		this.ticketRepository = ticketRepository;
 		this.objectMapper = objectMapper;
+		this.reviewActorProvider = reviewActorProvider;
 	}
 
 	@Transactional
@@ -140,13 +140,14 @@ public class AnalysisReviewService {
 		String reviewedReply,
 		String reason
 	) {
+		var actor = reviewActorProvider.currentActor();
 		var review = new AnalysisReview();
 		review.setId("review-" + UUID.randomUUID());
 		review.setTicketId(context.run().getTicketId());
 		review.setAnalysisId(context.run().getId());
 		review.setAction(action);
-		review.setReviewerType(REVIEWER_TYPE);
-		review.setReviewerLabel(REVIEWER_LABEL);
+		review.setReviewerType(actor.type());
+		review.setReviewerLabel(actor.label());
 		review.setOriginalReplyContent(originalReply);
 		review.setReviewedReplyContent(reviewedReply);
 		review.setReason(reason);

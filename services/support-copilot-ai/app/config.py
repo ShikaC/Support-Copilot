@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,6 +19,11 @@ class Settings(BaseSettings):
 
     app_name: str = "support-copilot-ai"
     ai_mode: Literal["mock", "live", "auto"] = "mock"
+    internal_service_token: SecretStr | None = Field(
+        default=None,
+        validation_alias="SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN",
+        repr=False,
+    )
     openai_api_key: str | None = Field(default=None, repr=False)
     openai_embedding_api_key: str | None = Field(default=None, repr=False)
     openai_base_url: str | None = None

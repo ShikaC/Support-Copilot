@@ -1,9 +1,15 @@
 import logging
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from app.analysis_runner import AnalysisProcessingTimeoutError, AnalysisRunner
 from app.config import get_settings
+from app.internal_auth import (
+    InternalServiceAuthenticationError,
+    InternalServiceAuthenticator,
+)
 from app.knowledge import KnowledgeRetriever
 from app.models import AnalyzeRequest, AnalyzeResponse
 from app.workflow import AnalysisWorkflow
@@ -17,12 +23,30 @@ settings = get_settings()
 retriever = KnowledgeRetriever(settings)
 workflow = AnalysisWorkflow(settings, retriever)
 runner = AnalysisRunner(settings, workflow)
+internal_authenticator = InternalServiceAuthenticator(
+    settings.internal_service_token
+)
 
 app = FastAPI(
     title="Support Copilot AI",
     version="0.1.0",
     description="Ticket classification, knowledge retrieval, and grounded reply service.",
 )
+
+
+@app.exception_handler(InternalServiceAuthenticationError)
+async def internal_authentication_error(
+    _request: Request,
+    exception: InternalServiceAuthenticationError,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=401,
+        content={
+            "code": "INTERNAL_SERVICE_AUTHENTICATION_REQUIRED",
+            "message": "A valid internal service credential is required.",
+            "traceId": exception.trace_id,
+        },
+    )
 
 
 @app.get("/health")
@@ -37,7 +61,13 @@ async def health() -> dict[str, str | bool | int]:
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
+async def analyze(
+    request: AnalyzeRequest,
+    _authenticated: Annotated[
+        None,
+        Depends(internal_authenticator.require),
+    ],
+) -> AnalyzeResponse:
     # FastAPI 会先用 AnalyzeRequest 校验传入 JSON，
     # 工作流返回后再用 AnalyzeResponse 校验响应结构。
     try:

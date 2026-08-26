@@ -77,6 +77,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 59. [将 mock 评估报告接入质量页面](./59-connect-evaluation-report-to-quality-page.md)
 60. [收紧工单值域、状态转换与版本写入](./60-ticket-domain-contracts.md)
 61. [隔离运行 profile 并建立 MySQL migration 基线](./61-profile-mysql-migration-baseline.md)
+62. [实施 JWT 角色与内部服务身份](./62-jwt-roles-and-internal-service-identity.md)
 
 ## 优化后的主流程
 
@@ -104,7 +105,7 @@ Python 程序缺陷              -> 正常抛出错误 -> 日志暴露真实根�
 
 ## 当前边界
 
-取消负责人已经有明确命令接口、版本保护、终态检查和页面操作，但可信权限检查和持久化审计仍未实现。当前 `SecurityConfig` 允许所有请求，系统没有可验证的登录身份；在这种情况下直接写“某用户执行了操作”会形成虚假审计。下一阶段仍需要接入认证、权限模型和独立审计实体。
+取消负责人和其他工单 API 已受 JWT 角色门禁保护，审核 actor 来自 JWT subject；`demo` 仍保留明确标记的匿名演示身份。React 登录/token adapter、真实 OIDC 联调和通用 append-only 审计仍未实现，不能把当前合成 decoder 测试描述成生产身份系统。
 
 Python 当前只把 OpenAI SDK 明确报告的错误归类为可恢复故障。后续接入更多外部服务时，应根据真实错误类型逐项扩充，不能重新使用宽泛的 `except Exception`。
 

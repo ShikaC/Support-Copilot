@@ -9,7 +9,12 @@ from app.analysis_runner import AnalysisProcessingTimeoutError
 from app.main import app, runner
 from app.models import AnalyzeRequest
 
-client = TestClient(app)
+client = TestClient(
+    app,
+    headers={
+        "X-Internal-Service-Token": "synthetic-test-internal-service-token"
+    },
+)
 
 
 def request_payload(

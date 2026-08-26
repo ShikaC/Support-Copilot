@@ -28,7 +28,7 @@ AI 只提供建议，Java 保存业务事实，React 负责让客服操作和查
 | Python + FastAPI | AI 分析、知识检索和结构化结果生成 | `services/support-copilot-ai/app/` |
 | OpenAI API | Python 的 live 模式中的外部模型能力 | `services/support-copilot-ai/app/openai_provider.py` |
 
-当前已加入单机 pilot 的 MySQL migration 基线与失败关闭配置，但 MySQL 运行时、checksum、stale schema 和重启持久化证据均留待 Task 15；认证、Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
+当前已加入 JWT Resource Server 角色门禁和 Java-to-Python 服务身份。`demo` 是唯一匿名业务 profile；`test` 使用合成 decoder 执行安全策略；`local`/`pilot` 缺少 JWT 地址或内部 token 时在 datasource 前失败。真实 OIDC+MySQL pilot、migration checksum、stale schema 和重启持久化证据均留待 Task 15；Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
 
 ## 3. 服务边界
 
@@ -226,7 +226,7 @@ Java 返回 `AnalysisResponse` 后，React 会：
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/Ticket.java`
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketRepository.java`
 
-运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单并开放 H2 Console，`test` 使用空的随机内存库，`local` 和 `pilot` 要求非空 MySQL JDBC 环境变量并配置 Flyway 建表。数据库设置缺失/留空时也会拒绝启动，不会回退到 H2；真实 MySQL 建表和持久化行为仍待 Task 15 验证。
+运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单、开放 H2 Console 并允许匿名业务 API；`test` 使用空的随机内存库和显式合成 JWT decoder，但 endpoint policy 与安全 profile 相同。`local`/`pilot` 要求非空 MySQL JDBC、内部服务 token，以及 issuer/JWK 配置；缺失/留空时拒绝启动，不回退 H2 或开放访问。真实 MySQL/OIDC 行为仍待 Task 15 验证。
 
 ### AnalysisRun
 
@@ -308,9 +308,9 @@ usage                耗时和 token 信息
 
 ### 尚未完成的设计
 
-- `SecurityConfig` 当前允许所有请求，没有真实登录身份。
+- Java 已按 JWT roles 保护 tickets、knowledge、metrics、reviews 和 actuator；React 登录/token adapter 尚未完成，真实 OIDC issuer 联调留待 Task 15。
 - 取消负责人已经有命令接口、版本冲突和终态检查，但尚未形成可信的权限检查。
-- 审核记录中的操作人固定为“未认证演示用户”；当前已经支持采纳、编辑后采纳和拒绝原因，但认证、RBAC 与可信生产身份尚未实现。
+- 安全 profile 的审核操作人来自 JWT subject，浏览器 actor header/body 不被信任；只有 `demo` 使用明确的匿名演示 actor。通用审计事件仍未实现。
 - `AnalysisReview` 是持久化审核记录，但工单页面中的 `TicketEventResponse` 仍是根据业务数据派生的响应 DTO，不是独立持久化的通用审计日志。
 - 审核相同内容的顺序重试可复用记录，并发重试仍可能竞争；尚未使用持久化请求 ID 或数据库唯一约束保证跨实例幂等。
 - 独立的持久化幂等请求记录尚未实现；分析 single-flight 只覆盖单 Java 实例内的在途请求，取消负责人依靠“已经没有负责人时不再写入”实现状态幂等。
