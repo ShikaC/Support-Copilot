@@ -302,7 +302,38 @@ Java 以 `DRAFT -> APPROVED -> PUBLISHED -> ARCHIVED` 管理不可变的 release
 
 仓库内基线契约为 `support-copilot-bundled-v1`、版本 `1`、checksum `b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874`。该 checksum 是对规范化 chunks JSON 独立计算的 SHA-256，不是整个 `knowledge.json` 文件的原始 SHA；release 元数据不参与计算，避免自引用。Java 每次分析把 active release 与可信范围交给 Python，Python 在打分、Embedding 和 Prompt 前同时校验 release identity/checksum 并过滤无权片段。契约不一致返回 `409 KNOWLEDGE_RELEASE_MISMATCH`，不能转换成 AI fallback。
 
-当前 Python 仍在启动时加载一个 file-backed corpus。Java 发布新 release 不会让运行中的 Python 热加载新文件；如果 active release 对应的 corpus 尚未部署，分析会稳定失败关闭。回滚到 Python 已加载的基线可恢复分析。持久化 Embedding artifact 的构建、部署、激活和回滚属于 Task 9，本轮没有实现或声称动态 artifact 切换。
+Python live 检索使用版本化 file-backed Embedding artifact，不再在每次进程启动后重新嵌入文档。artifact 包含 `float32` matrix、按行排序的片段 ID/范围/checksum metadata 和 canonical manifest；不包含知识正文、API Key 或 provider 响应。identity 绑定 release id/version/corpus checksum、脱密后的 provider endpoint identity、Embedding model、精确维度、chunking version、片段顺序和 matrix 内容。
+
+先使用明确的 corpus、artifact root、model 和维度构建，再验证并激活。以下命令中的维度必须与 provider 返回值一致：
+
+```bash
+cd services/support-copilot-ai
+.venv/bin/python -m scripts.manage_embedding_artifacts build \
+  --knowledge '/absolute/path/to/authorized-knowledge.json' \
+  --provenance '/absolute/path/to/authorized-knowledge.provenance.json' \
+  --artifact-root '/absolute/path/to/runtime-data/embedding-artifacts' \
+  --model 'your-embedding-model' --dimension 1536
+
+.venv/bin/python -m scripts.manage_embedding_artifacts verify \
+  --artifact-id '<64-character-artifact-id>' \
+  --knowledge '/absolute/path/to/authorized-knowledge.json' \
+  --provenance '/absolute/path/to/authorized-knowledge.provenance.json' \
+  --artifact-root '/absolute/path/to/runtime-data/embedding-artifacts' \
+  --model 'your-embedding-model' --dimension 1536
+
+.venv/bin/python -m scripts.manage_embedding_artifacts activate \
+  --artifact-id '<64-character-artifact-id>' \
+  --knowledge '/absolute/path/to/authorized-knowledge.json' \
+  --provenance '/absolute/path/to/authorized-knowledge.provenance.json' \
+  --artifact-root '/absolute/path/to/runtime-data/embedding-artifacts' \
+  --model 'your-embedding-model' --dimension 1536
+```
+
+`inspect` 使用与 `verify` 相同参数并输出 release、row count 和 dimension。`rollback` 不接收 artifact id，而是验证 active pointer 记录的 previous artifact 后原子切回。构建先写唯一临时同级目录，关闭并 fsync 文件，验证 hashes/schema/matrix/order 后原子发布完整目录；activation 只在候选兼容且完整时原子替换小 pointer。失败不会替换原 pointer。默认 `EMBEDDING_ARTIFACT_BUILD_POLICY=require-active`；`build-if-missing` 只适合有界的首次部署或聚焦测试，不能静默替换不兼容 artifact。
+
+启动 live 服务时同时配置 `EMBEDDING_ARTIFACT_ROOT`、`EMBEDDING_VECTOR_DIMENSION` 和默认的 `require-active`。首次 live 检索惰性验证 active artifact；验证前 readiness 的 index reason 为 `artifact-unverified`，损坏或不兼容时 liveness 保持 200、readiness 降级并返回稳定 reason，检索不会转成普通 AI fallback。query 每次仍调用 Embedding provider；空范围请求在 artifact load、文档 embedding 和 query embedding 前返回零命中。允许范围先映射为 row indices，再进行 cosine score。
+
+Java 发布新 release 不会热加载 Python corpus 或 artifact。部署新 release 必须先部署匹配 corpus，构建/验证/激活 artifact，再重启或切换 Python 实例；request release 与 Python corpus 仍不一致时返回 `409 KNOWLEDGE_RELEASE_MISMATCH`。本地 rollback 只恢复当前 corpus/model 兼容的 previous artifact。本轮使用确定性 fake provider 验证生命周期，没有生成或提交真实 provider vectors，也没有验证跨主机锁、共享文件系统语义或向量数据库。
 
 外部知识文件只应包含公开、已获授权或完成脱敏的数据，建议放在仓库外并使用绝对路径，不能把真实客户隐私或内部凭据提交到 Git。
 
@@ -324,9 +355,13 @@ export RETRIEVAL_TOP_N=10
 export RETRIEVAL_TOP_K=3
 export MOCK_RETRIEVAL_MIN_SCORE=0.25
 export LIVE_RETRIEVAL_MIN_SCORE=0.35
+export EMBEDDING_ARTIFACT_ROOT='/absolute/path/to/runtime-data/embedding-artifacts'
+export EMBEDDING_ARTIFACT_BUILD_POLICY=require-active
+export EMBEDDING_CHUNKING_VERSION=knowledge-corpus-v2
+export EMBEDDING_VECTOR_DIMENSION=1536
 ```
 
-超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。`AI_SERVICE_RETRY_MAX_ATTEMPTS` 表示总尝试数，Bean Validation 只接受 1 至 2；值 3 会在配置绑定时拒绝启动。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求可能依次创建知识向量、生成查询向量并调用聊天模型。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live `InMemoryVectorStore` 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。`AI_SERVICE_RETRY_MAX_ATTEMPTS` 表示总尝试数，Bean Validation 只接受 1 至 2；值 3 会在配置绑定时拒绝启动。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求只加载并验证 active 文档 matrix，再为当前 query 调用 Embedding provider 和聊天模型；不会重嵌入文档。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live matrix 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
 
 Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes`、`fallbacks`、`timeouts`、`latency`、`circuit.rejected` 和 `bulkhead.rejected`。tag 只使用受控 outcome、reason、provider mode 和 stage，不使用 ticket、trace 或 user；trace 只进入结构化脱敏日志。circuit 与 bulkhead 是单 Java 实例内状态，不代表分布式限流或生产 SLO。
 
@@ -495,7 +530,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 - 审计在 H2 `test` profile 已完成事务与真实 HTTP 验证，但 V2 migration 尚未在 MySQL 执行；checksum、索引与事务 parity 属于 Task 15，当前不构成生产或合规审计声明。
 - JWT endpoint policy 与合成 test decoder 已验证，但 React 登录/token adapter 尚未实现；真实 pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
-- Java release 发布不会热加载 Python file-backed corpus；未部署 release 会让分析以 409 失败关闭，持久化 artifact 激活/回滚属于 Task 9。
+- Java release 发布不会热加载 Python file-backed corpus/artifact；新 release 仍需要显式部署 corpus、构建并激活 artifact。当前只验证本地文件系统原子生命周期，不代表共享存储或跨主机协调。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。

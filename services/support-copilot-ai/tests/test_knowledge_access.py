@@ -117,6 +117,8 @@ def _live_settings(knowledge_path: Path) -> Settings:
         openai_api_key="synthetic-test-key",
         openai_chat_model="synthetic-chat-model",
         openai_embedding_model="synthetic-embedding-model",
+        embedding_artifact_root=knowledge_path.parent / "embedding-artifacts",
+        embedding_artifact_build_policy="build-if-missing",
     )
 
 
@@ -130,11 +132,19 @@ async def test_live_workflow_never_sends_forbidden_chunks_to_providers(
     checksum = write_canary_corpus(knowledge_path)
     embeddings = CapturingEmbeddings()
     monkeypatch.setattr(
-        "app.live_vector_index.OpenAIEmbeddings",
+        "app.embedding_provider.OpenAIEmbeddings",
         lambda **_kwargs: embeddings,
     )
     settings = _live_settings(knowledge_path)
     retriever = KnowledgeRetriever(settings)
+    scored_rows: list[tuple[int, ...]] = []
+    original_score_rows = retriever._live_index._score_rows
+
+    def observe_score_rows(matrix, query, rows):
+        scored_rows.append(rows)
+        return original_score_rows(matrix, query, rows)
+
+    monkeypatch.setattr(retriever._live_index, "_score_rows", observe_score_rows)
     workflow = AnalysisWorkflow(settings, retriever)
     model_inputs: list[str] = []
 
@@ -180,7 +190,6 @@ async def test_live_workflow_never_sends_forbidden_chunks_to_providers(
     response = await runner.run(request)
     observable = "\n".join(
         [
-            *embeddings.documents,
             *embeddings.queries,
             *model_inputs,
             response.model_dump_json(),
@@ -188,8 +197,8 @@ async def test_live_workflow_never_sends_forbidden_chunks_to_providers(
         ]
     )
 
-    assert len(embeddings.documents) == 1
-    assert "COLLIDING_CANARY" in embeddings.documents[0]
+    assert len(embeddings.documents) == 2
+    assert scored_rows == [(0,)]
     assert "support-kb-test" in model_inputs[0]
     assert "BILLING" in model_inputs[0]
     assert "FORBIDDEN_CANARY" not in observable
@@ -207,7 +216,7 @@ async def test_empty_scopes_skip_embedding_and_generation(
     def reject_embedding(**_kwargs):
         raise AssertionError("embedding provider must not be constructed")
 
-    monkeypatch.setattr("app.live_vector_index.OpenAIEmbeddings", reject_embedding)
+    monkeypatch.setattr("app.embedding_provider.OpenAIEmbeddings", reject_embedding)
     settings = _live_settings(knowledge_path)
     workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
 

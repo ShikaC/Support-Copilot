@@ -5,6 +5,7 @@ from typing import Final
 from openai import APITimeoutError, OpenAIError
 
 from app.config import Settings
+from app.embedding_artifact import EmbeddingArtifactError
 from app.errors import (
     EmbeddingApiError,
     embedding_timeout_error,
@@ -43,10 +44,13 @@ class KnowledgeRetriever:
         self._release_id = corpus.release_id
         self._release_version = corpus.release_version
         self._corpus_checksum = corpus.corpus_checksum
-        self._live_index = LiveVectorIndex(settings, tuple(self._chunks))
+        self._live_index = LiveVectorIndex(settings, corpus)
         self._readiness = RuntimeDependencyReadiness(
             provider_ready=settings.effective_mode == "mock" or settings.live_ready,
-            index_ready=bool(self._chunks),
+            index_ready=bool(self._chunks) and settings.effective_mode == "mock",
+            index_reason=(
+                None if settings.effective_mode == "mock" else "artifact-unverified"
+            ),
         )
 
     @property
@@ -75,6 +79,9 @@ class KnowledgeRetriever:
             except OpenAIError as exc:
                 self._readiness.record_live_retrieval_failure()
                 raise EmbeddingApiError from exc
+            except EmbeddingArtifactError as exc:
+                self._readiness.record_index_failure(exc.reason)
+                raise
             self._readiness.record_live_retrieval_success()
             return hits
         return self._local_search(

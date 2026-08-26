@@ -2,26 +2,25 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from langchain_core.embeddings import Embeddings
-from langchain_core.vectorstores import InMemoryVectorStore
 
 from app.config import Settings
+from app.embedding_artifact import EmbeddingArtifactStore
 from app.knowledge import KnowledgeRetriever
-from app.knowledge_source import KnowledgeChunk
+from app.knowledge_source import KnowledgeChunk, load_knowledge_corpus
 from app.models import Priority, SupportScope, TicketInput
 from tests.knowledge_access_support import retrieval_request, write_test_corpus
 
 
-class CapturingTestEmbeddings(Embeddings):
+class CapturingTestEmbeddings:
     def __init__(self) -> None:
         self.document_inputs: list[str] = []
         self.query_inputs: list[str] = []
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
         self.document_inputs.extend(texts)
         return [[1.0, 0.0] for _ in texts]
 
-    def embed_query(self, text: str) -> list[float]:
+    async def embed_query(self, text: str) -> list[float]:
         self.query_inputs.append(text)
         return [1.0, 0.0]
 
@@ -58,14 +57,18 @@ async def test_live_embedding_requests_redact_sensitive_data(
             ),
         ),
     )
-    retriever = KnowledgeRetriever(
-        Settings(ai_mode="mock", knowledge_path=knowledge_path)
+    settings = Settings(
+        ai_mode="mock",
+        knowledge_path=knowledge_path,
+        openai_embedding_model="test-model",
+        embedding_artifact_root=tmp_path / "artifacts",
     )
+    retriever = KnowledgeRetriever(settings)
     embeddings = CapturingTestEmbeddings()
-    retriever._live_index._vector_stores[frozenset({SupportScope.ACCOUNT})] = InMemoryVectorStore.from_documents(
-        [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
-        embeddings,
-    )
+    store = EmbeddingArtifactStore(settings, load_knowledge_corpus(knowledge_path))
+    manifest = await store.build(embeddings)
+    store.activate(manifest.artifact_id)
+    retriever._live_index._provider = embeddings
     ticket = TicketInput(
         id="ticket-sensitive-vector",
         subject="Enterprise login incident",

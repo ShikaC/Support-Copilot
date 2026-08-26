@@ -2,13 +2,13 @@ from dataclasses import dataclass
 import logging
 
 import anyio
-from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import OpenAIEmbeddings
+import numpy as np
 
 from app.config import Settings
 from app.data_redaction import redact_sensitive_text
-from app.knowledge_source import KnowledgeChunk
+from app.embedding_artifact import EmbeddingArtifactError, EmbeddingArtifactStore, LoadedEmbeddingArtifact
+from app.embedding_provider import EmbeddingProvider, OpenAIEmbeddingProvider
+from app.knowledge_source import KnowledgeCorpus
 from app.models import RetrievalHit, SupportScope, TicketInput
 
 logger = logging.getLogger(__name__)
@@ -21,15 +21,13 @@ class RetrievalWindow:
 
 
 class LiveVectorIndex:
-    def __init__(
-        self,
-        settings: Settings,
-        chunks: tuple[KnowledgeChunk, ...],
-    ) -> None:
+    def __init__(self, settings: Settings, corpus: KnowledgeCorpus) -> None:
         self._settings = settings
-        self._chunks = chunks
-        self._vector_stores: dict[frozenset[SupportScope], InMemoryVectorStore] = {}
-        self._vector_lock = anyio.Lock()
+        self._corpus = corpus
+        self._store = EmbeddingArtifactStore(settings, corpus)
+        self._provider: EmbeddingProvider | None = None
+        self._artifact: LoadedEmbeddingArtifact | None = None
+        self._load_lock = anyio.Lock()
 
     async def search(
         self,
@@ -38,102 +36,116 @@ class LiveVectorIndex:
         window: RetrievalWindow,
         allowed_scopes: tuple[SupportScope, ...],
     ) -> list[RetrievalHit]:
-        scope_key = frozenset(allowed_scopes)
-        eligible_chunks = tuple(
-            chunk
-            for chunk in self._chunks
-            if scope_key.intersection(chunk.allowed_scopes)
-        )
-        if not eligible_chunks:
+        eligible_rows = self._eligible_rows(allowed_scopes)
+        if not eligible_rows:
             return []
-        store = await self._get_vector_store(scope_key, eligible_chunks)
-        results = await store.asimilarity_search_with_score(
-            redact_sensitive_text(query),
-            k=min(window.top_n, len(eligible_chunks)),
+        artifact = await self._get_artifact()
+        query_vector = np.asarray(
+            await self._get_provider().embed_query(redact_sensitive_text(query)),
+            dtype=np.float32,
         )
-        eligible_results = [
-            (document, float(score))
-            for document, score in results
-            if float(score) >= self._settings.live_retrieval_min_score
+        if (
+            query_vector.ndim != 1
+            or query_vector.shape[0] != artifact.manifest.vector_dimension
+            or not np.isfinite(query_vector).all()
+        ):
+            raise EmbeddingArtifactError("query-vector-invalid")
+        scored = self._score_rows(artifact.matrix, query_vector, eligible_rows)
+        candidates = [
+            (row, score)
+            for row, score in scored
+            if score >= self._settings.live_retrieval_min_score
         ]
-        if not eligible_results:
-            best_score = max((float(score) for _, score in results), default=None)
+        if not candidates:
             logger.info(
                 "retrieval.insufficient_evidence method=VECTOR best_score=%s min_score=%s",
-                best_score,
+                max((score for _, score in scored), default=None),
                 self._settings.live_retrieval_min_score,
             )
             return []
-
+        initial = sorted(candidates, key=lambda item: item[1], reverse=True)[
+            : window.top_n
+        ]
         category = ticket.current_category
         ranked = sorted(
-            eligible_results,
+            initial,
             key=lambda item: (
-                category not in item[0].metadata.get("categories", []),
-                -float(item[1]),
+                category not in self._corpus.chunks[item[0]].categories,
+                -item[1],
             ),
         )[: window.top_k]
+        return [
+            self._hit(row, score, rank)
+            for rank, (row, score) in enumerate(ranked, start=1)
+        ]
 
-        hits: list[RetrievalHit] = []
-        for rank, (document, score) in enumerate(ranked, start=1):
-            metadata = document.metadata
-            hits.append(
-                RetrievalHit(
-                    chunk_id=str(metadata["chunk_id"]),
-                    document_id=str(metadata["document_id"]),
-                    document_title=str(metadata["document_title"]),
-                    section=str(metadata["section"]),
-                    content=document.page_content,
-                    source_uri=str(metadata["source_uri"]),
-                    retrieval_method="VECTOR",
-                    initial_rank=rank,
-                    initial_score=round(float(score), 4),
-                    rerank_position=rank,
-                    rerank_score=round(float(score), 4),
-                    used_as_evidence=True,
-                )
-            )
-        return hits
-
-    async def _get_vector_store(
+    def _eligible_rows(
         self,
-        scope_key: frozenset[SupportScope],
-        eligible_chunks: tuple[KnowledgeChunk, ...],
-    ) -> InMemoryVectorStore:
-        cached_store = self._vector_stores.get(scope_key)
-        if cached_store is not None:
-            return cached_store
+        allowed_scopes: tuple[SupportScope, ...],
+    ) -> tuple[int, ...]:
+        scope_set = frozenset(allowed_scopes)
+        return tuple(
+            row
+            for row, chunk in enumerate(self._corpus.chunks)
+            if scope_set.intersection(chunk.allowed_scopes)
+        )
 
-        async with self._vector_lock:
-            cached_store = self._vector_stores.get(scope_key)
-            if cached_store is not None:
-                return cached_store
+    async def _get_artifact(self) -> LoadedEmbeddingArtifact:
+        if self._artifact is not None:
+            return self._artifact
+        async with self._load_lock:
+            if self._artifact is not None:
+                return self._artifact
+            try:
+                artifact = self._store.load_active()
+            except EmbeddingArtifactError as exc:
+                if (
+                    exc.reason != "active-pointer-invalid"
+                    or self._settings.embedding_artifact_build_policy
+                    != "build-if-missing"
+                ):
+                    raise
+                manifest = await self._store.build(self._get_provider())
+                self._store.activate(manifest.artifact_id)
+                artifact = self._store.load_active()
+            self._artifact = artifact
+            return artifact
 
-            embeddings = OpenAIEmbeddings(
-                api_key=self._settings.embedding_api_key,
-                base_url=self._settings.embedding_base_url,
-                model=self._settings.openai_embedding_model,
-                # Java owns bounded service retries; embedding SDK calls are single-attempt.
-                max_retries=0,
-                request_timeout=self._settings.openai_timeout_seconds,
-            )
-            documents = [self._as_document(chunk) for chunk in eligible_chunks]
-            store = await InMemoryVectorStore.afrom_documents(
-                documents,
-                embeddings,
-            )
-            self._vector_stores[scope_key] = store
-            return store
+    def _get_provider(self) -> EmbeddingProvider:
+        if self._provider is None:
+            self._provider = OpenAIEmbeddingProvider(self._settings)
+        return self._provider
 
-    def _as_document(self, chunk: KnowledgeChunk) -> Document:
-        return Document(
-            page_content=redact_sensitive_text(chunk.content),
-            metadata={
-                "chunk_id": chunk.chunk_id,
-                "document_id": chunk.document_id,
-                "document_title": chunk.document_title,
-                "section": chunk.section,
-                "source_uri": chunk.source_uri,
-                "categories": list(chunk.categories),
-            },
+    def _score_rows(
+        self,
+        matrix: np.ndarray,
+        query: np.ndarray,
+        rows: tuple[int, ...],
+    ) -> list[tuple[int, float]]:
+        eligible = matrix[np.asarray(rows)]
+        denominators = np.linalg.norm(eligible, axis=1) * np.linalg.norm(query)
+        scores = np.divide(
+            eligible @ query,
+            denominators,
+            out=np.zeros(len(rows), dtype=np.float32),
+            where=denominators != 0,
+        )
+        return [(row, float(score)) for row, score in zip(rows, scores, strict=True)]
+
+    def _hit(self, row: int, score: float, rank: int) -> RetrievalHit:
+        chunk = self._corpus.chunks[row]
+        rounded = round(score, 4)
+        return RetrievalHit(
+            chunk_id=chunk.chunk_id,
+            document_id=chunk.document_id,
+            document_title=chunk.document_title,
+            section=chunk.section,
+            content=chunk.content,
+            source_uri=chunk.source_uri,
+            retrieval_method="VECTOR",
+            initial_rank=rank,
+            initial_score=rounded,
+            rerank_position=rank,
+            rerank_score=rounded,
+            used_as_evidence=True,
         )

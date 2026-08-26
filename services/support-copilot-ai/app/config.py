@@ -8,6 +8,7 @@ from pydantic_core import PydanticCustomError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_KNOWLEDGE_PATH: Final = Path(__file__).parent / "data" / "knowledge.json"
+DEFAULT_EMBEDDING_ARTIFACT_ROOT: Final = Path("runtime-data/embedding-artifacts")
 INTERNAL_SERVICE_TOKEN_ENV: Final = "SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN"
 
 
@@ -43,6 +44,13 @@ class Settings(BaseSettings):
     ai_processing_timeout_seconds: float = Field(default=90.0, gt=0, le=120)
     knowledge_path: Path = DEFAULT_KNOWLEDGE_PATH
     knowledge_provenance_path: Path | None = None
+    embedding_artifact_root: Path = DEFAULT_EMBEDDING_ARTIFACT_ROOT
+    embedding_artifact_pointer: str = "active.json"
+    embedding_artifact_build_policy: Literal["require-active", "build-if-missing"] = (
+        "require-active"
+    )
+    embedding_chunking_version: str = "knowledge-corpus-v2"
+    embedding_vector_dimension: int | None = Field(default=None, gt=0)
     retrieval_top_n: int = 10
     retrieval_top_k: int = 3
     # The local scorer uses a different scale from live cosine similarity.

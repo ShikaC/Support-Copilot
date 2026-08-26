@@ -2,30 +2,13 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from langchain_core.embeddings import Embeddings
-from langchain_core.vectorstores import InMemoryVectorStore
 
 from app.config import Settings
+from app.embedding_artifact import EmbeddingArtifactStore
 from app.knowledge import KnowledgeRetriever
-from app.knowledge_source import KnowledgeChunk, KnowledgeSourceInvalidError, load_knowledge_chunks
+from app.knowledge_source import KnowledgeChunk, KnowledgeSourceInvalidError, load_knowledge_chunks, load_knowledge_corpus
 from app.models import Priority, SupportScope, TicketInput
 from tests.knowledge_access_support import retrieval_request, write_test_corpus
-
-
-class DeterministicTestEmbeddings(Embeddings):
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[1.0, 0.0] for _ in texts]
-
-    def embed_query(self, text: str) -> list[float]:
-        return [1.0, 0.0]
-
-
-class QueryAwareTestEmbeddings(Embeddings):
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[1.0, 0.0] for _ in texts]
-
-    def embed_query(self, text: str) -> list[float]:
-        return [1.0, 0.0] if "known" in text else [0.0, 1.0]
 
 
 @pytest.fixture
@@ -82,15 +65,29 @@ async def test_configured_knowledge_file_drives_retrieval(
 @pytest.mark.asyncio
 async def test_external_knowledge_reaches_vector_retrieval(
     external_knowledge_path: Path,
+    tmp_path: Path,
 ) -> None:
-    # Given: the configured external chunk is indexed by a real in-memory vector store.
-    retriever = KnowledgeRetriever(
-        Settings(ai_mode="mock", knowledge_path=external_knowledge_path)
+    # Given: the configured external chunk is indexed by a persisted matrix.
+    settings = Settings(
+        ai_mode="mock",
+        knowledge_path=external_knowledge_path,
+        openai_embedding_model="test-model",
+        embedding_artifact_root=tmp_path / "artifacts",
     )
-    retriever._live_index._vector_stores[frozenset({SupportScope.ACCOUNT})] = InMemoryVectorStore.from_documents(
-        [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
-        DeterministicTestEmbeddings(),
-    )
+    retriever = KnowledgeRetriever(settings)
+
+    class AsyncDeterministicProvider:
+        async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [[1.0, 0.0] for _ in texts]
+
+        async def embed_query(self, _text: str) -> list[float]:
+            return [1.0, 0.0]
+
+    provider = AsyncDeterministicProvider()
+    store = EmbeddingArtifactStore(settings, load_knowledge_corpus(external_knowledge_path))
+    manifest = await store.build(provider)
+    store.activate(manifest.artifact_id)
+    retriever._live_index._provider = provider
     ticket = TicketInput(
         id="ticket-external-vector",
         subject="ACME-LOGIN-42",
@@ -123,7 +120,7 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
     # Given: chat and embedding providers use different compatible endpoints.
     captured: dict[str, str | int | None] = {}
 
-    class CapturingEmbeddings(Embeddings):
+    class CapturingEmbeddings:
         def __init__(
             self,
             *,
@@ -144,7 +141,7 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
         def embed_query(self, text: str) -> list[float]:
             return [1.0, 0.0]
 
-    monkeypatch.setattr("app.live_vector_index.OpenAIEmbeddings", CapturingEmbeddings)
+    monkeypatch.setattr("app.embedding_provider.OpenAIEmbeddings", CapturingEmbeddings)
     retriever = KnowledgeRetriever(
         Settings(
             ai_mode="live",
@@ -158,10 +155,7 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
     )
 
     # When: the live vector index initializes its embedding store.
-    await retriever._live_index._get_vector_store(
-        frozenset({SupportScope.ACCOUNT}),
-        retriever._chunks,
-    )
+    retriever._live_index._get_provider()
 
     # Then: the embedding client receives the independent endpoint.
     assert captured["base_url"] == "https://embedding.example.test/v1"
@@ -172,19 +166,30 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
 @pytest.mark.asyncio
 async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
     external_knowledge_path: Path,
+    tmp_path: Path,
 ) -> None:
     # Given: a vector store returns a zero-similarity match for an unrelated query.
-    retriever = KnowledgeRetriever(
-        Settings(
+    settings = Settings(
             ai_mode="mock",
             knowledge_path=external_knowledge_path,
             live_retrieval_min_score=0.35,
-        )
+            openai_embedding_model="test-model",
+            embedding_artifact_root=tmp_path / "artifacts",
     )
-    retriever._live_index._vector_stores[frozenset({SupportScope.ACCOUNT})] = InMemoryVectorStore.from_documents(
-        [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
-        QueryAwareTestEmbeddings(),
-    )
+    retriever = KnowledgeRetriever(settings)
+
+    class AsyncQueryAwareProvider:
+        async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [[1.0, 0.0] for _ in texts]
+
+        async def embed_query(self, text: str) -> list[float]:
+            return [1.0, 0.0] if "known" in text else [0.0, 1.0]
+
+    provider = AsyncQueryAwareProvider()
+    store = EmbeddingArtifactStore(settings, load_knowledge_corpus(external_knowledge_path))
+    manifest = await store.build(provider)
+    store.activate(manifest.artifact_id)
+    retriever._live_index._provider = provider
     ticket = TicketInput(
         id="ticket-low-vector-score",
         subject="Unrelated support question",
@@ -220,7 +225,6 @@ def test_missing_provenance_uses_typed_source_error(
         load_knowledge_chunks(external_knowledge_path, missing_provenance)
     assert exc_info.value.path == missing_provenance
     assert exc_info.value.__cause__ is None
-    exc_info.value.__traceback__ = None
 
 
 @pytest.mark.asyncio

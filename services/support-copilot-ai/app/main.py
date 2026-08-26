@@ -211,6 +211,7 @@ async def readiness() -> JSONResponse:
                 "provider": "up" if snapshot.provider_ready else "degraded",
                 "index": "up" if snapshot.index_ready else "degraded",
             },
+            "indexReason": snapshot.index_reason,
             "mode": settings.effective_mode,
         },
     )
