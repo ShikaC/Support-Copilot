@@ -1,5 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "release_id": "support-kb-2026-08",
+  "release_version": 1,
   "chunking": {
     "chunk_size": 800,
     "chunk_overlap": 100
@@ -12,6 +14,7 @@
       "source_uri": "https://support.example.test/identity",
       "categories": ["ACCOUNT_ACCESS"],
       "keywords": ["SSO", "identity provider"],
+      "allowed_scopes": ["ACCOUNT"],
       "document_version": "2026.08",
       "status": "PUBLISHED",
       "updated_at": "2026-08-24"

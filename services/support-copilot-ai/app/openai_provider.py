@@ -7,7 +7,7 @@ from app.errors import (
     StructuredGenerationApiError,
     structured_generation_timeout_error,
 )
-from app.models import ModelDraft, PromptVersion, RetrievalHit, TicketInput
+from app.models import AnalyzeRequest, ModelDraft, RetrievalHit
 from app.prompts import instructions_for
 
 
@@ -25,10 +25,11 @@ class OpenAIProvider:
 
     async def analyze(
         self,
-        ticket: TicketInput,
+        request: AnalyzeRequest,
         evidence: list[RetrievalHit],
-        prompt_version: PromptVersion,
     ) -> tuple[ModelDraft, int, int]:
+        ticket = request.ticket
+        access = request.knowledge_access
         evidence_text = "\n\n".join(
             f"[{index}] {hit.document_title} {hit.section}\n{hit.content}"
             for index, hit in enumerate(evidence, start=1)
@@ -39,12 +40,14 @@ class OpenAIProvider:
             f"客户等级：{ticket.customer_tier}\n"
             f"当前分类：{ticket.current_category}\n"
             f"当前优先级：{ticket.current_priority}\n\n"
+            f"知识发布：{access.release_id} v{access.release_version}\n"
+            f"授权范围：{','.join(access.allowed_scopes)}\n\n"
             f"知识片段：\n{evidence_text or '没有检索到有效知识片段'}"
         )
         try:
             response = await self._client.responses.parse(
                 model=self._settings.openai_chat_model,
-                instructions=instructions_for(prompt_version),
+                instructions=instructions_for(request.options.prompt_version),
                 input=model_input,
                 store=False,
                 text_format=ModelDraft,

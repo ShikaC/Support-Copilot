@@ -67,6 +67,8 @@ public class SecurityConfig {
 				).permitAll()
 				.requestMatchers("/api/audit-events/**")
 					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
+				.requestMatchers(HttpMethod.POST, "/api/knowledge/releases", "/api/knowledge/releases/**")
+					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/api/tickets/*/analyses/*/reviews/**")
 					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/api/tickets/**", "/api/knowledge/**", "/api/metrics/**")

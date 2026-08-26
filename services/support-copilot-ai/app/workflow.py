@@ -10,7 +10,7 @@ from app.errors import (
     LiveProviderConfigurationError,
     RecoverableAiError,
 )
-from app.knowledge import KnowledgeRetriever
+from app.knowledge import KnowledgeRetriever, RetrievalRequest
 from app.local_analysis import LocalAnalysisPolicy, WorkflowObservation
 from app.models import (
     AnalyzeRequest,
@@ -43,11 +43,14 @@ class AnalysisWorkflow:
             query = self._build_query(request)
             retrieval_started = time.perf_counter()
             hits = await self._retriever.search(
-                request.ticket,
-                query,
-                request.options.top_n,
-                request.options.top_k,
-                live=live,
+                RetrievalRequest(
+                    ticket=request.ticket,
+                    query=query,
+                    top_n=request.options.top_n,
+                    top_k=request.options.top_k,
+                    live=live,
+                    knowledge_access=request.knowledge_access,
+                )
             )
             retrieval_ms = self._elapsed_ms(retrieval_started)
 
@@ -62,9 +65,8 @@ class AnalysisWorkflow:
                 if self._provider is None:
                     raise LiveProviderConfigurationError
                 draft, input_tokens, output_tokens = await self._provider.analyze(
-                    request.ticket,
+                    request,
                     hits,
-                    request.options.prompt_version,
                 )
                 self._retriever.readiness.record_live_generation_success()
             else:
@@ -160,11 +162,14 @@ class AnalysisWorkflow:
     ) -> AnalyzeResponse:
         query = self._build_query(request)
         hits = await self._retriever.search(
-            request.ticket,
-            query,
-            request.options.top_n,
-            request.options.top_k,
-            live=False,
+            RetrievalRequest(
+                ticket=request.ticket,
+                query=query,
+                top_n=request.options.top_n,
+                top_k=request.options.top_k,
+                live=False,
+                knowledge_access=request.knowledge_access,
+            )
         )
         draft = self._local_policy.draft(request, hits)
         decision = self._local_policy.decision(

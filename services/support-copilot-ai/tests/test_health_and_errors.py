@@ -7,7 +7,7 @@ import pytest
 
 from app.analysis_runner import AnalysisProcessingTimeoutError
 from app.main import app, runner, settings
-from app.models import AnalyzeRequest
+from app.models import BUNDLED_KNOWLEDGE_ACCESS, AnalyzeRequest
 
 
 TRACE_ID = "trace_health_contract"
@@ -26,6 +26,9 @@ client = TestClient(
 def analyze_payload() -> dict[str, str | dict[str, str | int]]:
     return {
         "traceId": TRACE_ID,
+        "knowledgeAccess": BUNDLED_KNOWLEDGE_ACCESS.model_dump(
+            by_alias=True, mode="json"
+        ),
         "ticket": {
             "id": "ticket-health-contract",
             "subject": "Enterprise login failure",

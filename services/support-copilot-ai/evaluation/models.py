@@ -5,7 +5,13 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from app.models import AnalyzeOptions, AnalyzeRequest, Priority, TicketInput
+from app.models import (
+    BUNDLED_KNOWLEDGE_ACCESS,
+    AnalyzeOptions,
+    AnalyzeRequest,
+    Priority,
+    TicketInput,
+)
 
 EvaluationRate = Annotated[float, Field(ge=0, le=1)]
 ThresholdMetric = Literal[
@@ -79,6 +85,7 @@ class EvaluationCase(EvaluationModel):
         # 只把工单输入交给被测工作流，绝不能把 expected_* 标准答案一起传入。
         return AnalyzeRequest(
             traceId=f"eval_{self.id}",
+            knowledgeAccess=BUNDLED_KNOWLEDGE_ACCESS,
             ticket=TicketInput(
                 id=f"ticket-{self.id}",
                 subject=self.subject,

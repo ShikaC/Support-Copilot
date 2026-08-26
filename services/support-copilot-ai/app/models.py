@@ -35,6 +35,36 @@ class Sentiment(StrEnum):
     NEGATIVE = "NEGATIVE"
 
 
+class SupportScope(StrEnum):
+    GENERAL = "GENERAL"
+    BILLING = "BILLING"
+    ACCOUNT = "ACCOUNT"
+    PRIVACY = "PRIVACY"
+    TECHNICAL = "TECHNICAL"
+
+
+class KnowledgeAccess(ApiModel):
+    model_config = ConfigDict(frozen=True)
+
+    release_id: str = Field(min_length=1, pattern=r".*\S.*")
+    release_version: int = Field(gt=0)
+    corpus_checksum: str = Field(pattern=r"^[a-f0-9]{64}$")
+    allowed_scopes: tuple[SupportScope, ...]
+
+
+BUNDLED_RELEASE_ID: Final = "support-copilot-bundled-v1"
+BUNDLED_RELEASE_VERSION: Final = 1
+BUNDLED_CORPUS_CHECKSUM: Final = (
+    "b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874"
+)
+BUNDLED_KNOWLEDGE_ACCESS: Final = KnowledgeAccess(
+    release_id=BUNDLED_RELEASE_ID,
+    release_version=BUNDLED_RELEASE_VERSION,
+    corpus_checksum=BUNDLED_CORPUS_CHECKSUM,
+    allowed_scopes=tuple(SupportScope),
+)
+
+
 class TicketInput(ApiModel):
     # Python 分析的是工单内容，不只是一条工单 ID。
     # 标题和描述不能为空，并限制长度，避免无效或过大的输入进入 AI 流程。
@@ -67,6 +97,7 @@ class AnalyzeRequest(ApiModel):
     # Java 调用 /analyze 时必须交付：追踪标识、完整工单和检索选项。
     trace_id: str = Field(pattern=TRACE_ID_PATTERN)
     ticket: TicketInput
+    knowledge_access: KnowledgeAccess
     options: AnalyzeOptions = AnalyzeOptions()
 
 

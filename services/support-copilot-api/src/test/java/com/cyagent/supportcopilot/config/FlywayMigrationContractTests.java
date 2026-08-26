@@ -57,4 +57,22 @@ class FlywayMigrationContractTests {
 				"drop table", "truncate table", "delete from", "update command_idempotency", "flyway clean"
 			);
 	}
+
+	@Test
+	void knowledgeReleaseMigrationCreatesImmutableHistoryAndSingletonPointerWithoutDestructiveStatements()
+		throws IOException {
+		var migration = new ClassPathResource("db/migration/V4__governed_knowledge_releases.sql")
+			.getContentAsString(StandardCharsets.UTF_8)
+			.toLowerCase();
+
+		assertThat(migration)
+			.contains("create table knowledge_releases", "create table knowledge_active_release")
+			.contains("constraint uk_knowledge_release_version unique")
+			.contains("constraint pk_knowledge_active_release primary key")
+			.contains("constraint uk_knowledge_active_singleton unique")
+			.contains("foreign key (release_id) references knowledge_releases")
+			.doesNotContain(
+				"drop table", "truncate table", "delete from", "update knowledge_releases", "flyway clean"
+			);
+	}
 }

@@ -9,11 +9,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.Executors;
+import java.util.List;
 
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import com.cyagent.supportcopilot.ticket.Ticket;
+import com.cyagent.supportcopilot.knowledge.KnowledgeAccessException;
 
 class AiServiceClientTests {
 
@@ -97,7 +99,8 @@ class AiServiceClientTests {
 			var client = client(
 				"http://127.0.0.1:" + server.getAddress().getPort(),
 				1_000,
-				"synthetic-java-client-token"
+				"synthetic-java-client-token",
+				new KnowledgeAccess("release-capture", 7, "c".repeat(64), List.of("BILLING"))
 			);
 
 			try {
@@ -110,7 +113,11 @@ class AiServiceClientTests {
 					.contains("\"id\":\"ticket-timeout\"")
 					.contains("\"topN\":10")
 					.contains("\"topK\":3")
-					.contains("\"promptVersion\":\"ticket-analysis-v1\"");
+					.contains("\"promptVersion\":\"ticket-analysis-v1\"")
+					.contains("\"knowledgeAccess\":{\"releaseId\":\"release-capture\",\"releaseVersion\":7,")
+					.contains("\"corpusChecksum\":\"" + "c".repeat(64) + "\"")
+					.contains("\"allowedScopes\":[\"BILLING\"]")
+					.doesNotContain("SUPERUSER", "support_scopes");
 				assertThat(traceHeader.get()).isEqualTo("trace-shape");
 				assertThat(internalTokenHeader.get()).isEqualTo("synthetic-java-client-token");
 			} finally {
@@ -147,6 +154,34 @@ class AiServiceClientTests {
 					assertThatThrownBy(() -> client.analyze(ticket(), "trace-policy"))
 						.isInstanceOf(AiServiceContractException.class)
 						.isNotInstanceOf(AiServiceCallException.class);
+			} finally {
+				server.stop(0);
+			}
+		}
+	}
+
+	@Test
+	void runtimeKnowledgeReleaseMismatchIsTypedAndNeverConvertedToFallback() throws Exception {
+		var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/analyze", exchange -> {
+			exchange.sendResponseHeaders(409, -1);
+			exchange.close();
+		});
+		try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+			server.setExecutor(executor);
+			server.start();
+			var client = client(
+				"http://127.0.0.1:" + server.getAddress().getPort(),
+				1_000,
+				"synthetic-java-client-token"
+			);
+
+			try {
+				assertThatThrownBy(() -> client.analyze(ticket(), "trace-release-mismatch"))
+					.isInstanceOfSatisfying(KnowledgeAccessException.class, exception ->
+						assertThat(exception.code()).isEqualTo("KNOWLEDGE_RELEASE_MISMATCH")
+					)
+					.isNotInstanceOf(AiServiceCallException.class);
 			} finally {
 				server.stop(0);
 			}
@@ -239,10 +274,25 @@ class AiServiceClientTests {
 	}
 
 	private AiServiceClient client(String baseUrl, long timeoutMs, String token) {
+		return client(
+			baseUrl,
+			timeoutMs,
+			token,
+			new KnowledgeAccess("release-test", 1, "a".repeat(64), List.of())
+		);
+	}
+
+	private AiServiceClient client(
+		String baseUrl,
+		long timeoutMs,
+		String token,
+		KnowledgeAccess knowledgeAccess
+	) {
 		return new AiServiceClient(
 			new AiServiceProperties(baseUrl, timeoutMs, 1, 0, 2, 2, 50, 30_000, 1, 0),
 			token,
-			new SimpleMeterRegistry()
+			new SimpleMeterRegistry(),
+			() -> knowledgeAccess
 		);
 	}
 }

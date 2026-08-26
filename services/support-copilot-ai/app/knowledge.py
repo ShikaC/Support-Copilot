@@ -1,4 +1,6 @@
 import re
+from dataclasses import dataclass
+from typing import Final
 
 from openai import APITimeoutError, OpenAIError
 
@@ -7,19 +9,40 @@ from app.errors import (
     EmbeddingApiError,
     embedding_timeout_error,
 )
-from app.knowledge_source import KnowledgeChunk, load_knowledge_chunks
+from app.knowledge_source import KnowledgeChunk, load_knowledge_corpus
 from app.live_vector_index import LiveVectorIndex, RetrievalWindow
-from app.models import RetrievalHit, TicketInput
+from app.models import KnowledgeAccess, RetrievalHit, SupportScope, TicketInput
 from app.readiness import RuntimeDependencyReadiness
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievalRequest:
+    ticket: TicketInput
+    query: str
+    top_n: int
+    top_k: int
+    live: bool
+    knowledge_access: KnowledgeAccess
+
+
+class KnowledgeReleaseMismatchError(Exception):
+    code: Final = "KNOWLEDGE_RELEASE_MISMATCH"
+
+    def __init__(self) -> None:
+        super().__init__("Requested knowledge release does not match the active corpus")
 
 
 class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._chunks = load_knowledge_chunks(
+        corpus = load_knowledge_corpus(
             settings.knowledge_path,
             settings.knowledge_provenance_path,
         )
+        self._chunks = corpus.chunks
+        self._release_id = corpus.release_id
+        self._release_version = corpus.release_version
+        self._corpus_checksum = corpus.corpus_checksum
         self._live_index = LiveVectorIndex(settings, tuple(self._chunks))
         self._readiness = RuntimeDependencyReadiness(
             provider_ready=settings.effective_mode == "mock" or settings.live_ready,
@@ -34,22 +57,17 @@ class KnowledgeRetriever:
     def readiness(self) -> RuntimeDependencyReadiness:
         return self._readiness
 
-    async def search(
-        self,
-        ticket: TicketInput,
-        query: str,
-        top_n: int,
-        top_k: int,
-        live: bool,
-    ) -> list[RetrievalHit]:
+    async def search(self, request: RetrievalRequest) -> list[RetrievalHit]:
+        self._require_active_release(request.knowledge_access)
         # mock 模式使用确定性的本地打分器，方便演示和测试复现。
         # live 模式会构建 embedding，并使用向量检索。
-        if live:
+        if request.live:
             try:
                 hits = await self._live_index.search(
-                    ticket,
-                    query,
-                    RetrievalWindow(top_n=top_n, top_k=top_k),
+                    request.ticket,
+                    request.query,
+                    RetrievalWindow(top_n=request.top_n, top_k=request.top_k),
+                    request.knowledge_access.allowed_scopes,
                 )
             except APITimeoutError as exc:
                 self._readiness.record_live_retrieval_failure()
@@ -59,7 +77,21 @@ class KnowledgeRetriever:
                 raise EmbeddingApiError from exc
             self._readiness.record_live_retrieval_success()
             return hits
-        return self._local_search(ticket, query, top_n, top_k)
+        return self._local_search(
+            request.ticket,
+            request.query,
+            request.top_n,
+            request.top_k,
+            request.knowledge_access.allowed_scopes,
+        )
+
+    def _require_active_release(self, access: KnowledgeAccess) -> None:
+        if (
+            access.release_id != self._release_id
+            or access.release_version != self._release_version
+            or access.corpus_checksum != self._corpus_checksum
+        ):
+            raise KnowledgeReleaseMismatchError
 
     def _local_search(
         self,
@@ -67,9 +99,17 @@ class KnowledgeRetriever:
         query: str,
         top_n: int,
         top_k: int,
+        allowed_scopes: tuple[SupportScope, ...],
     ) -> list[RetrievalHit]:
+        eligible_chunks = tuple(
+            chunk
+            for chunk in self._chunks
+            if set(chunk.allowed_scopes).intersection(allowed_scopes)
+        )
+        if not eligible_chunks:
+            return []
         known_categories = {
-            category for chunk in self._chunks for category in chunk.categories
+            category for chunk in eligible_chunks for category in chunk.categories
         }
         if (
             ticket.current_category != "UNCLASSIFIED"
@@ -78,7 +118,7 @@ class KnowledgeRetriever:
             return []
         scored = [
             (chunk, self._local_candidate_score(chunk, query))
-            for chunk in self._chunks
+            for chunk in eligible_chunks
         ]
         scored.sort(key=lambda item: item[1], reverse=True)
         # 先按文本匹配召回 top_n，再用工单分类调整候选顺序并保留 top_k。

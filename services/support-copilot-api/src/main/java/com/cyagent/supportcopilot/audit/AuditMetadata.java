@@ -6,7 +6,8 @@ import java.util.List;
 import com.cyagent.supportcopilot.analysis.FallbackReason;
 
 public sealed interface AuditMetadata permits AuditMetadata.None,
-	AuditMetadata.TicketChange, AuditMetadata.Analysis, AuditMetadata.Review {
+	AuditMetadata.TicketChange, AuditMetadata.Analysis, AuditMetadata.Review,
+	AuditMetadata.KnowledgeRelease {
 
 	enum AnalysisMode {
 		FALLBACK,
@@ -69,6 +70,23 @@ public sealed interface AuditMetadata permits AuditMetadata.None,
 
 		public Review {
 			requireResultId(resultId);
+		}
+	}
+
+	record KnowledgeRelease(
+		String releaseId,
+		int releaseVersion,
+		String corpusChecksum,
+		List<String> allowedScopes,
+		String status
+	) implements AuditMetadata {
+
+		public KnowledgeRelease {
+			requireResultId(releaseId);
+			if (releaseVersion <= 0 || corpusChecksum == null || !corpusChecksum.matches("[a-f0-9]{64}")) {
+				throw new IllegalArgumentException("Audit knowledge release identity is invalid.");
+			}
+			allowedScopes = List.copyOf(allowedScopes);
 		}
 	}
 

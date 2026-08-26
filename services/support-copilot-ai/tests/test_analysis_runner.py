@@ -5,7 +5,7 @@ import pytest
 
 from app.analysis_runner import AnalysisProcessingTimeoutError, AnalysisRunner
 from app.config import Settings
-from app.models import AnalyzeRequest, TicketInput
+from app.models import BUNDLED_KNOWLEDGE_ACCESS, AnalyzeRequest, TicketInput
 
 
 class BlockingWorkflow:
@@ -27,6 +27,7 @@ class BrokenWorkflow:
 def analyze_request() -> AnalyzeRequest:
     return AnalyzeRequest(
         traceId="trace_processing_timeout",
+        knowledgeAccess=BUNDLED_KNOWLEDGE_ACCESS,
         ticket=TicketInput(
             id="ticket-timeout",
             subject="企业账号无法登录",

@@ -58,7 +58,9 @@ def test_cli_builds_reproducible_corpus_from_markdown(tmp_path: Path) -> None:
     manifest_path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
+                "release_id": "support-kb-test",
+                "release_version": 1,
                 "chunking": {"chunk_size": 120, "chunk_overlap": 20},
                 "documents": [
                     {
@@ -68,6 +70,7 @@ def test_cli_builds_reproducible_corpus_from_markdown(tmp_path: Path) -> None:
                         "source_uri": "https://support.example.test/identity",
                         "categories": ["ACCOUNT_ACCESS"],
                         "keywords": ["SSO-42", "tenant identifier"],
+                        "allowed_scopes": ["ACCOUNT"],
                         "document_version": "2026.08",
                         "status": "PUBLISHED",
                         "updated_at": "2026-08-24",
@@ -104,8 +107,15 @@ def test_cli_builds_reproducible_corpus_from_markdown(tmp_path: Path) -> None:
     assert len(chunks) == 1
     assert chunks[0].document_id == "identity-runbook"
     assert chunks[0].section == "SSO incidents"
+    assert chunks[0].allowed_scopes == ("ACCOUNT",)
     assert "SSO-42" in chunks[0].content
     provenance_text = provenance_path.read_text(encoding="utf-8")
+    provenance = json.loads(provenance_text)
+    corpus = json.loads(output_path.read_text(encoding="utf-8"))
+    assert provenance["release_id"] == "support-kb-test"
+    assert provenance["release_version"] == 1
+    assert provenance["corpus_checksum"] == corpus["corpus_checksum"]
+    assert provenance["documents"][0]["allowed_scopes"] == ["ACCOUNT"]
     assert "identity-runbook.md" in provenance_text
     assert "SSO-42" not in provenance_text
 
@@ -118,7 +128,9 @@ def test_builder_extracts_text_from_pdf_pages(tmp_path: Path) -> None:
     manifest_path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
+                "release_id": "support-kb-test",
+                "release_version": 1,
                 "chunking": {"chunk_size": 120, "chunk_overlap": 20},
                 "documents": [
                     {
@@ -128,6 +140,7 @@ def test_builder_extracts_text_from_pdf_pages(tmp_path: Path) -> None:
                         "source_uri": "https://support.example.test/incidents",
                         "categories": ["TECHNICAL"],
                         "keywords": ["PDF-84", "proxy diagnostics"],
+                        "allowed_scopes": ["TECHNICAL"],
                         "document_version": "2026.08",
                         "status": "PUBLISHED",
                         "updated_at": "2026-08-24",

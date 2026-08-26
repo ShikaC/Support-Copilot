@@ -10,7 +10,14 @@ from app.config import Settings
 from app.errors import StructuredGenerationApiError
 from app.knowledge import KnowledgeRetriever
 from app.live_vector_index import RetrievalWindow
-from app.models import ModelDraft, PromptVersion, RetrievalHit, TicketInput
+from app.models import (
+    BUNDLED_KNOWLEDGE_ACCESS,
+    AnalyzeRequest,
+    ModelDraft,
+    RetrievalHit,
+    SupportScope,
+    TicketInput,
+)
 from app.openai_provider import OpenAIProvider
 from app.workflow import AnalysisWorkflow
 
@@ -32,6 +39,9 @@ def live_settings() -> Settings:
 def analyze_payload() -> dict[str, str | dict[str, str | int]]:
     return {
         "traceId": TRACE_ID,
+        "knowledgeAccess": BUNDLED_KNOWLEDGE_ACCESS.model_dump(
+            by_alias=True, mode="json"
+        ),
         "ticket": {
             "id": "ticket-runtime-readiness",
             "subject": "Enterprise SSO login failure",
@@ -96,6 +106,7 @@ async def test_embedding_failure_degrades_readiness_until_live_processing_recove
         ticket: TicketInput,
         query: str,
         window: RetrievalWindow,
+        allowed_scopes: tuple[SupportScope, ...],
     ) -> Never:
         raise OpenAIError("synthetic embedding outage")
 
@@ -103,13 +114,13 @@ async def test_embedding_failure_degrades_readiness_until_live_processing_recove
         ticket: TicketInput,
         query: str,
         window: RetrievalWindow,
+        allowed_scopes: tuple[SupportScope, ...],
     ) -> list[RetrievalHit]:
         return one_retrieval_hit()
 
     async def available_generation(
-        ticket: TicketInput,
+        request: AnalyzeRequest,
         evidence: list[RetrievalHit],
-        prompt_version: PromptVersion,
     ) -> tuple[ModelDraft, int, int]:
         return successful_draft(), 12, 8
 
@@ -172,20 +183,19 @@ async def test_generation_failure_preserves_index_until_generation_recovers(
         ticket: TicketInput,
         query: str,
         window: RetrievalWindow,
+        allowed_scopes: tuple[SupportScope, ...],
     ) -> list[RetrievalHit]:
         return one_retrieval_hit()
 
     async def unavailable_generation(
-        ticket: TicketInput,
+        request: AnalyzeRequest,
         evidence: list[RetrievalHit],
-        prompt_version: PromptVersion,
     ) -> Never:
         raise StructuredGenerationApiError
 
     async def available_generation(
-        ticket: TicketInput,
+        request: AnalyzeRequest,
         evidence: list[RetrievalHit],
-        prompt_version: PromptVersion,
     ) -> tuple[ModelDraft, int, int]:
         return successful_draft(), 12, 8
 

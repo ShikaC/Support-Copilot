@@ -6,7 +6,7 @@ import pytest
 
 from app import internal_auth
 from app.main import app, runner
-from app.models import AnalyzeRequest, AnalyzeResponse
+from app.models import BUNDLED_KNOWLEDGE_ACCESS, AnalyzeRequest, AnalyzeResponse
 
 INTERNAL_TOKEN = "synthetic-test-internal-service-token"
 client = TestClient(app, headers={"X-Trace-Id": "trace_internal_auth"})
@@ -15,6 +15,9 @@ client = TestClient(app, headers={"X-Trace-Id": "trace_internal_auth"})
 def request_payload() -> dict[str, str | dict[str, str | int]]:
     return {
         "traceId": "trace_internal_auth",
+        "knowledgeAccess": BUNDLED_KNOWLEDGE_ACCESS.model_dump(
+            by_alias=True, mode="json"
+        ),
         "ticket": {
             "id": "ticket-internal-auth",
             "subject": "企业账号无法登录",

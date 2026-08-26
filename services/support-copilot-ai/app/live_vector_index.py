@@ -9,7 +9,7 @@ from langchain_openai import OpenAIEmbeddings
 from app.config import Settings
 from app.data_redaction import redact_sensitive_text
 from app.knowledge_source import KnowledgeChunk
-from app.models import RetrievalHit, TicketInput
+from app.models import RetrievalHit, SupportScope, TicketInput
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class LiveVectorIndex:
     ) -> None:
         self._settings = settings
         self._chunks = chunks
-        self._vector_store: InMemoryVectorStore | None = None
+        self._vector_stores: dict[frozenset[SupportScope], InMemoryVectorStore] = {}
         self._vector_lock = anyio.Lock()
 
     async def search(
@@ -36,11 +36,20 @@ class LiveVectorIndex:
         ticket: TicketInput,
         query: str,
         window: RetrievalWindow,
+        allowed_scopes: tuple[SupportScope, ...],
     ) -> list[RetrievalHit]:
-        store = await self._get_vector_store()
+        scope_key = frozenset(allowed_scopes)
+        eligible_chunks = tuple(
+            chunk
+            for chunk in self._chunks
+            if scope_key.intersection(chunk.allowed_scopes)
+        )
+        if not eligible_chunks:
+            return []
+        store = await self._get_vector_store(scope_key, eligible_chunks)
         results = await store.asimilarity_search_with_score(
             redact_sensitive_text(query),
-            k=min(window.top_n, len(self._chunks)),
+            k=min(window.top_n, len(eligible_chunks)),
         )
         eligible_results = [
             (document, float(score))
@@ -86,13 +95,19 @@ class LiveVectorIndex:
             )
         return hits
 
-    async def _get_vector_store(self) -> InMemoryVectorStore:
-        if self._vector_store is not None:
-            return self._vector_store
+    async def _get_vector_store(
+        self,
+        scope_key: frozenset[SupportScope],
+        eligible_chunks: tuple[KnowledgeChunk, ...],
+    ) -> InMemoryVectorStore:
+        cached_store = self._vector_stores.get(scope_key)
+        if cached_store is not None:
+            return cached_store
 
         async with self._vector_lock:
-            if self._vector_store is not None:
-                return self._vector_store
+            cached_store = self._vector_stores.get(scope_key)
+            if cached_store is not None:
+                return cached_store
 
             embeddings = OpenAIEmbeddings(
                 api_key=self._settings.embedding_api_key,
@@ -102,12 +117,13 @@ class LiveVectorIndex:
                 max_retries=0,
                 request_timeout=self._settings.openai_timeout_seconds,
             )
-            documents = [self._as_document(chunk) for chunk in self._chunks]
-            self._vector_store = await InMemoryVectorStore.afrom_documents(
+            documents = [self._as_document(chunk) for chunk in eligible_chunks]
+            store = await InMemoryVectorStore.afrom_documents(
                 documents,
                 embeddings,
             )
-            return self._vector_store
+            self._vector_stores[scope_key] = store
+            return store
 
     def _as_document(self, chunk: KnowledgeChunk) -> Document:
         return Document(

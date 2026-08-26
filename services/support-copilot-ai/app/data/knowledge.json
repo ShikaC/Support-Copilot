@@ -1,4 +1,8 @@
-[
+{
+  "release_id": "support-copilot-bundled-v1",
+  "release_version": 1,
+  "corpus_checksum": "b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874",
+  "chunks": [
   {
     "chunk_id": "chunk-billing-07",
     "document_id": "kb-billing-policy",
@@ -8,6 +12,7 @@
     "source_uri": "kb://billing-policy/v3#duplicate-charge",
     "categories": ["BILLING"],
     "keywords": ["重复扣款", "重复支付", "两笔扣款", "账单"],
+    "allowed_scopes": ["BILLING"],
     "document_version": "v3",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -21,6 +26,7 @@
     "source_uri": "kb://payment-runbook/v5#verification",
     "categories": ["BILLING"],
     "keywords": ["支付核验", "订单号", "支付渠道", "账务支持"],
+    "allowed_scopes": ["BILLING"],
     "document_version": "v5",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -34,6 +40,7 @@
     "source_uri": "kb://refund-sla/v2#bank-window",
     "categories": ["BILLING"],
     "keywords": ["退款", "到账", "银行", "工作日"],
+    "allowed_scopes": ["BILLING"],
     "document_version": "v2",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -47,6 +54,7 @@
     "source_uri": "kb://account-access/v4#sso",
     "categories": ["ACCOUNT_ACCESS"],
     "keywords": ["SSO", "Azure AD", "登录循环", "域名"],
+    "allowed_scopes": ["ACCOUNT"],
     "document_version": "v4",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -60,6 +68,7 @@
     "source_uri": "kb://account-access/v4#lockout",
     "categories": ["ACCOUNT_ACCESS"],
     "keywords": ["账号锁定", "登录失败", "解锁", "验证"],
+    "allowed_scopes": ["ACCOUNT"],
     "document_version": "v4",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -73,6 +82,7 @@
     "source_uri": "kb://invoice-guide/v3#title-correction",
     "categories": ["INVOICE"],
     "keywords": ["发票抬头", "作废重开", "公司名称", "电子发票"],
+    "allowed_scopes": ["BILLING"],
     "document_version": "v3",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -86,6 +96,7 @@
     "source_uri": "kb://export-runbook/v6#long-running",
     "categories": ["DATA_EXPORT"],
     "keywords": ["导出任务", "处理中", "任务编号", "数据量"],
+    "allowed_scopes": ["TECHNICAL"],
     "document_version": "v6",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -99,6 +110,7 @@
     "source_uri": "kb://plan-guide/v5#pro-members",
     "categories": ["SUBSCRIPTION"],
     "keywords": ["专业版", "成员上限", "协作者", "席位计费"],
+    "allowed_scopes": ["BILLING"],
     "document_version": "v5",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -112,6 +124,7 @@
     "source_uri": "kb://privacy-policy/v2#export-delete",
     "categories": ["PRIVACY"],
     "keywords": ["数据删除", "离职员工", "授权材料", "数据导出"],
+    "allowed_scopes": ["PRIVACY"],
     "document_version": "v2",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
@@ -125,8 +138,10 @@
     "source_uri": "kb://sync-errors/v7#SYNC-2047",
     "categories": ["TECHNICAL"],
     "keywords": ["SYNC-2047", "同步失败", "Windows", "代理"],
+    "allowed_scopes": ["TECHNICAL"],
     "document_version": "v7",
     "status": "PUBLISHED",
     "updated_at": "2026-08-14"
   }
-]
+  ]
+}

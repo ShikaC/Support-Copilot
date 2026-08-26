@@ -29,6 +29,8 @@ import com.cyagent.supportcopilot.ticket.TicketStateConflictException;
 import com.cyagent.supportcopilot.idempotency.IdempotencyConflictException;
 import com.cyagent.supportcopilot.idempotency.IdempotencyInProgressException;
 import com.cyagent.supportcopilot.idempotency.IdempotencyKeyException;
+import com.cyagent.supportcopilot.knowledge.KnowledgeAccessException;
+import com.cyagent.supportcopilot.knowledge.KnowledgeReleaseException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -94,6 +96,24 @@ public class ApiExceptionHandler {
 		HttpServletRequest request
 	) {
 		return aiBoundaryError("AI_SERVICE_CONTRACT_ERROR", request);
+	}
+
+	@ExceptionHandler(KnowledgeAccessException.class)
+	ResponseEntity<ApiError> handleKnowledgeAccess(
+		KnowledgeAccessException exception,
+		HttpServletRequest request
+	) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+			.body(error(exception.code(), exception.getMessage(), request));
+	}
+
+	@ExceptionHandler(KnowledgeReleaseException.class)
+	ResponseEntity<ApiError> handleKnowledgeRelease(
+		KnowledgeReleaseException exception,
+		HttpServletRequest request
+	) {
+		return ResponseEntity.status(exception.status())
+			.body(error(exception.code(), exception.getMessage(), request));
 	}
 
 	@ExceptionHandler(EntityNotFoundException.class)

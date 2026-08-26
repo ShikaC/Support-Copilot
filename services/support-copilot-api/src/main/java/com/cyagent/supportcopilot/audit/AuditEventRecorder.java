@@ -57,6 +57,9 @@ public class AuditEventRecorder {
 			case ANALYSIS_PERSISTED -> command.metadata() instanceof AuditMetadata.Analysis;
 			case ANALYSIS_REVIEW_APPROVED, ANALYSIS_REVIEW_EDITED, ANALYSIS_REVIEW_REJECTED ->
 				command.metadata() instanceof AuditMetadata.Review;
+			case KNOWLEDGE_RELEASE_DRAFT_CREATED, KNOWLEDGE_RELEASE_APPROVED,
+				KNOWLEDGE_RELEASE_PUBLISHED, KNOWLEDGE_RELEASE_ROLLED_BACK ->
+				command.metadata() instanceof AuditMetadata.KnowledgeRelease;
 		};
 		if (!valid) {
 			throw new IllegalArgumentException("Audit metadata does not match the controlled action.");

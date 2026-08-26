@@ -16,7 +16,9 @@ from app.knowledge_source import (
     KnowledgeCorpus,
     KnowledgeDocumentProvenance,
     KnowledgeProvenance,
+    calculate_corpus_checksum,
 )
+from app.models import SupportScope
 
 MARKDOWN_HEADING: Final = re.compile(r"(?m)^#{1,6}[ \t]+(.+?)[ \t]*$")
 
@@ -46,6 +48,7 @@ class SourceDocument(BaseModel):
     source_uri: str = Field(min_length=1)
     categories: tuple[str, ...] = Field(min_length=1)
     keywords: tuple[str, ...] = Field(min_length=1)
+    allowed_scopes: tuple[SupportScope, ...] = Field(min_length=1)
     document_version: str = Field(min_length=1)
     status: Literal["PUBLISHED", "ARCHIVED"]
     updated_at: date
@@ -54,7 +57,9 @@ class SourceDocument(BaseModel):
 class KnowledgeIngestionManifest(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    schema_version: Literal[1]
+    schema_version: Literal[2]
+    release_id: str = Field(min_length=1, pattern=r".*\S.*")
+    release_version: int = Field(gt=0)
     chunking: ChunkingConfiguration
     documents: tuple[SourceDocument, ...] = Field(min_length=1)
 
@@ -219,6 +224,7 @@ def build_knowledge_corpus(
                             source_uri=document.source_uri,
                             categories=document.categories,
                             keywords=document.keywords,
+                            allowed_scopes=document.allowed_scopes,
                             document_version=document.document_version,
                             status=document.status,
                             updated_at=document.updated_at,
@@ -233,6 +239,7 @@ def build_knowledge_corpus(
                 updated_at=document.updated_at,
                 sha256=sha256(source_path.read_bytes()).hexdigest(),
                 chunk_ids=tuple(document_chunk_ids),
+                allowed_scopes=document.allowed_scopes,
             )
         )
 
@@ -241,11 +248,20 @@ def build_knowledge_corpus(
             path=manifest_path,
             reason="no-published-content",
         )
-    corpus_content = KnowledgeCorpus(root=tuple(chunks)).model_dump_json(indent=2) + "\n"
+    corpus_checksum = calculate_corpus_checksum(tuple(chunks))
+    corpus_content = KnowledgeCorpus(
+        release_id=manifest.release_id,
+        release_version=manifest.release_version,
+        corpus_checksum=corpus_checksum,
+        chunks=tuple(chunks),
+    ).model_dump_json(indent=2) + "\n"
     corpus_sha256 = sha256(corpus_content.encode()).hexdigest()
     provenance = KnowledgeProvenance(
-        schema_version=1,
-        index_version=f"sha256:{corpus_sha256}",
+        schema_version=2,
+        release_id=manifest.release_id,
+        release_version=manifest.release_version,
+        corpus_checksum=corpus_checksum,
+        index_version=f"sha256:{corpus_checksum}",
         corpus_sha256=corpus_sha256,
         manifest_sha256=sha256(manifest_path.read_bytes()).hexdigest(),
         chunk_size=manifest.chunking.chunk_size,

@@ -1,4 +1,4 @@
-import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -7,8 +7,9 @@ from langchain_core.vectorstores import InMemoryVectorStore
 
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
-from app.knowledge_source import KnowledgeSourceInvalidError, load_knowledge_chunks
-from app.models import Priority, TicketInput
+from app.knowledge_source import KnowledgeChunk, KnowledgeSourceInvalidError, load_knowledge_chunks
+from app.models import Priority, SupportScope, TicketInput
+from tests.knowledge_access_support import retrieval_request, write_test_corpus
 
 
 class DeterministicTestEmbeddings(Embeddings):
@@ -30,25 +31,24 @@ class QueryAwareTestEmbeddings(Embeddings):
 @pytest.fixture
 def external_knowledge_path(tmp_path: Path) -> Path:
     knowledge_path = tmp_path / "authorized-knowledge.json"
-    knowledge_path.write_text(
-        json.dumps(
-            [
-                {
-                    "chunk_id": "external-login-runbook",
-                    "document_id": "external-identity-guide",
-                    "document_title": "Identity support runbook",
-                    "section": "Error ACME-LOGIN-42",
-                    "content": "Escalate ACME-LOGIN-42 with the tenant identifier.",
-                    "source_uri": "https://support.example.test/identity/login-42",
-                    "categories": ["ACCOUNT_ACCESS"],
-                    "keywords": ["ACME-LOGIN-42", "tenant identifier"],
-                    "document_version": "2026.08",
-                    "status": "PUBLISHED",
-                    "updated_at": "2026-08-24",
-                }
-            ]
+    write_test_corpus(
+        knowledge_path,
+        (
+            KnowledgeChunk(
+                chunk_id="external-login-runbook",
+                document_id="external-identity-guide",
+                document_title="Identity support runbook",
+                section="Error ACME-LOGIN-42",
+                content="Escalate ACME-LOGIN-42 with the tenant identifier.",
+                source_uri="https://support.example.test/identity/login-42",
+                categories=("ACCOUNT_ACCESS",),
+                keywords=("ACME-LOGIN-42", "tenant identifier"),
+                allowed_scopes=(SupportScope.ACCOUNT,),
+                document_version="2026.08",
+                status="PUBLISHED",
+                updated_at=date(2026, 8, 24),
+            ),
         ),
-        encoding="utf-8",
     )
     return knowledge_path
 
@@ -71,11 +71,7 @@ async def test_configured_knowledge_file_drives_retrieval(
 
     # When: retrieval runs against the configured source.
     hits = await retriever.search(
-        ticket,
-        "ACME-LOGIN-42 tenant identifier",
-        top_n=10,
-        top_k=3,
-        live=False,
+        retrieval_request(retriever, ticket, "ACME-LOGIN-42 tenant identifier")
     )
 
     # Then: repository demo chunks are not used.
@@ -91,7 +87,7 @@ async def test_external_knowledge_reaches_vector_retrieval(
     retriever = KnowledgeRetriever(
         Settings(ai_mode="mock", knowledge_path=external_knowledge_path)
     )
-    retriever._live_index._vector_store = InMemoryVectorStore.from_documents(
+    retriever._live_index._vector_stores[frozenset({SupportScope.ACCOUNT})] = InMemoryVectorStore.from_documents(
         [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
         DeterministicTestEmbeddings(),
     )
@@ -105,11 +101,13 @@ async def test_external_knowledge_reaches_vector_retrieval(
 
     # When: the live retrieval branch executes without a paid API call.
     hits = await retriever.search(
-        ticket,
-        "ACME-LOGIN-42 tenant identifier",
-        top_n=10,
-        top_k=3,
-        live=True,
+        retrieval_request(
+            retriever,
+            ticket,
+            "ACME-LOGIN-42 tenant identifier",
+            live=True,
+            scopes=(SupportScope.ACCOUNT,),
+        )
     )
 
     # Then: vector retrieval returns evidence from the external source.
@@ -160,7 +158,10 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
     )
 
     # When: the live vector index initializes its embedding store.
-    await retriever._live_index._get_vector_store()
+    await retriever._live_index._get_vector_store(
+        frozenset({SupportScope.ACCOUNT}),
+        retriever._chunks,
+    )
 
     # Then: the embedding client receives the independent endpoint.
     assert captured["base_url"] == "https://embedding.example.test/v1"
@@ -180,7 +181,7 @@ async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
             live_retrieval_min_score=0.35,
         )
     )
-    retriever._live_index._vector_store = InMemoryVectorStore.from_documents(
+    retriever._live_index._vector_stores[frozenset({SupportScope.ACCOUNT})] = InMemoryVectorStore.from_documents(
         [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
         QueryAwareTestEmbeddings(),
     )
@@ -194,11 +195,13 @@ async def test_live_retrieval_rejects_vector_matches_below_minimum_score(
 
     # When: live retrieval evaluates the unrelated query.
     hits = await retriever.search(
-        ticket,
-        "unrelated workflow",
-        top_n=10,
-        top_k=3,
-        live=True,
+        retrieval_request(
+            retriever,
+            ticket,
+            "unrelated workflow",
+            live=True,
+            scopes=(SupportScope.ACCOUNT,),
+        )
     )
 
     # Then: a low-confidence match is not exposed as evidence.
@@ -232,18 +235,24 @@ async def test_top_n_controls_local_candidate_pool_before_category_ranking() -> 
     )
 
     narrow_hits = await retriever.search(
+        retrieval_request(
+        retriever,
         ticket,
         "数据导出任务",
         top_n=1,
         top_k=1,
-        live=False,
+        scopes=(SupportScope.PRIVACY, SupportScope.TECHNICAL),
+        ),
     )
     wider_hits = await retriever.search(
+        retrieval_request(
+        retriever,
         ticket,
         "数据导出任务",
         top_n=2,
         top_k=1,
-        live=False,
+        scopes=(SupportScope.PRIVACY, SupportScope.TECHNICAL),
+        ),
     )
 
     assert narrow_hits[0].chunk_id == "chunk-export-04"
@@ -264,11 +273,11 @@ async def test_uncovered_category_does_not_use_unrelated_knowledge_as_evidence()
     )
 
     hits = await retriever.search(
-        ticket,
-        "很久以前删除的空间能否恢复 没有项目编号，也不确定删除日期和备份保留范围。",
-        top_n=10,
-        top_k=3,
-        live=False,
+        retrieval_request(
+            retriever,
+            ticket,
+            "很久以前删除的空间能否恢复 没有项目编号，也不确定删除日期和备份保留范围。",
+        )
     )
 
     assert hits == []
@@ -288,11 +297,11 @@ async def test_local_retrieval_rejects_generic_query_below_minimum_score() -> No
 
     # When: local retrieval evaluates the unsupported question.
     hits = await retriever.search(
-        ticket,
-        "通知设置咨询 想确认是否支持自定义提醒时间，但没有具体产品模块和处理流程。",
-        top_n=10,
-        top_k=3,
-        live=False,
+        retrieval_request(
+            retriever,
+            ticket,
+            "通知设置咨询 想确认是否支持自定义提醒时间，但没有具体产品模块和处理流程。",
+        )
     )
 
     # Then: weak lexical overlap is not exposed as evidence.

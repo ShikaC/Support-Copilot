@@ -15,7 +15,7 @@ from app.internal_auth import (
     InternalServiceAuthenticationError,
     InternalServiceAuthenticator,
 )
-from app.knowledge import KnowledgeRetriever
+from app.knowledge import KnowledgeReleaseMismatchError, KnowledgeRetriever
 from app.models import TRACE_ID_PATTERN, AnalyzeRequest, AnalyzeResponse
 from app.workflow import AnalysisWorkflow
 
@@ -167,6 +167,19 @@ async def request_validation_error(
         "Request validation failed.",
         request.state.trace_id,
         {"errors": errors},
+    )
+
+
+@app.exception_handler(KnowledgeReleaseMismatchError)
+async def knowledge_release_mismatch_error(
+    request: Request,
+    _exception: KnowledgeReleaseMismatchError,
+) -> JSONResponse:
+    return error_response(
+        409,
+        "KNOWLEDGE_RELEASE_MISMATCH",
+        "Requested knowledge release does not match the active corpus.",
+        request.state.trace_id,
     )
 
 

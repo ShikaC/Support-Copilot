@@ -5,7 +5,7 @@ import pytest
 
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
-from app.knowledge_source import KnowledgeSourceInvalidError
+from app.knowledge_source import KnowledgeChunk, KnowledgeSourceInvalidError, calculate_corpus_checksum
 
 
 def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
@@ -20,11 +20,25 @@ def test_duplicate_chunk_ids_are_rejected(tmp_path: Path) -> None:
         "source_uri": "https://support.example.test/login",
         "categories": ["ACCOUNT_ACCESS"],
         "keywords": ["login"],
+        "allowed_scopes": ["ACCOUNT"],
         "document_version": "2026.08",
         "status": "PUBLISHED",
         "updated_at": "2026-08-24",
     }
-    knowledge_path.write_text(json.dumps([chunk, chunk]), encoding="utf-8")
+    parsed_chunk = KnowledgeChunk.model_validate(chunk)
+    knowledge_path.write_text(
+        json.dumps(
+            {
+                "release_id": "support-kb-test",
+                "release_version": 1,
+                "corpus_checksum": calculate_corpus_checksum(
+                    (parsed_chunk, parsed_chunk)
+                ),
+                "chunks": [chunk, chunk],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     # When / Then: the trust boundary rejects ambiguous evidence identifiers.
     with pytest.raises(

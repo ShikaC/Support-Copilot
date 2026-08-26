@@ -24,6 +24,7 @@ import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -34,6 +35,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import com.cyagent.supportcopilot.common.TraceId;
+import com.cyagent.supportcopilot.knowledge.KnowledgeAccessException;
 import com.cyagent.supportcopilot.ticket.Ticket;
 
 @Component
@@ -45,6 +47,7 @@ public class AiServiceClient {
 	private final RestClient restClient;
 	private final String internalServiceToken;
 	private final MeterRegistry meterRegistry;
+	private final KnowledgeAccessProvider knowledgeAccessProvider;
 	private final Retry retry;
 	private final CircuitBreaker circuitBreaker;
 	private final Bulkhead bulkhead;
@@ -52,10 +55,12 @@ public class AiServiceClient {
 	private final ExecutorService deadlineExecutor = Executors.newVirtualThreadPerTaskExecutor();
 	private final ThreadLocal<String> retryTraceId = new ThreadLocal<>();
 
+	@Autowired
 	public AiServiceClient(
 		AiServiceProperties properties,
 		@Value("${support-copilot.security.internal-service-token}") String internalServiceToken,
-		MeterRegistry meterRegistry
+		MeterRegistry meterRegistry,
+		KnowledgeAccessProvider knowledgeAccessProvider
 	) {
 		if (internalServiceToken.isBlank()) {
 			throw new IllegalStateException(
@@ -64,6 +69,7 @@ public class AiServiceClient {
 		}
 		this.internalServiceToken = internalServiceToken;
 		this.meterRegistry = meterRegistry;
+		this.knowledgeAccessProvider = knowledgeAccessProvider;
 		this.overallTimeoutMs = properties.timeoutMs();
 		var timeout = Duration.ofMillis(properties.timeoutMs() + 1_000);
 		var httpClient = HttpClient.newBuilder()
@@ -102,9 +108,23 @@ public class AiServiceClient {
 			.build());
 	}
 
+	AiServiceClient(
+		AiServiceProperties properties,
+		String internalServiceToken,
+		MeterRegistry meterRegistry
+	) {
+		this(
+			properties,
+			internalServiceToken,
+			meterRegistry,
+			() -> new KnowledgeAccess("release-test", 1, "a".repeat(64), java.util.List.of())
+		);
+	}
+
 	public AnalysisResponse analyze(Ticket ticket, String traceId) {
 		var timer = Timer.start(meterRegistry);
-		var future = deadlineExecutor.submit(() -> executeProtected(ticket, traceId));
+		var knowledgeAccess = knowledgeAccessProvider.currentAccess();
+		var future = deadlineExecutor.submit(() -> executeProtected(ticket, traceId, knowledgeAccess));
 		try {
 			var response = future.get(overallTimeoutMs, TimeUnit.MILLISECONDS);
 			recordOutcome(timer, "success", providerMode(response));
@@ -127,10 +147,10 @@ public class AiServiceClient {
 		}
 	}
 
-	private AnalysisResponse executeProtected(Ticket ticket, String traceId) {
+	private AnalysisResponse executeProtected(Ticket ticket, String traceId, KnowledgeAccess knowledgeAccess) {
 		retryTraceId.set(traceId);
 		try {
-			Supplier<AnalysisResponse> call = () -> invoke(ticket, traceId);
+			Supplier<AnalysisResponse> call = () -> invoke(ticket, traceId, knowledgeAccess);
 			call = Retry.decorateSupplier(retry, call);
 			call = CircuitBreaker.decorateSupplier(circuitBreaker, call);
 			call = Bulkhead.decorateSupplier(bulkhead, call);
@@ -179,7 +199,7 @@ public class AiServiceClient {
 		return new AiServiceContractException("Unexpected AI boundary failure.", cause);
 	}
 
-	private AnalysisResponse invoke(Ticket ticket, String traceId) {
+	private AnalysisResponse invoke(Ticket ticket, String traceId, KnowledgeAccess knowledgeAccess) {
 		try {
 			var response = restClient.post()
 				.uri("/analyze")
@@ -196,7 +216,8 @@ public class AiServiceClient {
 						ticket.getCategory(),
 						ticket.getPriority()
 					),
-					new AnalyzeOptions(10, 3, AnalysisPolicy.VERSION)
+					new AnalyzeOptions(10, 3, AnalysisPolicy.VERSION),
+					knowledgeAccess
 				))
 				.retrieve()
 				.body(AnalysisResponse.class);
@@ -224,6 +245,9 @@ public class AiServiceClient {
 				"transient_429",
 				exception
 			);
+		} catch (HttpClientErrorException.Conflict exception) {
+			recordAttempt("knowledge_release_mismatch");
+			throw KnowledgeAccessException.mismatch();
 		} catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
 			recordAttempt("authentication_error");
 			throw new AiServiceAuthenticationException(exception);
@@ -316,7 +340,12 @@ public class AiServiceClient {
 		deadlineExecutor.shutdownNow();
 	}
 
-	private record AnalyzeRequest(String traceId, TicketInput ticket, AnalyzeOptions options) {
+	private record AnalyzeRequest(
+		String traceId,
+		TicketInput ticket,
+		AnalyzeOptions options,
+		KnowledgeAccess knowledgeAccess
+	) {
 	}
 
 	private record TicketInput(

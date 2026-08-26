@@ -1,4 +1,4 @@
-import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -7,7 +7,9 @@ from langchain_core.vectorstores import InMemoryVectorStore
 
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
-from app.models import Priority, TicketInput
+from app.knowledge_source import KnowledgeChunk
+from app.models import Priority, SupportScope, TicketInput
+from tests.knowledge_access_support import retrieval_request, write_test_corpus
 
 
 class CapturingTestEmbeddings(Embeddings):
@@ -37,31 +39,30 @@ async def test_live_embedding_requests_redact_sensitive_data(
     )
     invalid_card_like_order = "1234 5678 9012 3456"
     knowledge_path = tmp_path / "sensitive-knowledge.json"
-    knowledge_path.write_text(
-        json.dumps(
-            [
-                {
-                    "chunk_id": "sensitive-login-runbook",
-                    "document_id": "sensitive-identity-guide",
-                    "document_title": "Identity support runbook",
-                    "section": "Escalation contacts",
-                    "content": " ".join((*sensitive_values, invalid_card_like_order)),
-                    "source_uri": "https://support.example.test/identity/sensitive",
-                    "categories": ["ACCOUNT_ACCESS"],
-                    "keywords": ["login"],
-                    "document_version": "2026.08",
-                    "status": "PUBLISHED",
-                    "updated_at": "2026-08-24",
-                }
-            ]
+    write_test_corpus(
+        knowledge_path,
+        (
+            KnowledgeChunk(
+                chunk_id="sensitive-login-runbook",
+                document_id="sensitive-identity-guide",
+                document_title="Identity support runbook",
+                section="Escalation contacts",
+                content=" ".join((*sensitive_values, invalid_card_like_order)),
+                source_uri="https://support.example.test/identity/sensitive",
+                categories=("ACCOUNT_ACCESS",),
+                keywords=("login",),
+                allowed_scopes=(SupportScope.ACCOUNT,),
+                document_version="2026.08",
+                status="PUBLISHED",
+                updated_at=date(2026, 8, 24),
+            ),
         ),
-        encoding="utf-8",
     )
     retriever = KnowledgeRetriever(
         Settings(ai_mode="mock", knowledge_path=knowledge_path)
     )
     embeddings = CapturingTestEmbeddings()
-    retriever._live_index._vector_store = InMemoryVectorStore.from_documents(
+    retriever._live_index._vector_stores[frozenset({SupportScope.ACCOUNT})] = InMemoryVectorStore.from_documents(
         [retriever._live_index._as_document(chunk) for chunk in retriever._chunks],
         embeddings,
     )
@@ -75,11 +76,13 @@ async def test_live_embedding_requests_redact_sensitive_data(
 
     # When: the live vector branch sends documents and a query to its embedding client.
     await retriever.search(
-        ticket,
-        " ".join((*sensitive_values, invalid_card_like_order)),
-        top_n=10,
-        top_k=3,
-        live=True,
+        retrieval_request(
+            retriever,
+            ticket,
+            " ".join((*sensitive_values, invalid_card_like_order)),
+            live=True,
+            scopes=(SupportScope.ACCOUNT,),
+        )
     )
 
     # Then: external embedding inputs contain markers, never the sensitive values.
