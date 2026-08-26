@@ -8,7 +8,7 @@ Java 和 Python 的独立 Task 8 切片最初都能通过测试，但 Java 使�
 
 Java 以 `DRAFT -> APPROVED -> PUBLISHED -> ARCHIVED` 管理 release。release id、release version、corpus checksum、允许范围和创建信息不可更新；审批、发布和回滚要求 `expectedVersion`。发布/回滚在一个事务内锁定唯一 active pointer、切换 release 状态并写受控审计事件，审计失败会回滚全部状态。
 
-Java 分析请求只从 JWT `support_scopes` 读取白名单范围，再与 active release 范围求交集。缺失、空值和未知范围都不能扩大权限，浏览器正文或 header 不能提供范围。Python 先校验 release id/version/checksum，再在本地打分、向量文档构建和 Prompt 生成前过滤片段；无范围时不会构造 Embedding provider 或调用生成 provider。
+Java 分析请求和 `GET /api/knowledge/search` 都只从 JWT `support_scopes` 读取白名单范围，再与 active release 范围求交集。缺失、空值和未知范围都不能扩大权限，浏览器 query、正文或 header 不能提供范围。Java search 为每个目录片段保留内部 `KnowledgeScope` 元数据，先过滤再计分和排序，响应不暴露内部 allowlist；active release 不可用或不一致时保留既有 409 失败关闭。Python 先校验 release id/version/checksum，再在本地打分、向量文档构建和 Prompt 生成前过滤片段；无范围时不会构造 Embedding provider 或调用生成 provider。
 
 基线统一为：
 
@@ -20,7 +20,7 @@ checksum 对排序键、紧凑编码的 chunks JSON 计算 SHA-256，不包含 r
 
 ## 验证
 
-红阶段真实 loopback 观察到 Java active release 是旧 identity，Python 收到已认证的 `/analyze` 后返回 409，Java 保留稳定 `KNOWLEDGE_RELEASE_MISMATCH`，没有生成 fallback。修复后，隔离 test-profile HTTP 验证：BILLING caller 返回 `200 SUCCEEDED` 并有证据/引用；缺少 scope 返回 `200 FALLBACK` 且证据/引用均为零；匿名创建 release 返回 401，agent 创建返回 403；激活未部署 release 后分析返回非 fallback 409；回滚基线后恢复 `200 SUCCEEDED`。自动化命令与日志见 `.omo/evidence/task-8-enterprise-minimum-pilot.md`。
+红阶段真实 loopback 观察到 Java active release 是旧 identity，Python 收到已认证的 `/analyze` 后返回 409，Java 保留稳定 `KNOWLEDGE_RELEASE_MISMATCH`，没有生成 fallback。修复后，隔离 test-profile HTTP 验证：BILLING caller 返回 `200 SUCCEEDED` 并有证据/引用；缺少 scope 返回 `200 FALLBACK` 且证据/引用均为零；Java search 的缺失 scope 返回 `[]`，每种规范 scope 只能返回所属目录片段，碰撞 query、document id 或伪造范围 header 无法扩大结果；匿名 search 返回 401，删除 active pointer 时 search 返回既有 409；匿名创建 release 返回 401，agent 创建返回 403；激活未部署 release 后分析返回非 fallback 409；回滚基线后恢复 `200 SUCCEEDED`。自动化命令与日志见 `.omo/evidence/task-8-enterprise-minimum-pilot.md`。
 
 ## 限制
 
