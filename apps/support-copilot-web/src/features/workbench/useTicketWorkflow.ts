@@ -151,6 +151,6 @@ export function useTicketWorkflow({ auth, client }: TicketWorkflowOptions) {
     tickets, metrics, metricsError, selectedTicket, selectedTicketId, setSelectedTicketId,
     apiState, analyzingTicketIds, assigneeTicketIds, toast, showToast, runAnalysis,
     assignSelectedTicket: () => updateAssignee(false), unassignSelectedTicket: () => updateAssignee(true),
-    recordReview,
+    recordReview, reconcileTicket,
   }
 }

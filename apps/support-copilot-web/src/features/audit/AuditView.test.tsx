@@ -44,3 +44,27 @@ it('appends a cursor page and preserves the outbound pagination contract', async
     expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer synthetic-test-token-audit' }) }),
   ))
 })
+
+it('renders a ticket-unassigned ASSIGNEE audit event through the runtime client boundary', async () => {
+  // Given: Java serializes the actual AuditChangedField enum value for an unassignment.
+  const unassignedEvent = {
+    ...auditEventPayload,
+    id: 'audit-unassign-1',
+    action: 'TICKET_UNASSIGNED',
+    targetType: 'TICKET',
+    targetId: 'ticket-10042',
+    metadata: { changedFields: ['ASSIGNEE'] },
+  }
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({
+    items: [unassignedEvent],
+    nextCursor: null,
+  })))))
+
+  // When: the rendered audit workflow loads that backend payload through ApiClient.
+  render(<AuditView client={securedClient()} />)
+
+  // Then: strict parsing accepts the wire contract and the page remains available.
+  expect(await screen.findByText('trace-audit-1')).toBeTruthy()
+  expect(screen.getByText('取消负责人')).toBeTruthy()
+  expect(screen.queryByText('审计记录暂不可用')).toBeNull()
+})

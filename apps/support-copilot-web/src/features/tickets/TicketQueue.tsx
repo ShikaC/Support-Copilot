@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Empty, Input, Segmented, Select } from 'antd'
 import { Search } from 'lucide-react'
 import type { Ticket } from '../../types'
-import { priorityLabels, secondsUntil, slaLabel } from '../shared/presentation'
+import { priorityLabels, secondsUntil, slaLabel } from '../shared/presentationData'
 
 type TicketQueueProps = {
   readonly tickets: readonly Ticket[]

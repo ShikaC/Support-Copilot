@@ -3,7 +3,8 @@ import { Button, Empty, Spin, Tag } from 'antd'
 import type { ApiClient } from '../../services/api'
 import { ApiError, ApiRequestError } from '../../services/api'
 import type { AuditEvent } from '../../services/resourceSchemas'
-import { formatDate, UnavailablePanel } from '../shared/presentation'
+import { UnavailablePanel } from '../shared/presentation'
+import { formatDate } from '../shared/presentationData'
 
 type AuditState =
   | { readonly kind: 'loading' }

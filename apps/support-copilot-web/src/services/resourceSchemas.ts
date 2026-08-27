@@ -30,7 +30,7 @@ export const knowledgeReleaseSchema = z.strictObject({
 export const knowledgeReleaseListSchema = z.array(knowledgeReleaseSchema)
 
 const ticketMetadataSchema = z.strictObject({
-  changedFields: z.array(z.enum(['STATUS', 'PRIORITY', 'CATEGORY', 'ASSIGNEE_NAME', 'CREATED'])),
+  changedFields: z.array(z.enum(['STATUS', 'PRIORITY', 'CATEGORY', 'ASSIGNEE', 'CREATED'])),
 })
 const analysisMetadataSchema = z.strictObject({
   mode: z.enum(['FALLBACK', 'LIVE', 'MOCK']),

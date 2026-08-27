@@ -1,7 +1,7 @@
 import { Progress } from 'antd'
 import { AlertTriangle, Check, Clock3, RefreshCw } from 'lucide-react'
 import type { AnalysisResult } from '../../types'
-import { categoryLabels, priorityLabels, sentimentLabels } from '../shared/presentation'
+import { categoryLabels, priorityLabels, sentimentLabels } from '../shared/presentationData'
 
 export function WorkflowPanel({ analysis }: { readonly analysis: AnalysisResult }) {
   return <div className="analysis-content">

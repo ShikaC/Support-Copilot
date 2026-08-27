@@ -1,21 +1,24 @@
 import { Empty, Tabs, Tooltip } from 'antd'
 import { Clock3, RefreshCw } from 'lucide-react'
+import type { ApiClient } from '../../services/api'
 import type { AnalysisReview, Ticket } from '../../types'
-import { formatTime } from '../shared/presentation'
+import { formatTime } from '../shared/presentationData'
 import { EvidencePanel } from './EvidencePanel'
 import { ReplyReview } from './ReplyReview'
 import { WorkflowPanel } from './WorkflowPanel'
 
 type AnalysisColumnProps = {
   readonly ticket: Ticket
+  readonly client: ApiClient
   readonly analyzing: boolean
   readonly onAnalyze: () => void
   readonly onReviewSaved: (review: AnalysisReview) => void
+  readonly onRefreshTicket: (ticketId: string) => Promise<void>
   readonly onToast: (message: string, kind?: 'success' | 'error') => void
 }
 
 export function AnalysisColumn(props: AnalysisColumnProps) {
-  const { ticket, analyzing, onAnalyze, onReviewSaved, onToast } = props
+  const { ticket, client, analyzing, onAnalyze, onReviewSaved, onRefreshTicket, onToast } = props
   const analysis = ticket.latestAnalysis
   if (analyzing) return <section className="workspace-column analysis-column" aria-label="AI 分析">
     <div className="panel-header"><div className="panel-heading"><h2 className="panel-title">辅助分析</h2><div className="panel-meta">正在执行知识检索与风险检查</div></div></div>
@@ -32,7 +35,7 @@ export function AnalysisColumn(props: AnalysisColumnProps) {
     <div className="analysis-scroll"><Tabs className="analysis-tabs" defaultActiveKey="workflow" items={[
       { key: 'workflow', label: '处理轨迹', children: <WorkflowPanel analysis={analysis} /> },
       { key: 'evidence', label: `知识依据 ${analysis.retrieval.hits.length}`, children: <EvidencePanel analysis={analysis} /> },
-      { key: 'reply', label: '回复建议', children: <ReplyReview ticket={ticket} analysis={analysis} onReviewSaved={onReviewSaved} onToast={onToast} /> },
+      { key: 'reply', label: '回复建议', children: <ReplyReview ticket={ticket} analysis={analysis} client={client} onRefreshTicket={onRefreshTicket} onReviewSaved={onReviewSaved} onToast={onToast} /> },
     ]} /></div>
   </section>
 }

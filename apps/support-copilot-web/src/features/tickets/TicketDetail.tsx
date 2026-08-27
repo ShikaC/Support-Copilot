@@ -1,7 +1,7 @@
 import { Button, Spin, Tag } from 'antd'
 import { Play, UserRound, UserRoundX } from 'lucide-react'
 import type { Ticket } from '../../types'
-import { categoryLabels, formatDate, formatTicketDescription, formatTime, slaLabel, statusColors, statusLabels } from '../shared/presentation'
+import { categoryLabels, formatDate, formatTicketDescription, formatTime, slaLabel, statusColors, statusLabels } from '../shared/presentationData'
 
 type TicketDetailProps = {
   readonly ticket: Ticket

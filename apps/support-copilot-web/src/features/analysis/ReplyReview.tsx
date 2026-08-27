@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, History, Link2, XCircle } from 'lucide-react'
 import { Button, Input, Tooltip } from 'antd'
 
-import {
-  ApiError,
-  fetchAnalysisReviews,
-  rejectAnalysisReply,
-  reviewAnalysisReply,
-} from '../../services/api'
+import { ApiError, type ApiClient } from '../../services/api'
 import type { AnalysisResult, AnalysisReview, Ticket } from '../../types'
 import { AnalysisReviewHistory } from './AnalysisReviewHistory'
 import { RejectReviewDialog } from './RejectReviewDialog'
@@ -15,6 +10,8 @@ import { RejectReviewDialog } from './RejectReviewDialog'
 type ReplyReviewProps = {
   readonly ticket: Ticket
   readonly analysis: AnalysisResult
+  readonly client: ApiClient
+  readonly onRefreshTicket: (ticketId: string) => Promise<void>
   readonly onReviewSaved: (review: AnalysisReview) => void
   readonly onToast: (message: string, kind?: 'success' | 'error') => void
 }
@@ -51,7 +48,7 @@ function reviewerCopy(review: AnalysisReview) {
     : review.reviewerLabel
 }
 
-export function ReplyReview({ ticket, analysis, onReviewSaved, onToast }: ReplyReviewProps) {
+export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onReviewSaved, onToast }: ReplyReviewProps) {
   const initialReview = matchingReview(analysis, ticket.latestReview ?? null)
   const [reply, setReply] = useState(() => reviewedReply(analysis, initialReview))
   const [review, setReview] = useState<AnalysisReview | null>(initialReview)
@@ -110,9 +107,12 @@ export function ReplyReview({ ticket, analysis, onReviewSaved, onToast }: ReplyR
     setSubmitting(true)
     setErrorMessage(null)
     try {
-      const savedReview = await reviewAnalysisReply(ticket.id, analysis.id, normalizedReply)
+      const savedReview = await client.reviewAnalysisReply(ticket.id, analysis.id, normalizedReply)
       applySavedReview(savedReview, requestReviewKey)
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.code === 'ANALYSIS_REVIEW_STALE') {
+        await onRefreshTicket(ticket.id)
+      }
       if (activeReviewKey.current !== requestReviewKey) return
       const message =
         error instanceof ApiError ? apiReviewErrorMessage(error) : '服务不可用，审核记录未保存'
@@ -130,9 +130,12 @@ export function ReplyReview({ ticket, analysis, onReviewSaved, onToast }: ReplyR
     setSubmitting(true)
     setRejectErrorMessage(null)
     try {
-      const savedReview = await rejectAnalysisReply(ticket.id, analysis.id, reason)
+      const savedReview = await client.rejectAnalysisReply(ticket.id, analysis.id, reason)
       if (applySavedReview(savedReview, requestReviewKey)) setRejectDialogOpen(false)
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.code === 'ANALYSIS_REVIEW_STALE') {
+        await onRefreshTicket(ticket.id)
+      }
       if (activeReviewKey.current !== requestReviewKey) return
       const message =
         error instanceof ApiError ? apiReviewErrorMessage(error) : '服务不可用，审核记录未保存'
@@ -152,7 +155,7 @@ export function ReplyReview({ ticket, analysis, onReviewSaved, onToast }: ReplyR
     setHistoryLoading(true)
     setHistoryErrorMessage(null)
     try {
-      const reviews = await fetchAnalysisReviews(ticket.id, analysis.id)
+      const reviews = await client.fetchAnalysisReviews(ticket.id, analysis.id)
       if (activeReviewKey.current !== requestReviewKey) return
       setReviewHistory(reviews)
       setHistoryLoaded(true)

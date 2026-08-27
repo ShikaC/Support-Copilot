@@ -1,7 +1,8 @@
 import { Tag } from 'antd'
 import ReactECharts from 'echarts-for-react'
 import type { Metrics, Ticket } from '../../types'
-import { slaLabel, statusLabels, UnavailablePanel } from '../shared/presentation'
+import { UnavailablePanel } from '../shared/presentation'
+import { slaLabel, statusLabels } from '../shared/presentationData'
 import { StatusStrip } from '../tickets/StatusStrip'
 
 export function OverviewView({ metrics, tickets }: { readonly metrics: Metrics | null; readonly tickets: readonly Ticket[] }) {

@@ -1,4 +1,5 @@
 import type { AnalysisReview, Metrics, Ticket } from '../../types'
+import type { ApiClient } from '../../services/api'
 import { AnalysisColumn } from '../analysis/AnalysisColumn'
 import { TicketDetail } from '../tickets/TicketDetail'
 import { TicketQueue } from '../tickets/TicketQueue'
@@ -8,11 +9,13 @@ import { UnavailablePanel } from '../shared/presentation'
 type WorkbenchViewProps = {
   readonly tickets: readonly Ticket[]
   readonly selectedTicket: Ticket | null
+  readonly client: ApiClient
   readonly metrics: Metrics | null
   readonly analyzing: boolean
   readonly onSelect: (ticketId: string) => void
   readonly onAnalyze: () => void
   readonly onReviewSaved: (review: AnalysisReview) => void
+  readonly onRefreshTicket: (ticketId: string) => Promise<void>
   readonly onAssign: () => void
   readonly onUnassign: () => void
   readonly assigneeUpdating: boolean
@@ -25,6 +28,6 @@ export function WorkbenchView(props: WorkbenchViewProps) {
   return <div className="view-enter"><StatusStrip metrics={metrics} /><div className="workspace">
     <TicketQueue tickets={tickets} selectedTicketId={selectedTicket.id} onSelect={props.onSelect} />
     <TicketDetail ticket={selectedTicket} analyzing={props.analyzing} onAnalyze={props.onAnalyze} onAssign={props.onAssign} onUnassign={props.onUnassign} assigneeUpdating={props.assigneeUpdating} />
-    <AnalysisColumn ticket={selectedTicket} analyzing={props.analyzing} onAnalyze={props.onAnalyze} onReviewSaved={props.onReviewSaved} onToast={props.onToast} />
+    <AnalysisColumn ticket={selectedTicket} client={props.client} analyzing={props.analyzing} onAnalyze={props.onAnalyze} onReviewSaved={props.onReviewSaved} onRefreshTicket={props.onRefreshTicket} onToast={props.onToast} />
   </div></div>
 }

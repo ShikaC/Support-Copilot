@@ -2,6 +2,8 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
+import { createAuthSession } from '../../auth/authSession'
+import { createApiClient } from '../../services/api'
 import { analysisResultSchema, ticketResponseSchema } from '../../services/apiSchemas'
 import { analysisResponsePayload, analysisReviewPayload, ticketResponsePayload } from '../../test/apiFixtures'
 import { ReplyReview } from './ReplyReview'
@@ -11,7 +13,10 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function renderedReview() {
+function renderedReview(options: {
+  readonly client?: ReturnType<typeof createApiClient>
+  readonly onRefreshTicket?: (ticketId: string) => Promise<void>
+} = {}) {
   class TestResizeObserver {
     observe() {}
     unobserve() {}
@@ -22,7 +27,10 @@ function renderedReview() {
   const ticket = ticketResponseSchema.parse({ ...ticketResponsePayload, latestAnalysis: analysis, version: 4 })
   const onReviewSaved = vi.fn()
   const onToast = vi.fn()
-  render(<ReplyReview ticket={ticket} analysis={analysis} onReviewSaved={onReviewSaved} onToast={onToast} />)
+  const client = options.client ?? createApiClient({
+    auth: createAuthSession({ mode: 'demo' }), baseUrl: '', timeoutMs: 1000,
+  })
+  render(<ReplyReview ticket={ticket} analysis={analysis} client={client} onRefreshTicket={options.onRefreshTicket ?? vi.fn()} onReviewSaved={onReviewSaved} onToast={onToast} />)
   return { analysis, onReviewSaved }
 }
 
@@ -83,4 +91,42 @@ it('requires and records a rejection reason', async () => {
   expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject', expect.objectContaining({
     method: 'POST', body: JSON.stringify({ reason: '证据不足' }),
   }))
+})
+
+it('uses the injected secured client and refreshes the stale ticket before showing retry', async () => {
+  // Given: a secured application client and a review rejected because the persisted ticket moved.
+  const auth = createAuthSession({ mode: 'secured' })
+  auth.setAccessToken('review-stale-token')
+  const client = createApiClient({ auth, baseUrl: '', timeoutMs: 1000 })
+  const staleError = {
+    code: 'ANALYSIS_REVIEW_STALE',
+    message: '工单或分析结果已经变化，请刷新后重新审核。',
+    traceId: 'trace-review-stale',
+    timestamp: '2026-08-27T00:00:00Z',
+    details: { analysisId: 'analysis-1', latestAnalysisId: 'analysis-2' },
+  }
+  const fetchMock = vi.fn((input: string | URL | Request) => {
+    const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    if (path.endsWith('/reviews')) return Promise.resolve(new Response(JSON.stringify(staleError), { status: 409 }))
+    if (path === '/api/tickets/ticket-10042') return Promise.resolve(new Response(JSON.stringify(ticketResponsePayload)))
+    return Promise.reject(new TypeError(`Unexpected request: ${path}`))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  const onRefreshTicket = vi.fn((ticketId: string) => client.fetchTicket(ticketId).then(() => undefined))
+  renderedReview({ client, onRefreshTicket })
+
+  // When: the reviewer records an obsolete reply.
+  fireEvent.click(screen.getByRole('button', { name: /记录审核/ }))
+
+  // Then: both command and reconciliation use the injected JWT client before retry is exposed.
+  expect((await screen.findByRole('alert')).textContent).toContain('工单或分析已更新，请刷新后重新审核')
+  expect(onRefreshTicket).toHaveBeenCalledWith('ticket-10042')
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+    '/api/tickets/ticket-10042/analyses/analysis-1/reviews',
+    expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer review-stale-token' }) }),
+  ))
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+    '/api/tickets/ticket-10042',
+    expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer review-stale-token' }) }),
+  ))
 })
