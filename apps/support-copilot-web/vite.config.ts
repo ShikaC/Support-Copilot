@@ -1,4 +1,5 @@
-import { defineConfig, type ProxyOptions } from 'vite'
+import { defineConfig } from 'vitest/config'
+import type { ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const apiTarget = process.env.VITE_DEV_API_TARGET ?? 'http://localhost:8080'
@@ -20,5 +21,10 @@ export default defineConfig({
   },
   preview: {
     proxy: apiProxy,
+  },
+  test: {
+    // Serialize rendered files that share process-global JSDOM shims while keeping a bounded timeout.
+    fileParallelism: false,
+    testTimeout: 10_000,
   },
 })
