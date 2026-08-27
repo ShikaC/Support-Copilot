@@ -21,3 +21,7 @@ cd ../support-copilot-api
 ```
 
 正式 live 受两次外部阻塞规则约束。机器数据集生成成功后，真实 reviewer 完成 factual-support labels 前 publishable gate仍暂停。本轮不产生生产准确率、成本、性能或 SLO 结论，不提交 provider payload、密钥、live reports 或 embedding runtime artifacts。
+
+## 实际运行结果
+
+`be9ac60` 上构建并激活真实 1024-dimension artifact，单工单 cross-service live gate 成功。第二次完整运行生成 4-case ignored report：1 live success、3 `invalid_model_response` fallbacks、0/4 human reviewed，machine gate 为 `machine-gate-failed`。报告中的原始 no-evidence success 汇总被判定为误增并废弃；`3e59a07` 增加回归并要求无证据成功必须是明确的 `insufficient_evidence` fallback。两次外部尝试已用完，没有第三次调用，因此当前不能声称 publishable dataset success。

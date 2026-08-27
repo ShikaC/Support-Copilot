@@ -467,6 +467,8 @@ cd services/support-copilot-ai
 
 `factual_support` 只允许 `SUPPORTED/PARTIAL/UNSUPPORTED/NOT_REVIEWED`，机器不能填写前三项。没有明确可核查 pricing source 时 cost 保持 `null`，不得估算。Java 可将 `EVALUATION_REPORT_PATH` 指向忽略的 live 报告；质量页比例只表示该 dataset/run 的评估结果，不是生产准确率或 SLO。
 
+2026-08-27 的 Task 10 bounded live 运行在提交 `be9ac608d58d83dff2a95f8284229ad081bb7bb8` 生成了 4-case 报告，但只有 1 case 为 live success，3 case 因 `invalid_model_response` 进入 fallback，机器门禁失败，人工标签均为 `NOT_REVIEWED`。运行还暴露并修复了 no-evidence rate 误增问题（`3e59a07`）；按两次尝试规则没有对修复提交进行第三次外部调用，因此该报告不能作为当前提交的 publishable live success 或质量数字。
+
 ### 自动化 CI
 
 GitHub Actions 会在每次 `push` 和 Pull Request 时分别验证 Python AI 服务、Java 业务 API 和 React 前端。
