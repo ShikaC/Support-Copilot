@@ -2,6 +2,15 @@ import * as z from 'zod'
 
 import { analysisReviewSchema } from './analysisReviewSchema'
 
+export {
+  auditEventPageSchema,
+  auditEventSchema,
+  knowledgeHitListSchema,
+  knowledgeHitSchema,
+  knowledgeReleaseListSchema,
+  knowledgeReleaseSchema,
+} from './resourceSchemas'
+
 export { analysisReviewListSchema, analysisReviewSchema } from './analysisReviewSchema'
 
 export const FALLBACK_REASONS = [

@@ -46,6 +46,7 @@ it('reloads and reconciles the affected ticket after a stale assignment update',
             code: 'VERSION_CONFLICT',
             message: '工单已被其他操作更新，本次操作基于旧版本，未保存。',
             traceId: 'trace-stale-assignee',
+            timestamp: '2026-08-27T00:00:00Z',
             details: { ticketId: 'ticket-10042', expectedVersion: 4, currentVersion: 5 },
           }),
           { status: 409 },
@@ -106,6 +107,7 @@ it('sends a versioned PATCH and reconciles a stale real-ticket assignment', asyn
             code: 'VERSION_CONFLICT',
             message: '工单已被其他操作更新，本次操作基于旧版本，未保存。',
             traceId: 'trace-stale-assignment',
+            timestamp: '2026-08-27T00:00:00Z',
             details: { ticketId: 'ticket-10042', expectedVersion: 4, currentVersion: 5 },
           }),
           { status: 409 },
@@ -128,9 +130,10 @@ it('sends a versioned PATCH and reconciles a stale real-ticket assignment', asyn
     '工单已被其他操作更新，请刷新后再更新负责人',
   )
   expect(await screen.findByText('并发负责人')).toBeTruthy()
-  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', {
+  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', expect.objectContaining({
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assigneeName: '演示管理员', expectedVersion: 4 }),
-  })
+    signal: expect.any(AbortSignal),
+  }))
 })

@@ -20,14 +20,15 @@ it('posts the reviewed reply to the explicit analysis review command', async () 
   // Then: the command path, content, and typed persisted result are preserved.
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/tickets/ticket-10042/analyses/analysis-1/reviews',
-    {
+    expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ replyContent: '修改后的回复' }),
       headers: {
         'Content-Type': 'application/json',
         'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
       },
-    },
+      signal: expect.any(AbortSignal),
+    }),
   )
   expect(review).toMatchObject({
     id: 'review-1',
@@ -44,6 +45,7 @@ it('preserves a stale analysis review conflict', async () => {
         code: 'ANALYSIS_REVIEW_STALE',
         message: '工单或分析结果已经变化，请刷新后重新审核。',
         traceId: 'trace-review-conflict',
+        timestamp: '2026-08-27T00:00:00Z',
         details: { analysisId: 'analysis-old', latestAnalysisId: 'analysis-latest' },
       }),
       { status: 409 },
@@ -86,14 +88,15 @@ it('posts a required reason when rejecting an analysis suggestion', async () => 
   // Then: the rejection command and typed result remain explicit.
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/tickets/ticket-10042/analyses/analysis-1/reviews/reject',
-    {
+    expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ reason: '证据不足，需要人工重新起草' }),
       headers: {
         'Content-Type': 'application/json',
         'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
       },
-    },
+      signal: expect.any(AbortSignal),
+    }),
   )
   expect(review).toMatchObject({
     id: 'review-rejected',
@@ -120,7 +123,10 @@ it('fetches the complete review history through the runtime contract', async () 
 
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/tickets/ticket-10042/analyses/analysis-1/reviews',
-    { headers: { 'Content-Type': 'application/json' } },
+    expect.objectContaining({
+      headers: { 'Content-Type': 'application/json' },
+      signal: expect.any(AbortSignal),
+    }),
   )
   expect(reviews.map((review) => review.action)).toEqual(['REJECTED', 'EDITED'])
 })

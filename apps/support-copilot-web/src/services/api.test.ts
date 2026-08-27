@@ -22,13 +22,14 @@ it('posts the selected ticket id to the analysis endpoint', async () => {
 
   // Then: 请求必须携带同一个工单编号，并使用 POST 方法。
   expect(fetchMock).toHaveBeenCalledOnce()
-  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042/analyze', {
+  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042/analyze', expect.objectContaining({
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
     },
-  })
+    signal: expect.any(AbortSignal),
+  }))
 })
 
 it('shares one request while the same ticket analysis is in flight', async () => {
@@ -94,7 +95,10 @@ it('allows retry after the shared request fails', async () => {
   vi.stubGlobal('fetch', fetchMock)
 
   // When: the user retries the same ticket after the failure is observed.
-  await expect(analyzeTicket('ticket-10042')).rejects.toThrow('simulated network failure')
+  await expect(analyzeTicket('ticket-10042')).rejects.toMatchObject({
+    name: 'ApiRequestError',
+    kind: 'network',
+  })
   const retry = await analyzeTicket('ticket-10042')
 
   // Then: the failed Promise was removed and a new HTTP request was sent.
@@ -143,6 +147,7 @@ it('preserves structured conflict details from the API', async () => {
         code: 'VERSION_CONFLICT',
         message: '工单版本已变化',
         traceId: 'trace-409',
+        timestamp: '2026-08-27T00:00:00Z',
         details: { expectedVersion: 3, currentVersion: 4 },
       }),
       {
@@ -185,14 +190,15 @@ it('sends the current ticket version with a patch update', async () => {
   await updateTicket('ticket-10042', { assigneeName: '演示管理员' }, 4)
 
   // Then: the optimistic precondition travels in the PATCH body.
-  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', {
+  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', expect.objectContaining({
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assigneeName: '演示管理员', expectedVersion: 4 }),
-  })
+    signal: expect.any(AbortSignal),
+  }))
 })
 
-it('uses default fields when an API error body is not JSON', async () => {
+it('fails closed when an API error body is not JSON', async () => {
   // Given: Java 返回没有结构化 JSON 的 500 响应。
   const fetchMock = vi.fn().mockResolvedValue(
     new Response('upstream unavailable', {
@@ -205,13 +211,9 @@ it('uses default fields when an API error body is not JSON', async () => {
   // When: 前端请求分析时收到无法解析的错误体。
   const analysisRequest = analyzeTicket('ticket-10042')
 
-  // Then: React 使用 HTTP 状态生成稳定的默认错误字段。
+  // Then: a non-contract proxy body cannot be rendered as a trusted backend error.
   await expect(analysisRequest).rejects.toMatchObject({
-    name: 'ApiError',
-    status: 500,
-    code: 'HTTP_500',
-    message: 'API request failed: 500',
-    traceId: null,
-    details: {},
+    name: 'ApiContractError',
+    issues: [{ path: '$', code: 'invalid_json' }],
   })
 })
