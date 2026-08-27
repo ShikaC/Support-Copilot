@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import type { ProxyOptions } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     // Serialize rendered files that share process-global JSDOM shims while keeping a bounded timeout.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     fileParallelism: false,
     testTimeout: 10_000,
   },

@@ -1,0 +1,18 @@
+{
+  "entryJs": {
+    "rawBytes": 220000,
+    "gzipBytes": 70000
+  },
+  "lazyChartJs": {
+    "rawBytes": 1200000,
+    "gzipBytes": 400000
+  },
+  "totalJs": {
+    "rawBytes": 2050000,
+    "gzipBytes": 670000
+  },
+  "totalCss": {
+    "rawBytes": 30000,
+    "gzipBytes": 7000
+  }
+}

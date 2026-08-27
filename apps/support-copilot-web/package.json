@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:budget": "npm run build && node scripts/check-build-budget.mjs",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:e2e": "node scripts/run-playwright.mjs",
     "test:contract": "VITE_CONTRACT_TEST_ENABLED=true VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://127.0.0.1:5173} vitest run src/integration/liveApiContract.test.ts --testTimeout=20000",
     "preview": "vite preview"
   },
@@ -22,6 +24,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
