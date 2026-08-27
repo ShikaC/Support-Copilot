@@ -45,6 +45,12 @@ function apiReviewErrorMessage(error: ApiError) {
     : error.message
 }
 
+function reviewerCopy(review: AnalysisReview) {
+  return review.reviewerType === 'UNAUTHENTICATED_DEMO'
+    ? `${review.reviewerLabel}（未认证演示身份）`
+    : review.reviewerLabel
+}
+
 export function ReplyReview({ ticket, analysis, onReviewSaved, onToast }: ReplyReviewProps) {
   const initialReview = matchingReview(analysis, ticket.latestReview ?? null)
   const [reply, setReply] = useState(() => reviewedReply(analysis, initialReview))
@@ -204,7 +210,7 @@ export function ReplyReview({ ticket, analysis, onReviewSaved, onToast }: ReplyR
             ? '演示数据 · 不保存审核记录'
             : currentReview
               ? currentReview.action === 'REJECTED' || reviewIsCurrent
-                ? `${reviewLabels[currentReview.action]} · ${currentReview.reviewerLabel}（未认证演示身份）`
+                ? `${reviewLabels[currentReview.action]} · ${reviewerCopy(currentReview)}`
                 : '当前修改尚未记录'
               : `${analysis.usage.inputTokens + analysis.usage.outputTokens} tokens · ${(
                   analysis.usage.durationMs / 1000

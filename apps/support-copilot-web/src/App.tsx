@@ -15,13 +15,13 @@ import './App.css'
 type ViewKey = 'workbench' | 'overview' | 'knowledge' | 'audit' | 'quality'
 type AppProps = { readonly authMode?: AuthMode }
 
-const navigation = [
+const navigation: ReadonlyArray<{ readonly key: ViewKey; readonly label: string; readonly icon: typeof Inbox }> = [
   { key: 'workbench', label: '工单工作台', icon: Inbox },
   { key: 'overview', label: '运营概览', icon: LayoutDashboard },
   { key: 'knowledge', label: '知识库', icon: BookOpen },
   { key: 'audit', label: '审计记录', icon: ClipboardList },
   { key: 'quality', label: '质量评估', icon: BarChart3 },
-] as const
+]
 const viewCopy: Readonly<Record<ViewKey, { readonly title: string; readonly subtitle: string }>> = {
   workbench: { title: '工单工作台', subtitle: '审核分类、知识证据与回复建议' },
   overview: { title: '运营概览', subtitle: '队列状态、处理效率与服务质量' },

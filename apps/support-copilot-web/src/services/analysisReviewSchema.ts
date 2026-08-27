@@ -6,7 +6,7 @@ const sharedReviewFields = {
   id: nonEmptyString,
   ticketId: nonEmptyString,
   analysisId: nonEmptyString,
-  reviewerType: z.literal('UNAUTHENTICATED_DEMO'),
+  reviewerType: z.enum(['UNAUTHENTICATED_DEMO', 'AUTHENTICATED_JWT']),
   reviewerLabel: nonEmptyString,
   originalReplyContent: nonEmptyString,
   ticketVersion: z.number().int().nonnegative(),

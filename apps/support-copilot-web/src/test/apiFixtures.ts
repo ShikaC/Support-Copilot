@@ -145,3 +145,45 @@ export const nullableMetricsResponsePayload = {
   suggestionAcceptanceRate: null,
   evaluation: null,
 } as const
+
+export const knowledgeHitPayload = {
+  chunkId: 'chunk-policy-1',
+  documentTitle: '账单核验政策',
+  section: '重复扣款',
+  content: '<img src=x onerror=alert(1)> 请先核验交易记录。',
+  documentType: 'POLICY',
+  score: 0.94,
+}
+
+export const knowledgeReleasePayload = {
+  releaseId: 'release-2026-08',
+  releaseVersion: 3,
+  corpusChecksum: 'a'.repeat(64),
+  allowedScopes: ['BILLING'],
+  status: 'DRAFT',
+  createdBy: 'knowledge-admin',
+  createdAt: '2026-08-27T01:00:00Z',
+  approvedBy: null,
+  approvedAt: null,
+  publishedBy: null,
+  publishedAt: null,
+  version: 2,
+}
+
+export const auditEventPayload = {
+  id: 'audit-1',
+  actorSubject: 'reviewer-42',
+  actorType: 'USER',
+  actorRoles: ['REVIEWER'],
+  action: 'ANALYSIS_REVIEW_APPROVED',
+  targetType: 'ANALYSIS_REVIEW',
+  targetId: 'review-1',
+  targetVersion: 4,
+  traceId: 'trace-audit-1',
+  createdAt: '2026-08-27T02:00:00Z',
+  metadata: {
+    reviewAction: 'APPROVED',
+    sourceVersion: 4,
+    resultId: 'analysis-1',
+  },
+}

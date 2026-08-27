@@ -174,3 +174,17 @@ it('rejects a rejected review that still claims to have reviewed reply content',
     issues: [{ path: 'reviewedReplyContent' }],
   })
 })
+
+it('accepts the authenticated reviewer type returned by secured backend mode', async () => {
+  const securedReview = {
+    ...analysisReviewPayload('review-secured'),
+    reviewerType: 'AUTHENTICATED_JWT',
+    reviewerLabel: 'reviewer-42',
+  }
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(securedReview), { status: 200 })))
+
+  await expect(reviewAnalysisReply('ticket-10042', 'analysis-1', securedReview.reviewedReplyContent)).resolves.toMatchObject({
+    reviewerType: 'AUTHENTICATED_JWT',
+    reviewerLabel: 'reviewer-42',
+  })
+})

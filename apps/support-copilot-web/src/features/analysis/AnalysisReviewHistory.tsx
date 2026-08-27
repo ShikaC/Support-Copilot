@@ -52,7 +52,9 @@ export function AnalysisReviewHistory({
                 <p>
                   {review.action === 'REJECTED'
                     ? review.reason
-                    : `${review.reviewerLabel}（未认证演示身份）`}
+                    : review.reviewerType === 'UNAUTHENTICATED_DEMO'
+                      ? `${review.reviewerLabel}（未认证演示身份）`
+                      : review.reviewerLabel}
                 </p>
               </div>
             </article>

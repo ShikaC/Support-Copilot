@@ -914,7 +914,7 @@ FALLBACK
 - `SUPPORT_REVIEWER`：agent 能力加 analysis review 读写。
 - `SUPPORT_ADMIN`：reviewer 能力加非 health actuator。
 
-React 登录/token adapter 和真实 OIDC 尚未实现；README 必须把已验证的 Resource Server policy、匿名 demo 和 Task 15 OIDC parity 分开，不能声称已有生产身份系统。
+React 已实现 session/memory 范围的 typed token adapter、严格 API contract、secured 401/403/409 状态和按工单隔离的分析工作流，并用 synthetic JWT 在本地生产 build 完成浏览器验证。真实 OIDC 登录、token refresh 和生产身份仍未实现；README 必须把本地 adapter、匿名 demo、已验证的 Resource Server policy 和 Task 15 OIDC parity 分开，不能声称已有生产身份系统。
 
 ### P5-04 生产配置隔离
 
