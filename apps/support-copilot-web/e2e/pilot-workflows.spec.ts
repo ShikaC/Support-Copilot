@@ -11,7 +11,7 @@ const evidenceDirectory = resolve(process.cwd(), '../../.omo/evidence/task-12-br
 const accessibleNameRuleIds = new Set(['button-name', 'input-button-name', 'label', 'select-name', 'textarea-name'])
 
 type Scenario = 'success' | 'fallback' | 'stale' | 'review' | 'knowledge' | 'audit-quality' | 'malformed'
-type BrowserErrors = { readonly consoleErrors: string[]; readonly pageErrors: string[] }
+type BrowserErrors = { readonly consoleErrors: string[]; readonly expectedConsoleErrors: string[]; readonly pageErrors: string[] }
 
 async function prepare(page: Page, request: APIRequestContext, scenario: Scenario) {
   const reset = await request.get(`${apiUrl}/__control/reset?scenario=${scenario}`)
@@ -22,14 +22,18 @@ async function prepare(page: Page, request: APIRequestContext, scenario: Scenari
   await page.goto('/')
 }
 
-function captureBrowserErrors(page: Page): BrowserErrors {
+function captureBrowserErrors(page: Page, expectedHttpStatuses: readonly number[] = []): BrowserErrors {
   const consoleErrors: string[] = []
+  const expectedConsoleErrors: string[] = []
   const pageErrors: string[] = []
   page.on('console', (message) => {
-    if (message.type() === 'error') consoleErrors.push(message.text())
+    if (message.type() !== 'error') return
+    const text = message.text()
+    if (expectedHttpStatuses.some((status) => text.includes(`status of ${status}`))) expectedConsoleErrors.push(text)
+    else consoleErrors.push(text)
   })
   page.on('pageerror', (error) => pageErrors.push(error.message))
-  return { consoleErrors, pageErrors }
+  return { consoleErrors, expectedConsoleErrors, pageErrors }
 }
 
 async function navigate(page: Page, name: '运营概览' | '知识库' | '审计记录' | '质量评估') {
@@ -39,19 +43,43 @@ async function navigate(page: Page, name: '运营概览' | '知识库' | '审计
 async function layoutEvidence(page: Page) {
   return page.evaluate(() => {
     const root = document.documentElement
+    const hasVisibleSample = (element: HTMLElement, box: DOMRect) => {
+      const points = [
+        [box.left + box.width / 2, box.top + box.height / 2],
+        [box.left + 2, box.top + 2],
+        [box.right - 2, box.bottom - 2],
+      ]
+      return points.some(([rawX, rawY]) => {
+        if (rawX === undefined || rawY === undefined) return false
+        const x = Math.min(window.innerWidth - 1, Math.max(0, rawX))
+        const y = Math.min(window.innerHeight - 1, Math.max(0, rawY))
+        const hit = document.elementFromPoint(x, y)
+        return hit !== null && element.contains(hit)
+      })
+    }
+    const hasStickyOrFixedAncestor = (element: HTMLElement) => {
+      let current: HTMLElement | null = element
+      while (current !== null) {
+        const position = getComputedStyle(current).position
+        if (position === 'sticky' || position === 'fixed') return true
+        current = current.parentElement
+      }
+      return false
+    }
     const controls = [...document.querySelectorAll<HTMLElement>('button, input, textarea, select, a[href], [role="button"]')]
       .filter((element) => {
-        const style = getComputedStyle(element)
         const box = element.getBoundingClientRect()
         return element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
           && box.width >= 8 && box.height >= 8
           && box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+          && hasVisibleSample(element, box)
       })
       .map((element, index) => {
         const box = element.getBoundingClientRect()
-        return { index, tag: element.tagName, label: element.getAttribute('aria-label') ?? element.innerText.trim(), left: box.left, right: box.right, top: box.top, bottom: box.bottom }
+        return { index, element, overlayPositioned: hasStickyOrFixedAncestor(element), tag: element.tagName, label: element.getAttribute('aria-label') ?? element.innerText.trim(), left: box.left, right: box.right, top: box.top, bottom: box.bottom }
       })
     const overlaps: string[] = []
+    const stickyOcclusions: string[] = []
     for (let leftIndex = 0; leftIndex < controls.length; leftIndex += 1) {
       const left = controls[leftIndex]
       if (left === undefined) continue
@@ -60,7 +88,15 @@ async function layoutEvidence(page: Page) {
         if (right === undefined) continue
         const overlapWidth = Math.min(left.right, right.right) - Math.max(left.left, right.left)
         const overlapHeight = Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top)
-        if (overlapWidth > 1 && overlapHeight > 1) overlaps.push(`${left.tag}:${left.label} [${left.left},${left.top},${left.right},${left.bottom}] <> ${right.tag}:${right.label} [${right.left},${right.top},${right.right},${right.bottom}]`)
+        if (overlapWidth > 1 && overlapHeight > 1) {
+          const description = `${left.tag}:${left.label} [${left.left},${left.top},${left.right},${left.bottom}] <> ${right.tag}:${right.label} [${right.left},${right.top},${right.right},${right.bottom}]`
+          const overlapX = Math.max(left.left, right.left) + overlapWidth / 2
+          const overlapY = Math.max(left.top, right.top) + overlapHeight / 2
+          const hit = document.elementFromPoint(overlapX, overlapY)
+          const stickyOwnsPixels = hit !== null && ((left.overlayPositioned && left.element.contains(hit)) || (right.overlayPositioned && right.element.contains(hit)))
+          if (stickyOwnsPixels) stickyOcclusions.push(description)
+          else overlaps.push(description)
+        }
       }
     }
     return {
@@ -69,6 +105,7 @@ async function layoutEvidence(page: Page) {
       horizontalOverflow: root.scrollWidth - root.clientWidth,
       controlCount: controls.length,
       overlaps,
+      stickyOcclusions,
     }
   })
 }
@@ -100,7 +137,7 @@ async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, er
     viewport,
     axe: { violationCount: axe.violations.length, criticalCount: critical.length, accessibleNameViolationCount: accessibleNameViolations.length },
     layout,
-    console: { errorCount: errors.consoleErrors.length, pageErrorCount: errors.pageErrors.length },
+    console: { errorCount: errors.consoleErrors.length, expectedHandledErrorCount: errors.expectedConsoleErrors.length, pageErrorCount: errors.pageErrors.length },
     ...extra,
   }, null, 2))
 }
@@ -146,7 +183,7 @@ test('analysis fallback remains explicit and reviewable', async ({ page, request
 
 test('stale analysis conflict refreshes the ticket before a retry', async ({ page, request }, testInfo) => {
   // Given: the first analysis command will conflict with a newer ticket version.
-  const errors = captureBrowserErrors(page)
+  const errors = captureBrowserErrors(page, [409])
   await prepare(page, request, 'stale')
 
   // When: the first command conflicts and the user retries after reconciliation.
@@ -157,6 +194,7 @@ test('stale analysis conflict refreshes the ticket before a retry', async ({ pag
 
   // Then: the retry succeeds against refreshed browser state.
   await expect(page.getByText(/mock-rules-v1/)).toBeVisible()
+  expect(errors.expectedConsoleErrors).toHaveLength(1)
   await verifyPage(page, testInfo, 'stale', errors)
 })
 
@@ -172,12 +210,12 @@ test('authenticated rejection traps modal focus, closes with Escape, and persist
   // When: the real rejection modal is operated entirely through its keyboard contract.
   await rejectButton.click()
   const dialog = page.getByRole('dialog', { name: '拒绝回复建议' })
-  const modal = page.locator('.ant-modal-wrap:visible')
+  const modal = page.locator('.ant-modal-root')
   await expect(dialog).toBeVisible()
   await expect(page.getByLabel('拒绝原因')).toBeFocused()
   for (let index = 0; index < 6; index += 1) {
     await page.keyboard.press('Tab')
-    expect(await modal.evaluate((element) => element.contains(document.activeElement))).toBe(true)
+    await expect.poll(() => modal.evaluate((element) => element.contains(document.activeElement))).toBe(true)
   }
   await page.keyboard.press('Escape')
   await expect(dialog).not.toBeVisible()
@@ -194,7 +232,7 @@ test('authenticated rejection traps modal focus, closes with Escape, and persist
 
 test('knowledge release transitions once, becomes read-only, and renders hostile text inertly', async ({ page, request }, testInfo) => {
   // Given: an authenticated knowledge catalog with synthetic hostile text.
-  const errors = captureBrowserErrors(page)
+  const errors = captureBrowserErrors(page, [403])
   await prepare(page, request, 'knowledge')
   await navigate(page, '知识库')
   await expect(page.getByRole('heading', { name: '知识检索与发布' })).toBeVisible()
@@ -209,6 +247,7 @@ test('knowledge release transitions once, becomes read-only, and renders hostile
   // Then: the view becomes explicitly read-only and does not execute fixture markup.
   await expect(page.getByText('当前身份仅可查看知识发布')).toBeVisible()
   await expect(page.getByRole('button', { name: /发\s*布/ })).toBeDisabled()
+  expect(errors.expectedConsoleErrors).toHaveLength(1)
   await verifyPage(page, testInfo, 'knowledge', errors, { hostileImageCount: 0 })
 })
 

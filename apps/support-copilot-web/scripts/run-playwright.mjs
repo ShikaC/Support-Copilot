@@ -53,6 +53,7 @@ const environment = {
   TASK12_API_PORT: String(apiPort),
   VITE_AUTH_MODE: 'secured',
 }
+const playwrightArguments = process.argv.slice(2)
 let exitCode = 0
 let detail = 'playwright completed and both isolated ports were released'
 let browserProvisioning = 'existing Chromium executable'
@@ -62,7 +63,7 @@ try {
     await run('node_modules/.bin/playwright', ['install', 'chromium'], environment)
   }
   await run('npm', ['run', 'build'], environment)
-  await run('node_modules/.bin/playwright', ['test'], environment)
+  await run('node_modules/.bin/playwright', ['test', ...playwrightArguments], environment)
 } catch (error) {
   exitCode = error instanceof ChildProcessError ? error.exitCode : 1
   detail = error instanceof Error ? error.message : 'unknown Playwright runner failure'

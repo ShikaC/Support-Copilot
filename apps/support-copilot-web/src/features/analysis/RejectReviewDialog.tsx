@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Alert, Input, Modal } from 'antd'
 
 type RejectReviewDialogProps = {
@@ -17,12 +17,28 @@ export function RejectReviewDialog({
   onConfirm,
 }: RejectReviewDialogProps) {
   const [reason, setReason] = useState('')
+  const modalContentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) setReason('')
   }, [open])
 
   const normalizedReason = reason.trim()
+  const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return
+    const focusable = [...(modalContentRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') ?? [])]
+      .filter((element) => element.getClientRects().length > 0)
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (first === undefined || last === undefined) return
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
 
   return (
     <Modal
@@ -34,6 +50,7 @@ export function RejectReviewDialog({
       confirmLoading={confirming}
       closable={!confirming}
       maskClosable={!confirming}
+      modalRender={(modal) => <div ref={modalContentRef} onKeyDown={trapFocus}>{modal}</div>}
       onCancel={onCancel}
       onOk={() => onConfirm(normalizedReason)}
     >
