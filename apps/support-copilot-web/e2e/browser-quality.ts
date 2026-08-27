@@ -45,6 +45,7 @@ export async function layoutEvidence(page: Page) {
       .filter((element) => {
         const box = element.getBoundingClientRect()
         return element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+          && !(element.classList.contains('skip-link') && document.activeElement !== element)
           && box.width >= 8 && box.height >= 8
       })
       .map((element, index) => {
@@ -66,7 +67,7 @@ export async function layoutEvidence(page: Page) {
     const stickyOcclusions = new Set<string>()
     const overlaps = new Set<string>()
     for (const control of controls) {
-      control.element.scrollIntoView({ block: 'center', inline: 'center' })
+      control.element.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' })
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
       const box = control.element.getBoundingClientRect()
       const intersectsViewport = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight

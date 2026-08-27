@@ -72,6 +72,7 @@ test('analysis success supports keyboard entry and visible focus', async ({ page
   const skipLink = page.getByRole('link', { name: '跳到主要内容' })
   await expect(skipLink).toBeFocused()
   await expect(skipLink).toBeVisible()
+  await expect(skipLink).toBeInViewport()
   const focusStyle = await skipLink.evaluate((element) => {
     const style = getComputedStyle(element)
     return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth }
