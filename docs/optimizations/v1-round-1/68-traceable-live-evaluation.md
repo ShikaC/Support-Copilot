@@ -24,4 +24,4 @@ cd ../support-copilot-api
 
 ## 实际运行结果
 
-`be9ac60` 上构建并激活真实 1024-dimension artifact，单工单 cross-service live gate 成功。第二次完整运行生成 4-case ignored report：1 live success、3 `invalid_model_response` fallbacks、0/4 human reviewed，machine gate 为 `machine-gate-failed`。报告中的原始 no-evidence success 汇总被判定为误增并废弃；`3e59a07` 增加回归并要求无证据成功必须是明确的 `insufficient_evidence` fallback。两次外部尝试已用完，没有第三次调用，因此当前不能声称 publishable dataset success。
+首次运行因 Git SHA 长度约束失败，该内部缺陷由 `be9ac60` 修复。`be9ac60` 上构建并激活真实 1024-dimension artifact，单工单 cross-service live gate 成功；数据集运行首次观察到 1 live success、3 `invalid_model_response` fallbacks、0/4 human reviewed，并暴露 no-evidence success 误增。`3e59a07` 增加回归，要求无证据成功必须是明确的 `insufficient_evidence` fallback。修正两个不同内部根因的尝试分类后，`b856019` 上的一次受限运行再次生成 4-case ignored report：1 live success、3 相同的 `invalid_model_response` fallbacks、0/4 human reviewed，machine gate 为 `machine-gate-failed`；无证据 case 现已正确计为 retrieval/citation failure。相同 provider structured-output 签名第二次出现后已停止，后续需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model；当前不能声称 publishable dataset success。

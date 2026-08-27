@@ -467,7 +467,7 @@ cd services/support-copilot-ai
 
 `factual_support` 只允许 `SUPPORTED/PARTIAL/UNSUPPORTED/NOT_REVIEWED`，机器不能填写前三项。没有明确可核查 pricing source 时 cost 保持 `null`，不得估算。Java 可将 `EVALUATION_REPORT_PATH` 指向忽略的 live 报告；质量页比例只表示该 dataset/run 的评估结果，不是生产准确率或 SLO。
 
-2026-08-27 的 Task 10 bounded live 运行在提交 `be9ac608d58d83dff2a95f8284229ad081bb7bb8` 生成了 4-case 报告，但只有 1 case 为 live success，3 case 因 `invalid_model_response` 进入 fallback，机器门禁失败，人工标签均为 `NOT_REVIEWED`。运行还暴露并修复了 no-evidence rate 误增问题（`3e59a07`）；按两次尝试规则没有对修复提交进行第三次外部调用，因此该报告不能作为当前提交的 publishable live success 或质量数字。
+2026-08-27 的 Task 10 bounded live 运行先后暴露两个不同内部缺陷：首次运行的 Git SHA 长度约束由 `be9ac60` 修复，随后 `be9ac60` 上的 4-case 报告首次观察到 1 case live success、3 case `invalid_model_response` fallback，并暴露 no-evidence rate 误增，由 `3e59a07` 修复。修正尝试分类后，在 checkpoint `b8560190583fc2888f2428353ffcb43caac6cbc3` 上执行了一次新的受限运行；单工单跨服务 gate 成功，但数据集再次得到相同的 1 live success / 3 `invalid_model_response` fallback，机器门禁失败，人工标签仍为 0/4 `NOT_REVIEWED`。这是同一 provider structured-output 签名的第二次出现，按停止规则不得再次调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model 后才能开始新的 live 尝试。该报告不能作为 publishable live success 或质量数字。
 
 ### 自动化 CI
 

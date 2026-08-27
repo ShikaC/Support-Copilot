@@ -46,7 +46,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 
 Task 10 已增加版本化合成 live 数据集、逐案例引用/检索/token/runner latency 记录、release/corpus/artifact/model/config/Git provenance 校验，以及独立人工 groundedness worksheet。机器只生成 `NOT_REVIEWED`；只有真实 reviewer 填写 factual-support label、decision note 和 reviewed_at 且 verifier 通过，报告才可标记 publishable。新正式 live 运行和人审状态以 Task 10 evidence 为准，本段不预先宣称成功。
 
-2026-08-27 实际运行状态：artifact 构建和单工单跨服务 live 验证成功；4-case 数据集只得到 1 个 live success，另 3 个为 `invalid_model_response` fallback，机器 gate 未通过，人工 review 为 0/4。该运行绑定 `be9ac60`；随后 `3e59a07` 修复运行中发现的 no-evidence metric inflation，但两次尝试额度已用完，未在修复 SHA 上再次调用 provider。因此 Task 10 产品实现完成，但 publishable live evidence 和人工 groundedness evidence 均未完成。
+2026-08-27 实际运行状态：首次运行的 Git SHA 长度缺陷由 `be9ac60` 修复；`be9ac60` 上的数据集运行首次观察到 1 个 live success 和 3 个 `invalid_model_response` fallback，并暴露 no-evidence metric inflation，由 `3e59a07` 修复。修正这两个不同内部根因的尝试分类后，在 `b856019` 上执行的一次受限运行中，artifact 和单工单跨服务 live 验证成功，但 4-case 数据集再次得到相同的 1 live success / 3 `invalid_model_response` fallback，机器 gate 未通过，人工 review 为 0/4。修复后的无证据 case 已正确计为 retrieval/citation failure。该 provider structured-output 签名已第二次出现，按停止规则不得继续调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model。Task 10 产品实现完成，但 publishable live evidence 和人工 groundedness evidence 均未完成。
 
 准确表述应是：**真实模型和 Embedding API 的端到端 RAG 链路已完成一次脱敏验证；当前仍是单次 V1.5 验收，不代表成熟 RAG、生产稳定性或真实客服效果。**
 

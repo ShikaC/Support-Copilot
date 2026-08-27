@@ -36,7 +36,7 @@ Support-Copilot 后续不应继续以“增加页面数量”作为主要目标�
 
 Task 10 增加独立于 31-case deterministic mock 报告的版本化合成 live 数据集和严格报告格式。逐案例记录检索判定、retrieved/allowed/cited chunks、citation validity、response evidence indexes、runner latency、provider token availability、fallback 和默认 `NOT_REVIEWED`；provenance 绑定 dataset、release/corpus、active artifact manifest、provider/model、prompt、redacted config fingerprint 和 Git dirty truth。verifier 对 unknown release/artifact/chunk、forbidden/non-retrieved citation、invalid evidence index、stale Git、敏感模式和 usage/cost 失败关闭。人工 worksheet apply 只替换 review fields；完整 factual-support judgment 前 publishable gate 保持失败。一次运行只可称为该 dataset/run 的评估结果，不是生产准确率、SLO 或稳定性结论。
 
-Task 10 live evidence 状态：`be9ac60` 上的 real artifact 和单工单 cross-service gate 成功，但 4-case dataset 只有 1 live success、3 `invalid_model_response` fallbacks，0/4 human reviewed。该运行暴露的 no-evidence metric inflation 已在 `3e59a07` 修复；两次外部尝试已用完，未对修复 SHA 进行第三次调用。产品实现完成，publishable live/human evidence 仍阻塞。
+Task 10 live evidence 状态：首次运行的 Git SHA 长度缺陷由 `be9ac60` 修复；`be9ac60` 上的数据集运行首次观察到 1 live success、3 `invalid_model_response` fallbacks，并暴露 no-evidence metric inflation，由 `3e59a07` 修复。修正不同根因的尝试分类后，`b856019` 上的一次受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallbacks，0/4 human reviewed；修复后的无证据 case 不再误增 retrieval/citation rate。该 provider structured-output 签名已第二次出现，按停止规则不得继续调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model。产品实现完成，publishable live/human evidence 仍阻塞。
 
 ### 2.1 当前架构
 
