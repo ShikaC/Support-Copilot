@@ -9,6 +9,7 @@
     "build:budget": "npm run build && node scripts/check-build-budget.mjs",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:node": "node --test e2e/mock-api.contract.test.mjs scripts/check-build-budget.test.mjs scripts/managed-child.test.mjs",
     "test:e2e": "node scripts/run-playwright.mjs",
     "test:contract": "VITE_CONTRACT_TEST_ENABLED=true VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://127.0.0.1:5173} vitest run src/integration/liveApiContract.test.ts --testTimeout=20000",
     "preview": "vite preview"

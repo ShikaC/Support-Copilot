@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type APIRequestContext, type Page, type TestInfo } from '@playwright/test'
+import { canvasColorVariation, captureBrowserErrors, expectHttpConsoleErrors, layoutEvidence, type BrowserErrors } from './browser-quality'
 
 const token = 'synthetic-browser-token-task12'
 const apiPort = Number(process.env.TASK12_API_PORT)
@@ -11,8 +12,6 @@ const evidenceDirectory = resolve(process.cwd(), '../../.omo/evidence/task-12-br
 const accessibleNameRuleIds = new Set(['button-name', 'input-button-name', 'label', 'select-name', 'textarea-name'])
 
 type Scenario = 'success' | 'fallback' | 'stale' | 'review' | 'knowledge' | 'audit-quality' | 'malformed'
-type BrowserErrors = { readonly consoleErrors: string[]; readonly expectedConsoleErrors: string[]; readonly pageErrors: string[] }
-
 async function prepare(page: Page, request: APIRequestContext, scenario: Scenario) {
   const reset = await request.get(`${apiUrl}/__control/reset?scenario=${scenario}`)
   expect(reset.ok()).toBe(true)
@@ -22,92 +21,8 @@ async function prepare(page: Page, request: APIRequestContext, scenario: Scenari
   await page.goto('/')
 }
 
-function captureBrowserErrors(page: Page, expectedHttpStatuses: readonly number[] = []): BrowserErrors {
-  const consoleErrors: string[] = []
-  const expectedConsoleErrors: string[] = []
-  const pageErrors: string[] = []
-  page.on('console', (message) => {
-    if (message.type() !== 'error') return
-    const text = message.text()
-    if (expectedHttpStatuses.some((status) => text.includes(`status of ${status}`))) expectedConsoleErrors.push(text)
-    else consoleErrors.push(text)
-  })
-  page.on('pageerror', (error) => pageErrors.push(error.message))
-  return { consoleErrors, expectedConsoleErrors, pageErrors }
-}
-
 async function navigate(page: Page, name: '运营概览' | '知识库' | '审计记录' | '质量评估') {
   await page.locator('nav:visible').getByRole('button', { name }).click()
-}
-
-async function layoutEvidence(page: Page) {
-  return page.evaluate(() => {
-    const root = document.documentElement
-    const hasVisibleSample = (element: HTMLElement, box: DOMRect) => {
-      const points = [
-        [box.left + box.width / 2, box.top + box.height / 2],
-        [box.left + 2, box.top + 2],
-        [box.right - 2, box.bottom - 2],
-      ]
-      return points.some(([rawX, rawY]) => {
-        if (rawX === undefined || rawY === undefined) return false
-        const x = Math.min(window.innerWidth - 1, Math.max(0, rawX))
-        const y = Math.min(window.innerHeight - 1, Math.max(0, rawY))
-        const hit = document.elementFromPoint(x, y)
-        return hit !== null && element.contains(hit)
-      })
-    }
-    const hasStickyOrFixedAncestor = (element: HTMLElement) => {
-      let current: HTMLElement | null = element
-      while (current !== null) {
-        const position = getComputedStyle(current).position
-        if (position === 'sticky' || position === 'fixed') return true
-        current = current.parentElement
-      }
-      return false
-    }
-    const controls = [...document.querySelectorAll<HTMLElement>('button, input, textarea, select, a[href], [role="button"]')]
-      .filter((element) => {
-        const box = element.getBoundingClientRect()
-        return element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
-          && box.width >= 8 && box.height >= 8
-          && box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
-          && hasVisibleSample(element, box)
-      })
-      .map((element, index) => {
-        const box = element.getBoundingClientRect()
-        return { index, element, overlayPositioned: hasStickyOrFixedAncestor(element), tag: element.tagName, label: element.getAttribute('aria-label') ?? element.innerText.trim(), left: box.left, right: box.right, top: box.top, bottom: box.bottom }
-      })
-    const overlaps: string[] = []
-    const stickyOcclusions: string[] = []
-    for (let leftIndex = 0; leftIndex < controls.length; leftIndex += 1) {
-      const left = controls[leftIndex]
-      if (left === undefined) continue
-      for (let rightIndex = leftIndex + 1; rightIndex < controls.length; rightIndex += 1) {
-        const right = controls[rightIndex]
-        if (right === undefined) continue
-        const overlapWidth = Math.min(left.right, right.right) - Math.max(left.left, right.left)
-        const overlapHeight = Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top)
-        if (overlapWidth > 1 && overlapHeight > 1) {
-          const description = `${left.tag}:${left.label} [${left.left},${left.top},${left.right},${left.bottom}] <> ${right.tag}:${right.label} [${right.left},${right.top},${right.right},${right.bottom}]`
-          const overlapX = Math.max(left.left, right.left) + overlapWidth / 2
-          const overlapY = Math.max(left.top, right.top) + overlapHeight / 2
-          const hit = document.elementFromPoint(overlapX, overlapY)
-          const stickyOwnsPixels = hit !== null && ((left.overlayPositioned && left.element.contains(hit)) || (right.overlayPositioned && right.element.contains(hit)))
-          if (stickyOwnsPixels) stickyOcclusions.push(description)
-          else overlaps.push(description)
-        }
-      }
-    }
-    return {
-      clientWidth: root.clientWidth,
-      scrollWidth: root.scrollWidth,
-      horizontalOverflow: root.scrollWidth - root.clientWidth,
-      controlCount: controls.length,
-      overlaps,
-      stickyOcclusions,
-    }
-  })
 }
 
 async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, errors: BrowserErrors, extra: Readonly<Record<string, unknown>> = {}) {
@@ -124,7 +39,11 @@ async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, er
   expect(critical, JSON.stringify(critical)).toHaveLength(0)
   expect(accessibleNameViolations, JSON.stringify(accessibleNameViolations)).toHaveLength(0)
   expect(layout.horizontalOverflow).toBeLessThanOrEqual(0)
+  expect(layout.nestedInteractiveControls, JSON.stringify(layout.nestedInteractiveControls)).toHaveLength(0)
+  expect(layout.offscreenControls, JSON.stringify(layout.offscreenControls)).toHaveLength(0)
+  expect(layout.usabilityOcclusions, JSON.stringify(layout.usabilityOcclusions)).toHaveLength(0)
   expect(layout.overlaps, JSON.stringify(layout.overlaps)).toHaveLength(0)
+  expect(layout.stickyOcclusions, JSON.stringify(layout.stickyOcclusions)).toHaveLength(0)
   expect(errors.consoleErrors, JSON.stringify(errors.consoleErrors)).toHaveLength(0)
   expect(errors.pageErrors, JSON.stringify(errors.pageErrors)).toHaveLength(0)
 
@@ -137,7 +56,7 @@ async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, er
     viewport,
     axe: { violationCount: axe.violations.length, criticalCount: critical.length, accessibleNameViolationCount: accessibleNameViolations.length },
     layout,
-    console: { errorCount: errors.consoleErrors.length, expectedHandledErrorCount: errors.expectedConsoleErrors.length, pageErrorCount: errors.pageErrors.length },
+    console: { errorCount: errors.consoleErrors.length, expectedHandledErrorsByStatus: Object.fromEntries(Object.entries(errors.expectedConsoleErrorsByStatus).map(([status, messages]) => [status, messages.length])), pageErrorCount: errors.pageErrors.length },
     ...extra,
   }, null, 2))
 }
@@ -194,7 +113,7 @@ test('stale analysis conflict refreshes the ticket before a retry', async ({ pag
 
   // Then: the retry succeeds against refreshed browser state.
   await expect(page.getByText(/mock-rules-v1/)).toBeVisible()
-  expect(errors.expectedConsoleErrors).toHaveLength(1)
+  expectHttpConsoleErrors(errors, 409, 1)
   await verifyPage(page, testInfo, 'stale', errors)
 })
 
@@ -247,7 +166,7 @@ test('knowledge release transitions once, becomes read-only, and renders hostile
   // Then: the view becomes explicitly read-only and does not execute fixture markup.
   await expect(page.getByText('当前身份仅可查看知识发布')).toBeVisible()
   await expect(page.getByRole('button', { name: /发\s*布/ })).toBeDisabled()
-  expect(errors.expectedConsoleErrors).toHaveLength(1)
+  expectHttpConsoleErrors(errors, 403, 1)
   await verifyPage(page, testInfo, 'knowledge', errors, { hostileImageCount: 0 })
 })
 
@@ -271,28 +190,14 @@ test('audit pagination, quality evidence, chart pixels, text equivalents, and re
   await navigate(page, '运营概览')
   const canvases = page.locator('.chart-panel-body canvas')
   await expect(canvases).toHaveCount(2)
-  const chartPixels: number[] = []
+  const chartColorVariation: Array<{ readonly opaquePixels: number; readonly nonBackgroundPixels: number; readonly colorCount: number }> = []
   for (let index = 0; index < 2; index += 1) {
     const canvas = canvases.nth(index)
     await expect(canvas).toBeVisible()
-    await expect.poll(() => canvas.evaluate((element) => {
-      if (!(element instanceof HTMLCanvasElement)) return 0
-      const context = element.getContext('2d')
-      if (context === null) return 0
-      const pixels = context.getImageData(0, 0, element.width, element.height).data
-      let painted = 0
-      for (let pixel = 3; pixel < pixels.length; pixel += 4) if ((pixels[pixel] ?? 0) > 0) painted += 1
-      return painted
-    })).toBeGreaterThan(100)
-    chartPixels.push(await canvas.evaluate((element) => {
-      if (!(element instanceof HTMLCanvasElement)) return 0
-      const context = element.getContext('2d')
-      if (context === null) return 0
-      const pixels = context.getImageData(0, 0, element.width, element.height).data
-      let painted = 0
-      for (let pixel = 3; pixel < pixels.length; pixel += 4) if ((pixels[pixel] ?? 0) > 0) painted += 1
-      return painted
-    }))
+    await expect.poll(async () => (await canvasColorVariation(canvas)).nonBackgroundPixels).toBeGreaterThan(100)
+    await expect.poll(async () => (await canvasColorVariation(canvas)).colorCount).toBeGreaterThan(1)
+    const variation = await canvasColorVariation(canvas)
+    chartColorVariation.push(variation)
   }
 
   // Then: each chart has pixels, equivalent text, and an explicit reduced-motion render state.
@@ -303,7 +208,7 @@ test('audit pagination, quality evidence, chart pixels, text equivalents, and re
   expect(overviewResourcesAfterNavigation).toHaveLength(1)
   const motionDuration = await page.locator('.view-enter').evaluate((element) => getComputedStyle(element).animationDuration)
   expect(Number.parseFloat(motionDuration)).toBeLessThanOrEqual(0.01)
-  await verifyPage(page, testInfo, 'audit-quality', errors, { chartPixels, textualChartTables: 2, motionDuration, overviewResourcesBeforeNavigation, overviewResourcesAfterNavigation })
+  await verifyPage(page, testInfo, 'audit-quality', errors, { chartColorVariation, textualChartTables: 2, motionDuration, overviewResourcesBeforeNavigation, overviewResourcesAfterNavigation })
 })
 
 test('malformed API payloads fail closed without a misleading success state', async ({ page, request }, testInfo) => {

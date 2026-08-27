@@ -1,7 +1,10 @@
 import { readFile, readdir, stat } from 'node:fs/promises'
+import { pathToFileURL } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
-const distAssets = new URL('../dist/assets/', import.meta.url)
+const distUrl = new URL('../dist/', import.meta.url)
+const distAssets = new URL('./assets/', distUrl)
+const manifestUrl = new URL('./.vite/manifest.json', distUrl)
 const budgetUrl = new URL('./bundle-budget.json', import.meta.url)
 
 class BudgetConfigurationError extends Error {
@@ -11,91 +14,136 @@ class BudgetConfigurationError extends Error {
   }
 }
 
-function parseLimit(value, path) {
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new BudgetConfigurationError(`${path} must be a positive integer`)
+function integer(value, path, positive = false) {
+  if (!Number.isSafeInteger(value) || (positive && value <= 0)) {
+    throw new BudgetConfigurationError(`${path} must be ${positive ? 'a positive' : 'an'} integer`)
   }
   return value
+}
+
+function size(value, path, positive = false) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new BudgetConfigurationError(`${path} must be an object`)
+  }
+  return {
+    rawBytes: integer(value.rawBytes, `${path}.rawBytes`, positive),
+    gzipBytes: integer(value.gzipBytes, `${path}.gzipBytes`, positive),
+  }
 }
 
 function parseBudget(value) {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new BudgetConfigurationError('bundle budget must be an object')
   }
-  const entryJs = value.entryJs
-  const lazyChartJs = value.lazyChartJs
-  const totalJs = value.totalJs
-  const totalCss = value.totalCss
-  for (const [path, limit] of Object.entries({ entryJs, lazyChartJs, totalJs, totalCss })) {
-    if (typeof limit !== 'object' || limit === null || Array.isArray(limit)) {
-      throw new BudgetConfigurationError(`${path} must be an object`)
+  const parsed = {}
+  for (const label of ['initialJs', 'lazyChartJs', 'totalJs', 'totalCss']) {
+    const policy = value[label]
+    if (typeof policy !== 'object' || policy === null || Array.isArray(policy) || typeof policy.rationale !== 'string' || policy.rationale.length === 0) {
+      throw new BudgetConfigurationError(`${label} must contain a rationale`)
     }
+    const baseline = size(policy.baseline, `${label}.baseline`)
+    const permittedDelta = size(policy.permittedDelta, `${label}.permittedDelta`)
+    const limit = size(policy.limit, `${label}.limit`, true)
+    if (baseline.rawBytes + permittedDelta.rawBytes !== limit.rawBytes || baseline.gzipBytes + permittedDelta.gzipBytes !== limit.gzipBytes) {
+      throw new BudgetConfigurationError(`${label}.limit must equal baseline plus permittedDelta`)
+    }
+    parsed[label] = { baseline, permittedDelta, limit, rationale: policy.rationale }
   }
-  return {
-    entryJs: {
-      rawBytes: parseLimit(entryJs.rawBytes, 'entryJs.rawBytes'),
-      gzipBytes: parseLimit(entryJs.gzipBytes, 'entryJs.gzipBytes'),
-    },
-    lazyChartJs: {
-      rawBytes: parseLimit(lazyChartJs.rawBytes, 'lazyChartJs.rawBytes'),
-      gzipBytes: parseLimit(lazyChartJs.gzipBytes, 'lazyChartJs.gzipBytes'),
-    },
-    totalJs: {
-      rawBytes: parseLimit(totalJs.rawBytes, 'totalJs.rawBytes'),
-      gzipBytes: parseLimit(totalJs.gzipBytes, 'totalJs.gzipBytes'),
-    },
-    totalCss: {
-      rawBytes: parseLimit(totalCss.rawBytes, 'totalCss.rawBytes'),
-      gzipBytes: parseLimit(totalCss.gzipBytes, 'totalCss.gzipBytes'),
-    },
-  }
+  return parsed
 }
 
-async function assetSize(fileName) {
-  const fileUrl = new URL(fileName, distAssets)
+function parseManifest(value) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new BudgetConfigurationError('Vite manifest must be an object')
+  }
+  return value
+}
+
+export function collectStaticEntryFiles(manifest, entryKey = 'index.html') {
+  const entry = manifest[entryKey]
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry) || entry.isEntry !== true) {
+    throw new BudgetConfigurationError(`missing Vite HTML entry ${entryKey}`)
+  }
+  const visited = new Set()
+  const files = new Set()
+  const visit = (key) => {
+    if (visited.has(key)) return
+    visited.add(key)
+    const record = manifest[key]
+    if (typeof record !== 'object' || record === null || Array.isArray(record) || typeof record.file !== 'string') {
+      throw new BudgetConfigurationError(`invalid manifest record ${key}`)
+    }
+    if (record.file.endsWith('.js')) files.add(record.file)
+    if (record.imports !== undefined) {
+      if (!Array.isArray(record.imports) || record.imports.some((item) => typeof item !== 'string')) {
+        throw new BudgetConfigurationError(`invalid imports for ${key}`)
+      }
+      for (const importedKey of record.imports) visit(importedKey)
+    }
+  }
+  visit(entryKey)
+  return [...files]
+}
+
+async function assetSize(relativeFile) {
+  const fileUrl = new URL(relativeFile.startsWith('assets/') ? relativeFile : `assets/${relativeFile}`, distUrl)
   const [metadata, contents] = await Promise.all([stat(fileUrl), readFile(fileUrl)])
   return { rawBytes: metadata.size, gzipBytes: gzipSync(contents).byteLength }
 }
 
 function sumSizes(sizes) {
-  return sizes.reduce(
-    (total, size) => ({
-      rawBytes: total.rawBytes + size.rawBytes,
-      gzipBytes: total.gzipBytes + size.gzipBytes,
-    }),
-    { rawBytes: 0, gzipBytes: 0 },
-  )
+  return sizes.reduce((total, current) => ({
+    rawBytes: total.rawBytes + current.rawBytes,
+    gzipBytes: total.gzipBytes + current.gzipBytes,
+  }), { rawBytes: 0, gzipBytes: 0 })
 }
 
-function assertWithinBudget(label, measured, limit) {
-  const passed = measured.rawBytes <= limit.rawBytes && measured.gzipBytes <= limit.gzipBytes
-  console.log(`${label}: raw=${measured.rawBytes}/${limit.rawBytes} gzip=${measured.gzipBytes}/${limit.gzipBytes} ${passed ? 'PASS' : 'FAIL'}`)
+export async function measureStaticEntryGraph(manifest, sizeOf, entryKey = 'index.html') {
+  const files = collectStaticEntryFiles(manifest, entryKey)
+  const sizes = await Promise.all(files.map(sizeOf))
+  return { files, measured: sumSizes(sizes) }
+}
+
+export function isWithinLimit(measured, limit) {
+  return measured.rawBytes <= limit.rawBytes && measured.gzipBytes <= limit.gzipBytes
+}
+
+function report(label, measured, policy) {
+  const passed = isWithinLimit(measured, policy.limit)
+  console.log(`${label}: raw=${measured.rawBytes}/${policy.limit.rawBytes} gzip=${measured.gzipBytes}/${policy.limit.gzipBytes} ${passed ? 'PASS' : 'FAIL'}`)
   return passed
 }
 
-const budget = parseBudget(JSON.parse(await readFile(budgetUrl, 'utf8')))
-const files = await readdir(distAssets)
-const jsFiles = files.filter((fileName) => fileName.endsWith('.js'))
-const cssFiles = files.filter((fileName) => fileName.endsWith('.css'))
-const entryFiles = jsFiles.filter((fileName) => fileName.startsWith('index-'))
-const lazyChartFiles = jsFiles.filter((fileName) => fileName.startsWith('OverviewView-'))
-if (entryFiles.length !== 1) {
-  throw new BudgetConfigurationError(`expected one index JS entry asset, found ${entryFiles.length}`)
-}
-if (lazyChartFiles.length !== 1) {
-  throw new BudgetConfigurationError(`expected one lazy OverviewView chart asset, found ${lazyChartFiles.length}`)
+async function main() {
+  const [budgetValue, manifestValue, assetNames] = await Promise.all([
+    readFile(budgetUrl, 'utf8').then(JSON.parse),
+    readFile(manifestUrl, 'utf8').then(JSON.parse),
+    readdir(distAssets),
+  ])
+  const budget = parseBudget(budgetValue)
+  const manifest = parseManifest(manifestValue)
+  const chartKey = Object.keys(manifest).find((key) => key.endsWith('/OverviewView.tsx'))
+  if (chartKey === undefined) throw new BudgetConfigurationError('missing lazy OverviewView manifest entry')
+  const chartManifest = { ...manifest, 'index.html': { ...manifest[chartKey], isEntry: true } }
+  const jsFiles = assetNames.filter((name) => name.endsWith('.js'))
+  const cssFiles = assetNames.filter((name) => name.endsWith('.css'))
+  const initialGraph = await measureStaticEntryGraph(manifest, assetSize)
+  const initialFileSet = new Set(initialGraph.files)
+  const lazyChartFiles = collectStaticEntryFiles(chartManifest).filter((file) => !initialFileSet.has(file))
+  const [chartSizes, jsSizes, cssSizes] = await Promise.all([
+    Promise.all(lazyChartFiles.map(assetSize)),
+    Promise.all(jsFiles.map(assetSize)),
+    Promise.all(cssFiles.map(assetSize)),
+  ])
+  console.log(`initial-js-files: ${initialGraph.files.join(',')}`)
+  console.log(`lazy-chart-js-files: ${lazyChartFiles.join(',')}`)
+  const checks = [
+    report('initial-js', initialGraph.measured, budget.initialJs),
+    report('lazy-chart-js', sumSizes(chartSizes), budget.lazyChartJs),
+    report('total-js', sumSizes(jsSizes), budget.totalJs),
+    report('total-css', sumSizes(cssSizes), budget.totalCss),
+  ]
+  if (checks.includes(false)) process.exitCode = 1
 }
 
-const [entryJs, lazyChartJs, jsSizes, cssSizes] = await Promise.all([
-  assetSize(entryFiles[0]),
-  assetSize(lazyChartFiles[0]),
-  Promise.all(jsFiles.map(assetSize)),
-  Promise.all(cssFiles.map(assetSize)),
-])
-const checks = [
-  assertWithinBudget('entry-js', entryJs, budget.entryJs),
-  assertWithinBudget('lazy-chart-js', lazyChartJs, budget.lazyChartJs),
-  assertWithinBudget('total-js', sumSizes(jsSizes), budget.totalJs),
-  assertWithinBudget('total-css', sumSizes(cssSizes), budget.totalCss),
-]
-if (checks.includes(false)) process.exitCode = 1
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) await main()

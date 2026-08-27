@@ -16,6 +16,9 @@ const apiProxy: Readonly<Record<string, ProxyOptions>> = {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    manifest: true,
+  },
   server: {
     proxy: apiProxy,
   },
@@ -24,7 +27,7 @@ export default defineConfig({
   },
   test: {
     // Serialize rendered files that share process-global JSDOM shims while keeping a bounded timeout.
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'scripts/**/*.test.mjs'],
     fileParallelism: false,
     testTimeout: 10_000,
   },

@@ -93,6 +93,27 @@ it('requires and records a rejection reason', async () => {
   }))
 })
 
+it('restores the rejection trigger focus after the owner cancels the dialog', async () => {
+  // Given: ReplyReview owns the trigger and an open rejection dialog.
+  renderedReview()
+  const rejectButton = screen.getByRole('button', { name: /拒绝建议/ })
+  fireEvent.click(rejectButton)
+  expect(await screen.findByRole('dialog', { name: '拒绝回复建议' })).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('拒绝原因'), { target: { value: 'temporary reason' } })
+
+  // When: the reviewer invokes the dialog cancel command.
+  fireEvent.click(screen.getByRole('button', { name: /取\s*消/ }))
+
+  // Then: the owner restores its trigger and a fresh open has reset dialog state.
+  await waitFor(() => expect(document.activeElement).toBe(rejectButton))
+  fireEvent.click(rejectButton)
+  await waitFor(() => {
+    const reason = screen.getByLabelText('拒绝原因')
+    if (!(reason instanceof HTMLTextAreaElement)) throw new TypeError('rejection reason must be a textarea')
+    expect(reason.value).toBe('')
+  })
+})
+
 it('uses the injected secured client and refreshes the stale ticket before showing retry', async () => {
   // Given: a secured application client and a review rejected because the persisted ticket moved.
   const auth = createAuthSession({ mode: 'secured' })

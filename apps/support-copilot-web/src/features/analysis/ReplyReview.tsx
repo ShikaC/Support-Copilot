@@ -63,6 +63,7 @@ export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onRevie
   const [reviewHistory, setReviewHistory] = useState<AnalysisReview[]>([])
   const reviewKey = `${ticket.id}:${analysis.id}`
   const activeReviewKey = useRef(reviewKey)
+  const rejectButtonRef = useRef<HTMLButtonElement>(null)
   activeReviewKey.current = reviewKey
 
   useEffect(() => {
@@ -231,6 +232,7 @@ export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onRevie
             />
           </Tooltip>
           <Button
+            ref={rejectButtonRef}
             danger
             icon={<XCircle size={13} />}
             disabled={submitting || !persistenceAvailable || currentReview?.action === 'REJECTED'}
@@ -266,6 +268,7 @@ export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onRevie
         open={rejectDialogOpen}
         confirming={submitting}
         errorMessage={rejectErrorMessage}
+        returnFocusRef={rejectButtonRef}
         onCancel={() => {
           if (!submitting) setRejectDialogOpen(false)
         }}

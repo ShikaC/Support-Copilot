@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import { AlertTriangle, BarChart3, BookOpen, CheckCircle2, ChevronDown, ClipboardList, Inbox, LayoutDashboard } from 'lucide-react'
 import { ConfigProvider } from 'antd'
 import { configuredAuthMode, createAuthSession, type AuthMode } from './auth/authSession'
+import { RetryableLazyViewBoundary } from './components/RetryableLazyViewBoundary'
 import { demoKnowledgeArticles } from './data/demoData'
 import { WorkbenchView } from './features/workbench/WorkbenchView'
 import { useTicketWorkflow } from './features/workbench/useTicketWorkflow'
@@ -9,12 +10,20 @@ import { createApiClient } from './services/api'
 import './App.css'
 
 type ViewKey = 'workbench' | 'overview' | 'knowledge' | 'audit' | 'quality'
-type AppProps = { readonly authMode?: AuthMode }
+type OverviewModule = typeof import('./features/overview/OverviewView')
+type OverviewLoader = () => Promise<OverviewModule>
+type AppProps = {
+  readonly authMode?: AuthMode
+  readonly overviewLoader?: OverviewLoader
+}
 
-const OverviewView = lazy(() => import('./features/overview/OverviewView').then((module) => ({ default: module.OverviewView })))
-const KnowledgeView = lazy(() => import('./features/knowledge/KnowledgeView').then((module) => ({ default: module.KnowledgeView })))
-const AuditView = lazy(() => import('./features/audit/AuditView').then((module) => ({ default: module.AuditView })))
-const QualityView = lazy(() => import('./features/quality/QualityView').then((module) => ({ default: module.QualityView })))
+const loadOverview = () => import('./features/overview/OverviewView')
+const createLazyViews = (overviewLoader: OverviewLoader) => ({
+  OverviewView: lazy(() => overviewLoader().then((module) => ({ default: module.OverviewView }))),
+  KnowledgeView: lazy(() => import('./features/knowledge/KnowledgeView').then((module) => ({ default: module.KnowledgeView }))),
+  AuditView: lazy(() => import('./features/audit/AuditView').then((module) => ({ default: module.AuditView }))),
+  QualityView: lazy(() => import('./features/quality/QualityView').then((module) => ({ default: module.QualityView }))),
+})
 
 const navigation: ReadonlyArray<{ readonly key: ViewKey; readonly label: string; readonly icon: typeof Inbox }> = [
   { key: 'workbench', label: '工单工作台', icon: Inbox },
@@ -31,8 +40,9 @@ const viewCopy: Readonly<Record<ViewKey, { readonly title: string; readonly subt
   quality: { title: '质量评估', subtitle: '检索、生成与人工反馈基线' },
 }
 
-export function App({ authMode = configuredAuthMode() }: AppProps) {
+export function App({ authMode = configuredAuthMode(), overviewLoader = loadOverview }: AppProps) {
   const [view, setView] = useState<ViewKey>('workbench')
+  const [lazyViews, setLazyViews] = useState(() => createLazyViews(overviewLoader))
   const auth = useMemo(() => createAuthSession({ mode: authMode }), [authMode])
   const client = useMemo(() => createApiClient({
     auth, baseUrl: import.meta.env.VITE_API_BASE_URL ?? '', timeoutMs: 8000,
@@ -40,6 +50,7 @@ export function App({ authMode = configuredAuthMode() }: AppProps) {
   const workflow = useTicketWorkflow({ auth, client })
   const authState = auth.state()
   const currentCopy = viewCopy[view]
+  const { OverviewView, KnowledgeView, AuditView, QualityView } = lazyViews
   const userLabel = authState.mode === 'demo' ? '演示管理员' : authState.status === 'authenticated' ? '已认证用户' : '未登录'
   const avatar = authState.mode === 'demo' ? 'CY' : authState.status === 'authenticated' ? 'ID' : '--'
 
@@ -55,13 +66,13 @@ export function App({ authMode = configuredAuthMode() }: AppProps) {
     </aside>
     <div className="app-body"><header className="topbar"><div><h1 className="page-title">{currentCopy.title}</h1><p className="page-subtitle">{currentCopy.subtitle}</p></div><div className="topbar-actions"><button className="user-menu" type="button" onClick={() => workflow.showToast(authState.mode === 'demo' ? '当前为面试演示账号' : authState.status === 'authenticated' ? '当前使用会话访问令牌' : '当前安全模式尚未登录')}><span className="user-avatar">{avatar}</span><span className="user-name">{userLabel}</span><ChevronDown size={13} /></button></div></header>
       <Navigation className="mobile-nav" label="移动端导航" view={view} onChange={setView} />
-      <main className="page-content" id="main-content"><Suspense fallback={<div className="view-enter"><section className="knowledge-panel data-loading" role="status">正在加载页面</section></div>}>
+      <main className="page-content" id="main-content"><RetryableLazyViewBoundary onRetry={() => setLazyViews(createLazyViews(overviewLoader))}><Suspense fallback={<div className="view-enter"><section className="knowledge-panel data-loading" role="status">正在加载页面</section></div>}>
         {view === 'workbench' && <WorkbenchView tickets={workflow.tickets} selectedTicket={workflow.selectedTicket} client={client} metrics={workflow.metrics} analyzing={workflow.selectedTicket !== null && workflow.analyzingTicketIds.includes(workflow.selectedTicket.id)} onSelect={workflow.setSelectedTicketId} onAnalyze={workflow.runAnalysis} onReviewSaved={workflow.recordReview} onRefreshTicket={workflow.reconcileTicket} onAssign={workflow.assignSelectedTicket} onUnassign={workflow.unassignSelectedTicket} assigneeUpdating={workflow.selectedTicket !== null && workflow.assigneeTicketIds.includes(workflow.selectedTicket.id)} onToast={workflow.showToast} />}
         {view === 'overview' && <OverviewView metrics={workflow.metrics} tickets={workflow.tickets} />}
         {view === 'knowledge' && <KnowledgeView client={client} demoArticles={workflow.apiState === 'demo' ? demoKnowledgeArticles : null} />}
         {view === 'audit' && <AuditView client={client} />}
         {view === 'quality' && <QualityView metrics={workflow.metrics} metricsError={workflow.metricsError} />}
-      </Suspense></main>
+      </Suspense></RetryableLazyViewBoundary></main>
     </div></div>
     {workflow.toast && <div className={`toast ${workflow.toast.kind}`} role={workflow.toast.kind === 'error' ? 'alert' : 'status'}>{workflow.toast.kind === 'error' ? <AlertTriangle /> : <CheckCircle2 />}<span>{workflow.toast.message}</span></div>}
   </ConfigProvider>

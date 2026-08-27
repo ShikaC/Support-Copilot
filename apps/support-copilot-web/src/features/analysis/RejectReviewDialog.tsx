@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { Alert, Input, Modal } from 'antd'
 
 type RejectReviewDialogProps = {
   readonly open: boolean
   readonly confirming: boolean
   readonly errorMessage: string | null
+  readonly returnFocusRef: RefObject<HTMLButtonElement | null>
   readonly onCancel: () => void
   readonly onConfirm: (reason: string) => void
 }
@@ -13,6 +14,7 @@ export function RejectReviewDialog({
   open,
   confirming,
   errorMessage,
+  returnFocusRef,
   onCancel,
   onConfirm,
 }: RejectReviewDialogProps) {
@@ -24,10 +26,19 @@ export function RejectReviewDialog({
   }, [open])
 
   const normalizedReason = reason.trim()
+  const cancel = () => {
+    if (confirming) return
+    onCancel()
+    queueMicrotask(() => returnFocusRef.current?.focus())
+  }
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      cancel()
+      return
+    }
     if (event.key !== 'Tab') return
     const focusable = [...(modalContentRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') ?? [])]
-      .filter((element) => element.getClientRects().length > 0)
     const first = focusable[0]
     const last = focusable[focusable.length - 1]
     if (first === undefined || last === undefined) return
@@ -49,9 +60,11 @@ export function RejectReviewDialog({
       okButtonProps={{ danger: true, disabled: !normalizedReason }}
       confirmLoading={confirming}
       closable={!confirming}
-      maskClosable={!confirming}
+      keyboard={false}
+      mask={{ closable: !confirming }}
+      destroyOnHidden
       modalRender={(modal) => <div ref={modalContentRef} onKeyDown={trapFocus}>{modal}</div>}
-      onCancel={onCancel}
+      onCancel={cancel}
       onOk={() => onConfirm(normalizedReason)}
     >
       <label className="reject-reason-label" htmlFor="reject-review-reason">

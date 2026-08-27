@@ -1,18 +1,28 @@
 {
-  "entryJs": {
-    "rawBytes": 220000,
-    "gzipBytes": 70000
+  "sourceEvidence": "../../.omo/evidence/task-12-baseline-assets.txt",
+  "sourceScenario": "pre-edit production asset baseline",
+  "initialJs": {
+    "baseline": { "rawBytes": 1974123, "gzipBytes": 636417 },
+    "permittedDelta": { "rawBytes": -1124123, "gzipBytes": -361417 },
+    "limit": { "rawBytes": 850000, "gzipBytes": 275000 },
+    "rationale": "Task12 must move the heavy overview chart out of the initial graph; the negative delta requires at least 56.9% raw and 56.8% gzip reduction from the recorded monolith."
   },
   "lazyChartJs": {
-    "rawBytes": 1200000,
-    "gzipBytes": 400000
+    "baseline": { "rawBytes": 0, "gzipBytes": 0 },
+    "permittedDelta": { "rawBytes": 1200000, "gzipBytes": 400000 },
+    "limit": { "rawBytes": 1200000, "gzipBytes": 400000 },
+    "rationale": "The pre-Task12 build had no lazy chart chunk; this allowance isolates ECharts without adding a chart dependency."
   },
   "totalJs": {
-    "rawBytes": 2050000,
-    "gzipBytes": 670000
+    "baseline": { "rawBytes": 1974123, "gzipBytes": 636417 },
+    "permittedDelta": { "rawBytes": 75877, "gzipBytes": 33583 },
+    "limit": { "rawBytes": 2050000, "gzipBytes": 670000 },
+    "rationale": "The bounded delta covers Task12 accessibility, retry, and chunk-runtime code while preventing dependency-scale growth."
   },
   "totalCss": {
-    "rawBytes": 30000,
-    "gzipBytes": 7000
+    "baseline": { "rawBytes": 26861, "gzipBytes": 5821 },
+    "permittedDelta": { "rawBytes": 4139, "gzipBytes": 1179 },
+    "limit": { "rawBytes": 31000, "gzipBytes": 7000 },
+    "rationale": "The bounded delta allows Task12 accessibility state styling while retaining the recorded pre-Task12 stylesheet as the baseline."
   }
 }
