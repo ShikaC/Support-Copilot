@@ -13,6 +13,7 @@ command_log="$fixture_root/commands.log"
 go_install_log="$fixture_root/go-install.log"
 tool_provenance_log="$fixture_root/tool-provenance.log"
 fixture_tmpdir="$fixture_root/tmp"
+fixture_scan_evidence_root="$fixture_tmpdir/scan-evidence"
 outer_evidence_dir="$fixture_root/outer-evidence"
 outer_evidence_sentinel="$outer_evidence_dir/sentinel"
 outer_evidence_sentinel_sha=''
@@ -314,8 +315,14 @@ capture_fixture_scan() {
 if [[ "${CI_GATE_OSV_OPERATIONAL_FAILURE:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
 	printf '{"fixture":"operational"}\n' >"$output"
 	capture_fixture_scan
-	printf 'fixture-osv-operational-failure\n' >&2
+	printf 'fixture-osv-operational-failure token=fixture-secret %s\n' "$inventory_path" >&2
 	exit 129
+fi
+if [[ "${CI_GATE_OSV_MALFORMED_REPORT:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
+	printf '{malformed fixture report\n' >"$output"
+	capture_fixture_scan
+	printf 'fixture-osv-malformed-report\n' >&2
+	exit 0
 fi
 /usr/bin/python3 - "$lockfile" "$output" <<'PY'
 import json
@@ -418,14 +425,14 @@ chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
 	"$fixture_repo/services/support-copilot-api/gradlew" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
 
-mkdir -p "$fixture_root/scans" "$scan_capture_root" "$outer_evidence_dir"
+mkdir -p "$fixture_scan_evidence_root" "$scan_capture_root" "$outer_evidence_dir"
 printf 'outer-evidence-sentinel\n' >"$outer_evidence_sentinel"
 outer_evidence_sentinel_sha="$(shasum -a 256 "$outer_evidence_sentinel" | awk '{print $1}')"
 
 run_fixture_mode() {
 	local mode="$1"
 	local output="$fixture_root/$mode.out"
-	local evidence_dir="$fixture_root/scans/$mode"
+	local evidence_dir="$fixture_scan_evidence_root/$mode"
 	local capture_dir="$scan_capture_root/$mode"
 	mkdir -p "$evidence_dir" "$capture_dir"
 	if ! PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$fixture_tmpdir" \
@@ -437,6 +444,7 @@ run_fixture_mode() {
 	grep -q "^\[PASS\] non-container CI gates ($mode)$" "$output" || \
 		fail "$mode mode did not complete through the aggregate contract"
 	assert_no_dependency_workspaces "successful $mode mode"
+	assert_no_scan_publication_residue "successful $mode mode" "$evidence_dir"
 }
 
 assert_no_dependency_workspaces() {
@@ -447,9 +455,25 @@ assert_no_dependency_workspaces() {
 	[[ -z "$leaked" ]] || fail "$scenario left dependency workspace: ${leaked#$fixture_tmpdir/}"
 }
 
+assert_no_scan_publication_residue() {
+	local scenario="$1"
+	local evidence_dir="$2"
+	local allowed_lock="${3:-}"
+	local leaked=''
+	[[ -d "$evidence_dir" && ! -L "$evidence_dir" ]] || return 0
+	leaked="$(find "$evidence_dir" -mindepth 1 -maxdepth 1 \
+		\( -name '.*.tmp.*' -o -name '.*.publishing' \) \
+		! -name "$allowed_lock" -print -quit)"
+	[[ -z "$leaked" ]] || fail \
+		"$scenario left scan publication residue: ${leaked#$evidence_dir/}"
+}
+
+# Simulate a caller-owned destination while every nested scan uses its fixture-local root.
+export CI_GATE_SCAN_EVIDENCE_DIR="$outer_evidence_dir"
 for mode in python java react release all; do
 	run_fixture_mode "$mode"
 done
+unset CI_GATE_SCAN_EVIDENCE_DIR
 
 all_output="$fixture_root/all.out"
 for gate in \
@@ -495,7 +519,7 @@ for label in python-production python-development java node; do
 		"$all_output" || fail "scan report was not validated against the $label inventory"
 done
 
-/usr/bin/python3 - "$fixture_root/scans/all" "$scan_capture_root/all" "$all_output" <<'PY'
+/usr/bin/python3 - "$fixture_scan_evidence_root/all" "$scan_capture_root/all" "$all_output" <<'PY'
 import hashlib
 import json
 import re
@@ -512,15 +536,18 @@ for label in ("python-production", "python-development", "java", "node"):
     inventory_path = artifact / "inventory"
     report_path = artifact / "report"
     provenance_path = artifact / "provenance.json"
-    if not all(path.is_file() for path in (inventory_path, report_path, provenance_path)):
-        raise SystemExit(f"{label}: clean scan did not atomically persist inventory/report/provenance")
+    stderr_path = artifact / "stderr"
+    if not all(path.is_file() for path in (inventory_path, report_path, stderr_path, provenance_path)):
+        raise SystemExit(f"{label}: clean scan did not atomically persist all evidence files")
     if inventory_path.read_bytes() != (capture_dir / f"{label}.inventory").read_bytes():
         raise SystemExit(f"{label}: persisted inventory differs from scanner input")
     if report_path.read_bytes() != (capture_dir / f"{label}.report").read_bytes():
         raise SystemExit(f"{label}: persisted report differs from scanner output")
+    if stderr_path.read_bytes() != b"":
+        raise SystemExit(f"{label}: clean scanner stderr was not empty")
     provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
     if provenance != {
-        "schema_version": 1,
+        "schema_version": 2,
         "label": label,
         "lock_type": {
             "python-production": "osv-scanner",
@@ -529,9 +556,14 @@ for label in ("python-production", "python-development", "java", "node"):
             "node": "package-lock.json",
         }[label],
         "scanner_exit_status": 0,
+        "outcome": "clean",
+        "vulnerability_occurrences": 0,
         "report_present": True,
+        "report_accepted": True,
         "inventory_sha256": hashlib.sha256(inventory_path.read_bytes()).hexdigest(),
         "report_sha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
+        "stderr_sha256": hashlib.sha256(stderr_path.read_bytes()).hexdigest(),
+        "stderr_size": len(stderr_path.read_bytes()),
     }:
         raise SystemExit(f"{label}: clean scan provenance is not exact")
 
@@ -568,9 +600,9 @@ stashed_venv="$fixture_root/project-venv"
 fallback_log="$fixture_root/fallback-commands.log"
 fallback_output="$fixture_root/fallback.out"
 mv "$project_venv" "$stashed_venv"
-mkdir -p "$fixture_root/scans/fallback-all"
+mkdir -p "$fixture_scan_evidence_root/fallback-all"
 if ! PATH="$fallback_shim_dir:$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$fallback_log" TMPDIR="$fixture_tmpdir" \
-	CI_GATE_SCAN_EVIDENCE_DIR="$fixture_root/scans/fallback-all" \
+	CI_GATE_SCAN_EVIDENCE_DIR="$fixture_scan_evidence_root/fallback-all" \
 	"$fixture_repo/scripts/verify-ci-gates.sh" --mode all >"$fallback_output" 2>&1; then
 	cat "$fallback_output" >&2
 	fail "all mode failed without a project venv despite python3 fallback"
@@ -587,9 +619,9 @@ mv "$stashed_venv" "$project_venv"
 
 override_log="$fixture_root/override-commands.log"
 override_output="$fixture_root/override.out"
-mkdir -p "$fixture_root/scans/override-all"
+mkdir -p "$fixture_scan_evidence_root/override-all"
 if ! PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$override_log" TMPDIR="$fixture_tmpdir" \
-	CI_GATE_SCAN_EVIDENCE_DIR="$fixture_root/scans/override-all" SUPPORT_COPILOT_CI_PYTHON="$override_python" \
+	CI_GATE_SCAN_EVIDENCE_DIR="$fixture_scan_evidence_root/override-all" SUPPORT_COPILOT_CI_PYTHON="$override_python" \
 	"$fixture_repo/scripts/verify-ci-gates.sh" --mode all >"$override_output" 2>&1; then
 	cat "$override_output" >&2
 	fail "all mode failed with an explicit Python override"
@@ -963,9 +995,14 @@ assert_persisted_scan_evidence() {
 	local capture_dir="$3"
 	local expected_status="$4"
 	local expected_report_present="$5"
+	local expected_outcome="$6"
+	local expected_occurrences="$7"
+	local expected_report_accepted="$8"
+	local expected_stderr="$9"
 	local artifact_dir="$evidence_dir/python-production"
-	[[ -f "$artifact_dir/inventory" && -f "$artifact_dir/provenance.json" ]] || \
-		record_dependency_failure "$scenario did not retain inventory and provenance"
+	[[ -f "$artifact_dir/inventory" && -f "$artifact_dir/stderr" && \
+		-f "$artifact_dir/provenance.json" ]] || \
+		record_dependency_failure "$scenario did not retain inventory, stderr, and provenance"
 	cmp -s "$capture_dir/python-production.inventory" "$artifact_dir/inventory" || \
 		record_dependency_failure "$scenario did not retain the exact scanner inventory"
 	if [[ "$expected_report_present" == true ]]; then
@@ -977,8 +1014,11 @@ assert_persisted_scan_evidence() {
 		[[ ! -e "$artifact_dir/report" ]] || \
 			record_dependency_failure "$scenario retained an unexpected report"
 	fi
-	/usr/bin/python3 - "$artifact_dir/provenance.json" "$expected_status" "$expected_report_present" <<'PY' || \
-		record_dependency_failure "$scenario provenance did not retain scanner status/report presence"
+	[[ "$(<"$artifact_dir/stderr")" == "$expected_stderr" ]] || \
+		record_dependency_failure "$scenario did not persist sanitized scanner stderr"
+	/usr/bin/python3 - "$artifact_dir/provenance.json" "$expected_status" "$expected_report_present" \
+		"$expected_outcome" "$expected_occurrences" "$expected_report_accepted" <<'PY' || \
+		record_dependency_failure "$scenario provenance did not retain its exact terminal outcome"
 import hashlib
 import json
 import sys
@@ -987,12 +1027,30 @@ from pathlib import Path
 provenance_path = Path(sys.argv[1])
 expected_status = int(sys.argv[2])
 expected_report_present = sys.argv[3] == "true"
+expected_outcome = sys.argv[4]
+expected_occurrences = None if sys.argv[5] == "null" else int(sys.argv[5])
+expected_report_accepted = sys.argv[6] == "true"
 artifact_dir = provenance_path.parent
 provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+expected_keys = {
+    "schema_version", "label", "lock_type", "scanner_exit_status", "outcome",
+    "vulnerability_occurrences", "report_present", "report_accepted",
+    "inventory_sha256", "report_sha256", "stderr_sha256", "stderr_size",
+}
+if set(provenance) != expected_keys:
+    raise SystemExit("unexpected provenance fields")
+if provenance["schema_version"] != 2:
+    raise SystemExit("unexpected schema version")
 if provenance["scanner_exit_status"] != expected_status:
     raise SystemExit("unexpected scanner status")
+if provenance["outcome"] != expected_outcome:
+    raise SystemExit("unexpected outcome")
+if provenance["vulnerability_occurrences"] != expected_occurrences:
+    raise SystemExit("unexpected vulnerability count")
 if provenance["report_present"] is not expected_report_present:
     raise SystemExit("unexpected report presence")
+if provenance["report_accepted"] is not expected_report_accepted:
+    raise SystemExit("unexpected report acceptance")
 if provenance["inventory_sha256"] != hashlib.sha256((artifact_dir / "inventory").read_bytes()).hexdigest():
     raise SystemExit("inventory digest mismatch")
 report_path = artifact_dir / "report"
@@ -1001,7 +1059,13 @@ if expected_report_present:
         raise SystemExit("report digest mismatch")
 elif provenance["report_sha256"] is not None:
     raise SystemExit("unexpected report digest")
+stderr = (artifact_dir / "stderr").read_bytes()
+if provenance["stderr_sha256"] != hashlib.sha256(stderr).hexdigest():
+    raise SystemExit("stderr digest mismatch")
+if provenance["stderr_size"] != len(stderr):
+    raise SystemExit("stderr size mismatch")
 PY
+	assert_no_scan_publication_residue "$scenario" "$evidence_dir"
 }
 
 run_dependency_failure_case() {
@@ -1009,7 +1073,7 @@ run_dependency_failure_case() {
 	local failure_environment=''
 	local output
 	local scenario_tmpdir="$fixture_tmpdir/$scenario"
-	local scenario_evidence_dir="$fixture_root/dependency-evidence/$scenario"
+	local scenario_evidence_dir="$scenario_tmpdir/evidence"
 	local scenario_capture_dir="$scan_capture_root/$scenario"
 	local status
 	reset_python_production_lock
@@ -1025,6 +1089,9 @@ run_dependency_failure_case() {
 			;;
 		unexpected-osv-package)
 			failure_environment='CI_GATE_ADD_UNEXPECTED_PYTHON_PACKAGE=1'
+			;;
+		malformed-osv-report)
+			failure_environment='CI_GATE_OSV_MALFORMED_REPORT=1'
 			;;
 		operational-scanner-failure)
 			failure_environment='CI_GATE_OSV_OPERATIONAL_FAILURE=1'
@@ -1055,12 +1122,17 @@ run_dependency_failure_case() {
 		operational-scanner-failure)
 			grep -Fq 'fixture-osv-operational-failure' <<<"$output" || \
 				record_dependency_failure "$scenario did not preserve scanner stderr"
+			if grep -Fq 'fixture-secret' <<<"$output" || grep -Fq "$scenario_tmpdir" <<<"$output"; then
+				record_dependency_failure "$scenario leaked scanner secrets or workspace paths"
+			fi
 			grep -Fq 'OSV-Scanner operational error for python-production (exit 129).' <<<"$output" || \
 				record_dependency_failure "$scenario did not identify the scanner operational error"
 			if grep -q '^\[SCAN\] python-production ' <<<"$output"; then
 				record_dependency_failure "$scenario reported a scan success"
 			fi
-			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" 129 true
+			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" \
+				129 true operational null false \
+				'fixture-osv-operational-failure token=<redacted> <scan-workspace>/python-production-osv.json'
 			;;
 		vulnerability-scanner-failure)
 			grep -Fq 'fixture-osv-vulnerability-exit-one' <<<"$output" || \
@@ -1071,14 +1143,119 @@ run_dependency_failure_case() {
 				grep -q '^\[SCAN\] python-production ' <<<"$output"; then
 				record_dependency_failure "$scenario emitted a generic error or scan success"
 			fi
-			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" 1 true
+			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" \
+				1 true vulnerability 1 true fixture-osv-vulnerability-exit-one
 			;;
-	esac
+		unexpected-osv-package)
+			grep -Fq 'python-production: OSV report tuple mismatch' <<<"$output" || \
+				record_dependency_failure "$scenario did not identify the invalid report"
+			if grep -q '^\[SCAN\] python-production ' <<<"$output"; then
+				record_dependency_failure "$scenario reported a scan success"
+			fi
+			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" \
+				0 true invalid-report null false ''
+			;;
+		malformed-osv-report)
+			grep -Fq 'python-production: invalid OSV JSON report' <<<"$output" || \
+				record_dependency_failure "$scenario did not identify malformed scanner JSON"
+			if grep -q '^\[SCAN\] python-production ' <<<"$output"; then
+				record_dependency_failure "$scenario reported a scan success"
+			fi
+			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" \
+				0 true invalid-report null false fixture-osv-malformed-report
+			;;
+		esac
 	assert_dependency_failure_workspace_cleanup "$scenario" "$scenario_tmpdir"
 }
 
-for scenario in invalid-sha256 malformed-continuation unexpected-osv-package operational-scanner-failure vulnerability-scanner-failure; do
+for scenario in invalid-sha256 malformed-continuation unexpected-osv-package malformed-osv-report \
+	operational-scanner-failure vulnerability-scanner-failure; do
 	run_dependency_failure_case "$scenario"
+done
+
+run_scan_publication_boundary_case() {
+	local scenario="$1"
+	local scenario_root="$fixture_tmpdir/publication-$scenario"
+	local scenario_tmpdir="$scenario_root/tmp"
+	local evidence_dir="$scenario_tmpdir/evidence"
+	local outside_dir="$scenario_root/outside"
+	local sentinel='' sentinel_sha='' allowed_lock=''
+	local output status
+	reset_python_production_lock
+	mkdir -p "$scenario_tmpdir" "$outside_dir"
+	case "$scenario" in
+		stale-destination)
+			mkdir -p "$evidence_dir/python-production"
+			sentinel="$evidence_dir/python-production/sentinel"
+			printf 'stale-destination-sentinel\n' >"$sentinel"
+			;;
+		symlink-path-escape)
+			printf 'outside-symlink-sentinel\n' >"$outside_dir/sentinel"
+			ln -s "$outside_dir" "$evidence_dir"
+			sentinel="$outside_dir/sentinel"
+			;;
+		symlink-destination)
+			mkdir -p "$evidence_dir"
+			printf 'outside-destination-sentinel\n' >"$outside_dir/sentinel"
+			ln -s "$outside_dir" "$evidence_dir/python-production"
+			sentinel="$outside_dir/sentinel"
+			;;
+		publication-lock-collision)
+			mkdir -p "$evidence_dir/.python-production.publishing"
+			sentinel="$evidence_dir/.python-production.publishing/sentinel"
+			printf 'publication-lock-sentinel\n' >"$sentinel"
+			allowed_lock='.python-production.publishing'
+			;;
+		base-target)
+			evidence_dir="$scenario_tmpdir"
+			printf 'base-target-sentinel\n' >"$scenario_tmpdir/sentinel"
+			sentinel="$scenario_tmpdir/sentinel"
+			;;
+		sibling-prefix)
+			mkdir -p "$scenario_root/allowed" "$scenario_root/allowed-sibling"
+			scenario_tmpdir="$scenario_root/allowed"
+			evidence_dir="$scenario_root/allowed-sibling"
+			printf 'sibling-prefix-sentinel\n' >"$evidence_dir/sentinel"
+			sentinel="$evidence_dir/sentinel"
+			;;
+		root-target)
+			evidence_dir=/
+			;;
+		*) fail "unknown scan publication boundary scenario: $scenario" ;;
+	esac
+	if [[ -n "$sentinel" ]]; then
+		sentinel_sha="$(shasum -a 256 "$sentinel" | awk '{print $1}')"
+	fi
+	set +e
+	output="$(env PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$scenario_tmpdir" \
+		CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" \
+		"$fixture_repo/scripts/verify-ci-gates.sh" --mode release 2>&1)"
+	status=$?
+	set -e
+	[[ $status -ne 0 ]] || record_dependency_failure \
+		"$scenario unexpectedly published scan evidence"
+	grep -q '^\[FAIL\] dependency-vulnerabilities$' <<<"$output" || \
+		record_dependency_failure "$scenario did not fail the dependency gate"
+	if grep -q '^\[PASS\] dependency-vulnerabilities$' <<<"$output"; then
+		record_dependency_failure "$scenario emitted fake dependency success"
+	fi
+	if [[ -n "$sentinel" ]]; then
+		[[ "$(shasum -a 256 "$sentinel" | awk '{print $1}')" == "$sentinel_sha" ]] || \
+			record_dependency_failure "$scenario modified its preexisting sentinel"
+	fi
+	if [[ "$scenario" == publication-lock-collision ]]; then
+		[[ ! -e "$evidence_dir/python-production" && ! -L "$evidence_dir/python-production" ]] || \
+			record_dependency_failure "$scenario overwrote the locked ecosystem destination"
+	fi
+	if [[ "$evidence_dir" != / ]]; then
+		assert_no_scan_publication_residue "$scenario" "$evidence_dir" "$allowed_lock"
+	fi
+	assert_dependency_failure_workspace_cleanup "$scenario" "$scenario_tmpdir"
+}
+
+for scenario in stale-destination symlink-path-escape symlink-destination publication-lock-collision \
+	base-target sibling-prefix root-target; do
+	run_scan_publication_boundary_case "$scenario"
 done
 
 [[ $dependency_failure_count -eq 0 ]] || exit 1

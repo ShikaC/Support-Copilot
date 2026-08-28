@@ -464,39 +464,106 @@ static_security() {
     "$resources/application-demo.properties"
 }
 
+scan_evidence_root() {
+	local candidate="$1"
+	local repo_base tmp_lexical_base tmp_base resolved canonical_candidate
+	repo_base="$(canonical_existing_directory "$repo_root")" || return 1
+	tmp_lexical_base="$(canonical_lexical_path "${TMPDIR:-/tmp}")" || return 1
+	tmp_base="$(canonical_existing_directory "$tmp_lexical_base")" || return 1
+	candidate="$(canonical_lexical_path "$candidate")" || {
+		printf 'CI_GATE_SCAN_EVIDENCE_DIR must be a dedicated absolute descendant of the repository or TMPDIR.\n' >&2
+		return 1
+	}
+	if resolved="$(canonical_descendant_path "$repo_base" "$repo_base" "$candidate")" && \
+		is_symlink_free_descendant "$repo_base" "$resolved"; then
+		:
+	elif resolved="$(canonical_descendant_path "$tmp_lexical_base" "$tmp_base" "$candidate")" && \
+		is_symlink_free_descendant "$tmp_base" "$resolved"; then
+		:
+	else
+		printf 'CI_GATE_SCAN_EVIDENCE_DIR must be a symlink-free dedicated descendant of the repository or TMPDIR.\n' >&2
+		return 1
+	fi
+	canonical_candidate="$(canonical_existing_directory "$candidate")" || {
+		printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
+		return 1
+	}
+	[[ "$canonical_candidate" == "$resolved" ]] || {
+		printf 'CI_GATE_SCAN_EVIDENCE_DIR contains a symlink or path escape.\n' >&2
+		return 1
+	}
+	printf '%s\n' "$resolved"
+}
+
+sanitize_scanner_stderr() {
+	local source="$1"
+	local destination="$2"
+	local scan_root="$3"
+	"$ci_python" - "$source" "$destination" "$repo_root" "$scan_root" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+source, destination, repo_root, scan_root = map(Path, sys.argv[1:])
+text = source.read_text(encoding="utf-8", errors="replace")
+for path, replacement in ((scan_root, "<scan-workspace>"), (repo_root, "<repository>")):
+    text = text.replace(str(path), replacement)
+text = re.sub(
+    r"(?i)(authorization:\s*bearer\s+|(?:api[_-]?key|token|password|secret)\s*[=:]\s*)\S+",
+    r"\1<redacted>",
+    text,
+)
+destination.write_text(text, encoding="utf-8")
+PY
+}
+
 persist_scan_evidence() {
 	local evidence_dir="$1"
 	local label="$2"
 	local lock_type="$3"
 	local inventory="$4"
 	local report="$5"
-	local scan_status="$6"
-	local destination lock_dir staging_dir report_present=false
+	local scanner_stderr="$6"
+	local scan_status="$7"
+	local outcome="$8"
+	local occurrence_count="$9"
+	local report_accepted="${10}"
+	local destination lock_dir staging_dir='' report_present=false
+	local lock_owned=0
 
-	[[ -d "$evidence_dir" && ! -L "$evidence_dir" ]] || {
-		printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
+	evidence_dir="$(scan_evidence_root "$evidence_dir")" || return 1
+	[[ "$label" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || return 1
+	[[ -f "$inventory" && ! -L "$inventory" && -f "$scanner_stderr" && ! -L "$scanner_stderr" ]] || {
+		printf 'Scan evidence inputs are not regular files for %s.\n' "$label" >&2
 		return 1
 	}
 	destination="$evidence_dir/$label"
+	lock_dir="$evidence_dir/.${label}.publishing"
 	[[ ! -e "$destination" && ! -L "$destination" ]] || {
 		printf 'Scan evidence path is not fresh for %s.\n' "$label" >&2
 		return 1
 	}
-	lock_dir="$evidence_dir/.${label}.publishing"
-	mkdir "$lock_dir" 2>/dev/null || {
+	if ! mkdir -m 700 "$lock_dir" 2>/dev/null; then
 		printf 'Scan evidence publication is already in progress for %s.\n' "$label" >&2
 		return 1
-	}
-	staging_dir="$(mktemp -d "$evidence_dir/.${label}.tmp.XXXXXX")" || {
+	fi
+	lock_owned=1
+	if [[ -e "$destination" || -L "$destination" ]]; then
+		printf 'Scan evidence path became occupied for %s.\n' "$label" >&2
+		rmdir "$lock_dir" 2>/dev/null || true
+		return 1
+	fi
+	staging_dir="$(umask 077 && mktemp -d "$evidence_dir/.${label}.tmp.XXXXXX")" || {
 		rmdir "$lock_dir" 2>/dev/null || true
 		return 1
 	}
-	if ! cp "$inventory" "$staging_dir/inventory"; then
+	if ! cp "$inventory" "$staging_dir/inventory" || \
+		! cp "$scanner_stderr" "$staging_dir/stderr"; then
 		rm -rf -- "$staging_dir"
 		rmdir "$lock_dir" 2>/dev/null || true
 		return 1
 	fi
-	if [[ -e "$report" ]]; then
+	if [[ -e "$report" || -L "$report" ]]; then
 		[[ -f "$report" && ! -L "$report" ]] || {
 			printf 'OSV report path is not a regular file for %s.\n' "$label" >&2
 			rm -rf -- "$staging_dir"
@@ -510,27 +577,59 @@ persist_scan_evidence() {
 		fi
 		report_present=true
 	fi
-	if ! "$ci_python" - "$staging_dir" "$label" "$lock_type" "$scan_status" "$report_present" <<'PY'
+	chmod 600 "$staging_dir"/*
+	if ! "$ci_python" - "$staging_dir" "$label" "$lock_type" "$scan_status" \
+		"$outcome" "$occurrence_count" "$report_present" "$report_accepted" <<'PY'
 import hashlib
 import json
 import sys
 from pathlib import Path
 
-artifact_dir, label, lock_type, scan_status, report_present = sys.argv[1:]
+(
+    artifact_dir,
+    label,
+    lock_type,
+    scan_status,
+    outcome,
+    occurrence_count,
+    report_present,
+    report_accepted,
+) = sys.argv[1:]
 artifact_path = Path(artifact_dir)
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 report_path = artifact_path / "report"
+stderr_path = artifact_path / "stderr"
+status = int(scan_status)
+present = report_present == "true"
+accepted = report_accepted == "true"
+occurrences = None if occurrence_count == "null" else int(occurrence_count)
+valid_outcome = (
+    (outcome == "clean" and status == 0 and occurrences == 0 and present and accepted)
+    or (outcome == "vulnerability" and status == 1 and occurrences is not None
+        and occurrences > 0 and present and accepted)
+    or (outcome == "operational" and status not in (0, 1) and occurrences is None
+        and not accepted)
+    or (outcome == "invalid-report" and status in (0, 1) and occurrences is None
+        and not accepted)
+)
+if not valid_outcome:
+    raise SystemExit("refusing inconsistent scan provenance outcome")
 provenance = {
-    "schema_version": 1,
+    "schema_version": 2,
     "label": label,
     "lock_type": lock_type,
-    "scanner_exit_status": int(scan_status),
-    "report_present": report_present == "true",
+    "scanner_exit_status": status,
+    "outcome": outcome,
+    "vulnerability_occurrences": occurrences,
+    "report_present": present,
+    "report_accepted": accepted,
     "inventory_sha256": sha256(artifact_path / "inventory"),
     "report_sha256": sha256(report_path) if report_path.is_file() else None,
+    "stderr_sha256": sha256(stderr_path),
+    "stderr_size": stderr_path.stat().st_size,
 }
 (artifact_path / "provenance.json").write_text(
     json.dumps(provenance, sort_keys=True) + "\n", encoding="utf-8"
@@ -541,12 +640,16 @@ PY
 		rmdir "$lock_dir" 2>/dev/null || true
 		return 1
 	fi
+	chmod 600 "$staging_dir/provenance.json"
 	if ! mv "$staging_dir" "$destination"; then
 		rm -rf -- "$staging_dir"
 		rmdir "$lock_dir" 2>/dev/null || true
 		return 1
 	fi
-	rmdir "$lock_dir" || return 1
+	staging_dir=''
+	if [[ $lock_owned -eq 1 ]]; then
+		rmdir "$lock_dir" || return 1
+	fi
 }
 
 dependency_vulnerabilities() (
@@ -556,9 +659,8 @@ dependency_vulnerabilities() (
 	local scan_workspace=''
 	local java_project
 	local evidence_dir="${CI_GATE_SCAN_EVIDENCE_DIR:-}"
-	if [[ -n "$evidence_dir" && ( ! -d "$evidence_dir" || -L "$evidence_dir" ) ]]; then
-		printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
-		return 1
+	if [[ -n "$evidence_dir" ]]; then
+		evidence_dir="$(scan_evidence_root "$evidence_dir")" || return 1
 	fi
 	cleanup_dependency_workspaces() {
 		local status=$?
@@ -669,40 +771,74 @@ scan_resolved_inventory() {
 	local report="$4"
 	local config="$5"
 	local evidence_dir="$6"
-	local scan_status
-	local validation_status
-	local validation_inventory="$inventory"
-	local validation_report="$report"
+	local scan_status validation_status validation_result
+	local scanner_stderr_raw="${report%.json}-stderr.raw"
+	local scanner_stderr="${report%.json}-stderr.txt"
+	local outcome occurrence_count report_accepted
+	local validation_inventory_count validation_scanned_count
 	[[ ! -e "$report" ]] || {
 		printf 'OSV report path is not fresh for %s.\n' "$label" >&2
 		return 1
 	}
+	[[ ! -e "$scanner_stderr_raw" && ! -e "$scanner_stderr" ]] || return 1
 	set +e
 	"$osv_scanner_bin" scan source --lockfile="$lock_type:$inventory" --all-packages \
-		--format=json --output="$report" --config="$config"
+		--format=json --output="$report" --config="$config" 2>"$scanner_stderr_raw"
 	scan_status=$?
 	set -e
-	if [[ -n "$evidence_dir" ]]; then
-		persist_scan_evidence "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" "$scan_status" || return
-		validation_inventory="$evidence_dir/$label/inventory"
-		validation_report="$evidence_dir/$label/report"
-	fi
+	sanitize_scanner_stderr "$scanner_stderr_raw" "$scanner_stderr" "$(dirname "$inventory")" || return 1
+	cat "$scanner_stderr" >&2
 	if [[ $scan_status -ne 0 && $scan_status -ne 1 ]]; then
+		outcome=operational
+		occurrence_count=null
+		report_accepted=false
+		if [[ -n "$evidence_dir" ]]; then
+			persist_scan_evidence "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" \
+				"$scanner_stderr" "$scan_status" "$outcome" "$occurrence_count" "$report_accepted" || return 1
+		fi
 		printf 'OSV-Scanner operational error for %s (exit %s).\n' "$label" "$scan_status" >&2
 		if [[ ! -s "$report" ]]; then
 			printf 'OSV-Scanner did not produce a report for %s.\n' "$label" >&2
 		fi
 		return 1
 	fi
-	[[ -s "$validation_report" ]] || {
+	if [[ ! -s "$report" ]]; then
+		outcome=invalid-report
+		occurrence_count=null
+		report_accepted=false
+		if [[ -n "$evidence_dir" ]]; then
+			persist_scan_evidence "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" \
+				"$scanner_stderr" "$scan_status" "$outcome" "$occurrence_count" "$report_accepted" || return 1
+		fi
 		printf 'OSV-Scanner did not produce a report for %s.\n' "$label" >&2
 		return 1
-	}
+	fi
 	set +e
-	validate_osv_report "$label" "$lock_type" "$validation_inventory" "$validation_report" "$scan_status"
+	validation_result="$(validate_osv_report "$label" "$lock_type" "$inventory" "$report" "$scan_status")"
 	validation_status=$?
 	set -e
-	return "$validation_status"
+	if [[ $validation_status -ne 0 ]]; then
+		outcome=invalid-report
+		occurrence_count=null
+		report_accepted=false
+	else
+		IFS=$'\t' read -r outcome occurrence_count validation_inventory_count validation_scanned_count \
+			<<<"$validation_result"
+		report_accepted=true
+	fi
+	if [[ -n "$evidence_dir" ]]; then
+		persist_scan_evidence "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" \
+			"$scanner_stderr" "$scan_status" "$outcome" "$occurrence_count" "$report_accepted" || return 1
+	fi
+	if [[ $validation_status -ne 0 ]]; then
+		return 1
+	fi
+	if [[ "$outcome" == vulnerability ]]; then
+		printf '%s: OSV report contains %s vulnerabilities\n' "$label" "$occurrence_count" >&2
+		return 1
+	fi
+	printf '[SCAN] %s inventory-packages=%s scanned-packages=%s vulnerabilities=0\n' \
+		"$label" "$validation_inventory_count" "$validation_scanned_count"
 }
 
 validate_osv_report() {
@@ -801,15 +937,17 @@ if missing or unexpected:
         f"{label}: OSV report tuple mismatch "
         f"missing={len(missing)} unexpected={len(unexpected)}"
     )
-if vulnerability_count:
-    raise SystemExit(f"{label}: OSV report contains {vulnerability_count} vulnerabilities")
-if scan_status != "0":
-    raise SystemExit(f"{label}: OSV-Scanner exited {scan_status} without reported vulnerabilities")
+if scan_status == "0" and vulnerability_count == 0:
+    outcome = "clean"
+elif scan_status == "1" and vulnerability_count > 0:
+    outcome = "vulnerability"
+else:
+    raise SystemExit(
+        f"{label}: OSV status/report mismatch exit={scan_status} "
+        f"vulnerabilities={vulnerability_count}"
+    )
 
-print(
-    f"[SCAN] {label} inventory-packages={len(expected)} "
-    f"scanned-packages={len(scanned)} vulnerabilities=0"
-)
+print(f"{outcome}\t{vulnerability_count}\t{len(expected)}\t{len(scanned)}")
 PY
 }
 
