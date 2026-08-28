@@ -143,11 +143,14 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
     monkeypatch.setattr("app.embedding_provider.OpenAIEmbeddings", CapturingEmbeddings)
     retriever = KnowledgeRetriever(
         Settings(
+            _env_file=None,
             ai_mode="live",
             openai_api_key="chat-provider-key",
             openai_embedding_api_key="embedding-provider-key",
             openai_base_url="https://chat.example.test/v1",
             openai_embedding_base_url="https://embedding.example.test/v1",
+            openai_chat_model="chat-test-model",
+            openai_embedding_model="embedding-test-model",
             openai_max_retries=1,
             knowledge_path=external_knowledge_path,
         )
