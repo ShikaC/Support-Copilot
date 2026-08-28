@@ -464,6 +464,91 @@ static_security() {
     "$resources/application-demo.properties"
 }
 
+persist_scan_evidence() {
+	local evidence_dir="$1"
+	local label="$2"
+	local lock_type="$3"
+	local inventory="$4"
+	local report="$5"
+	local scan_status="$6"
+	local destination lock_dir staging_dir report_present=false
+
+	[[ -d "$evidence_dir" && ! -L "$evidence_dir" ]] || {
+		printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
+		return 1
+	}
+	destination="$evidence_dir/$label"
+	[[ ! -e "$destination" && ! -L "$destination" ]] || {
+		printf 'Scan evidence path is not fresh for %s.\n' "$label" >&2
+		return 1
+	}
+	lock_dir="$evidence_dir/.${label}.publishing"
+	mkdir "$lock_dir" 2>/dev/null || {
+		printf 'Scan evidence publication is already in progress for %s.\n' "$label" >&2
+		return 1
+	}
+	staging_dir="$(mktemp -d "$evidence_dir/.${label}.tmp.XXXXXX")" || {
+		rmdir "$lock_dir" 2>/dev/null || true
+		return 1
+	}
+	if ! cp "$inventory" "$staging_dir/inventory"; then
+		rm -rf -- "$staging_dir"
+		rmdir "$lock_dir" 2>/dev/null || true
+		return 1
+	fi
+	if [[ -e "$report" ]]; then
+		[[ -f "$report" && ! -L "$report" ]] || {
+			printf 'OSV report path is not a regular file for %s.\n' "$label" >&2
+			rm -rf -- "$staging_dir"
+			rmdir "$lock_dir" 2>/dev/null || true
+			return 1
+		}
+		if ! cp "$report" "$staging_dir/report"; then
+			rm -rf -- "$staging_dir"
+			rmdir "$lock_dir" 2>/dev/null || true
+			return 1
+		fi
+		report_present=true
+	fi
+	if ! "$ci_python" - "$staging_dir" "$label" "$lock_type" "$scan_status" "$report_present" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+artifact_dir, label, lock_type, scan_status, report_present = sys.argv[1:]
+artifact_path = Path(artifact_dir)
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+report_path = artifact_path / "report"
+provenance = {
+    "schema_version": 1,
+    "label": label,
+    "lock_type": lock_type,
+    "scanner_exit_status": int(scan_status),
+    "report_present": report_present == "true",
+    "inventory_sha256": sha256(artifact_path / "inventory"),
+    "report_sha256": sha256(report_path) if report_path.is_file() else None,
+}
+(artifact_path / "provenance.json").write_text(
+    json.dumps(provenance, sort_keys=True) + "\n", encoding="utf-8"
+)
+PY
+	then
+		rm -rf -- "$staging_dir"
+		rmdir "$lock_dir" 2>/dev/null || true
+		return 1
+	fi
+	if ! mv "$staging_dir" "$destination"; then
+		rm -rf -- "$staging_dir"
+		rmdir "$lock_dir" 2>/dev/null || true
+		return 1
+	fi
+	rmdir "$lock_dir" || return 1
+}
+
 dependency_vulnerabilities() (
 	set -Eeuo pipefail
 	require_command java
@@ -471,6 +556,10 @@ dependency_vulnerabilities() (
 	local scan_workspace=''
 	local java_project
 	local evidence_dir="${CI_GATE_SCAN_EVIDENCE_DIR:-}"
+	if [[ -n "$evidence_dir" && ( ! -d "$evidence_dir" || -L "$evidence_dir" ) ]]; then
+		printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
+		return 1
+	fi
 	cleanup_dependency_workspaces() {
 		local status=$?
 		trap - EXIT
@@ -503,26 +592,16 @@ dependency_vulnerabilities() (
 
 	scan_resolved_inventory python-production osv-scanner \
 		"$scan_workspace/python-production-osv.json" "$scan_workspace/python-production-report.json" \
-		"$scan_workspace/osv-scanner.toml"
+		"$scan_workspace/osv-scanner.toml" "$evidence_dir"
 	scan_resolved_inventory python-development osv-scanner \
 		"$scan_workspace/python-development-osv.json" "$scan_workspace/python-development-report.json" \
-		"$scan_workspace/osv-scanner.toml"
+		"$scan_workspace/osv-scanner.toml" "$evidence_dir"
 	scan_resolved_inventory java gradle.lockfile \
 		"$java_project/gradle.lockfile" "$scan_workspace/java-report.json" \
-		"$scan_workspace/osv-scanner.toml"
+		"$scan_workspace/osv-scanner.toml" "$evidence_dir"
 	scan_resolved_inventory node package-lock.json \
 		"$tracked_snapshot/apps/support-copilot-web/package-lock.json" "$scan_workspace/node-report.json" \
-		"$scan_workspace/osv-scanner.toml"
-
-	if [[ -n "$evidence_dir" ]]; then
-		[[ -d "$evidence_dir" ]] || {
-			printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
-			return 1
-		}
-		cp "$scan_workspace"/*-osv.json "$scan_workspace"/*-report.json \
-			"$scan_workspace/committed-gradle.lockfile" "$evidence_dir/"
-		cp "$tracked_snapshot/apps/support-copilot-web/package-lock.json" "$evidence_dir/node-package-lock.json"
-	fi
+		"$scan_workspace/osv-scanner.toml" "$evidence_dir"
 )
 
 generate_python_osv_inventory() {
@@ -589,8 +668,11 @@ scan_resolved_inventory() {
 	local inventory="$3"
 	local report="$4"
 	local config="$5"
+	local evidence_dir="$6"
 	local scan_status
 	local validation_status
+	local validation_inventory="$inventory"
+	local validation_report="$report"
 	[[ ! -e "$report" ]] || {
 		printf 'OSV report path is not fresh for %s.\n' "$label" >&2
 		return 1
@@ -600,6 +682,11 @@ scan_resolved_inventory() {
 		--format=json --output="$report" --config="$config"
 	scan_status=$?
 	set -e
+	if [[ -n "$evidence_dir" ]]; then
+		persist_scan_evidence "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" "$scan_status" || return
+		validation_inventory="$evidence_dir/$label/inventory"
+		validation_report="$evidence_dir/$label/report"
+	fi
 	if [[ $scan_status -ne 0 && $scan_status -ne 1 ]]; then
 		printf 'OSV-Scanner operational error for %s (exit %s).\n' "$label" "$scan_status" >&2
 		if [[ ! -s "$report" ]]; then
@@ -607,12 +694,12 @@ scan_resolved_inventory() {
 		fi
 		return 1
 	fi
-	[[ -s "$report" ]] || {
+	[[ -s "$validation_report" ]] || {
 		printf 'OSV-Scanner did not produce a report for %s.\n' "$label" >&2
 		return 1
 	}
 	set +e
-	validate_osv_report "$label" "$lock_type" "$inventory" "$report" "$scan_status"
+	validate_osv_report "$label" "$lock_type" "$validation_inventory" "$validation_report" "$scan_status"
 	validation_status=$?
 	set -e
 	return "$validation_status"
