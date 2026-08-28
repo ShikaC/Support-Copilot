@@ -6,16 +6,8 @@ readonly ACTIONLINT_VERSION="1.7.7"
 readonly OSV_SCANNER_VERSION="2.2.4"
 readonly GITLEAKS_VERSION="8.30.1"
 
-gate_names=(
-  python-locks python-tests python-mock-evaluation
-  java-tests java-profile-contracts java-flyway-contracts
-  react-install react-lint react-tests react-build react-budget react-node-contracts react-e2e
-  workflow-syntax workflow-contract static-migration-profile static-security
-  dependency-vulnerabilities tracked-secrets
-)
-
 usage() {
-  printf 'Usage: %s [--mode python|java|react|release|all | --list | --deferred]\n' "$0"
+	printf 'Usage: %s [--mode python|java|react|release|all | --deferred]\n' "$0"
 }
 
 print_deferred() {
@@ -29,13 +21,29 @@ print_deferred() {
 
 run_gate() {
   local name="$1"
+  local gate_status
+  local errexit_was_enabled=0
   shift
   printf '[RUN] %s\n' "$name"
-  if "$@"; then
+
+  case $- in
+    *e*) errexit_was_enabled=1 ;;
+  esac
+  set +e
+  (
+    set -Eeuo pipefail
+    "$@"
+  )
+  gate_status=$?
+  if [[ $errexit_was_enabled -eq 1 ]]; then
+    set -e
+  fi
+
+  if [[ $gate_status -eq 0 ]]; then
     printf '[PASS] %s\n' "$name"
   else
     printf '[FAIL] %s\n' "$name" >&2
-    return 1
+    return "$gate_status"
   fi
 }
 
@@ -141,23 +149,253 @@ static_security() {
     "$resources/application-demo.properties"
 }
 
-dependency_vulnerabilities() {
-  require_version osv-scanner "$OSV_SCANNER_VERSION" osv-scanner --version
-  local tracked_snapshot
-  local report
-  local scan_status
-  tracked_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-dependencies.XXXXXX")"
-  report="$tracked_snapshot/osv-report.json"
-  trap 'rm -rf "$tracked_snapshot"' RETURN
-  git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$tracked_snapshot" -xf -
-  osv-scanner scan source --recursive --format json --output "$report" "$tracked_snapshot" || scan_status=$?
-  scan_status="${scan_status:-0}"
-  if [[ $scan_status -ne 0 ]]; then
-    printf 'OSV-Scanner found known dependency vulnerabilities; details are intentionally not printed.\n' >&2
-  fi
-  rm -rf "$tracked_snapshot"
-  trap - RETURN
-  return "$scan_status"
+dependency_vulnerabilities() (
+	set -Eeuo pipefail
+	require_version osv-scanner "$OSV_SCANNER_VERSION" osv-scanner --version
+	require_command python3
+	require_command java
+	local tracked_snapshot=''
+	local scan_workspace=''
+	local java_project
+	local evidence_dir="${CI_GATE_SCAN_EVIDENCE_DIR:-}"
+	cleanup_dependency_workspaces() {
+		local status=$?
+		trap - EXIT
+		[[ -z "$tracked_snapshot" ]] || rm -rf -- "$tracked_snapshot"
+		[[ -z "$scan_workspace" ]] || rm -rf -- "$scan_workspace"
+		return "$status"
+	}
+	trap cleanup_dependency_workspaces EXIT
+	tracked_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-dependencies.XXXXXX")"
+	scan_workspace="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-scans.XXXXXX")"
+	git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$tracked_snapshot" -xf -
+	java_project="$tracked_snapshot/services/support-copilot-api"
+	cp "$java_project/gradle.lockfile" "$scan_workspace/committed-gradle.lockfile"
+	(
+		cd "$java_project"
+		./gradlew dependencies --write-locks --no-daemon >/dev/null
+	)
+	cmp -s "$scan_workspace/committed-gradle.lockfile" "$java_project/gradle.lockfile" || {
+		printf 'Generated Java dependency inventory differs from the committed gradle.lockfile.\n' >&2
+		return 1
+	}
+
+	generate_python_osv_inventory \
+		"$tracked_snapshot/services/support-copilot-ai/requirements.lock.txt" \
+		"$scan_workspace/python-production-osv.json"
+	generate_python_osv_inventory \
+		"$tracked_snapshot/services/support-copilot-ai/requirements-dev.lock.txt" \
+		"$scan_workspace/python-development-osv.json"
+	: >"$scan_workspace/osv-scanner.toml"
+
+	scan_resolved_inventory python-production osv-scanner \
+		"$scan_workspace/python-production-osv.json" "$scan_workspace/python-production-report.json" \
+		"$scan_workspace/osv-scanner.toml"
+	scan_resolved_inventory python-development osv-scanner \
+		"$scan_workspace/python-development-osv.json" "$scan_workspace/python-development-report.json" \
+		"$scan_workspace/osv-scanner.toml"
+	scan_resolved_inventory java gradle.lockfile \
+		"$java_project/gradle.lockfile" "$scan_workspace/java-report.json" \
+		"$scan_workspace/osv-scanner.toml"
+	scan_resolved_inventory node package-lock.json \
+		"$tracked_snapshot/apps/support-copilot-web/package-lock.json" "$scan_workspace/node-report.json" \
+		"$scan_workspace/osv-scanner.toml"
+
+	if [[ -n "$evidence_dir" ]]; then
+		[[ -d "$evidence_dir" ]] || {
+			printf 'CI_GATE_SCAN_EVIDENCE_DIR must name an existing directory.\n' >&2
+			return 1
+		}
+		cp "$scan_workspace"/*-osv.json "$scan_workspace"/*-report.json \
+			"$scan_workspace/committed-gradle.lockfile" "$evidence_dir/"
+		cp "$tracked_snapshot/apps/support-copilot-web/package-lock.json" "$evidence_dir/node-package-lock.json"
+	fi
+)
+
+generate_python_osv_inventory() {
+	local lockfile="$1"
+	local inventory="$2"
+	python3 - "$lockfile" "$inventory" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+lock_path = Path(sys.argv[1])
+inventory_path = Path(sys.argv[2])
+lines = lock_path.read_text(encoding="utf-8").splitlines()
+packages = []
+current = None
+hash_count = 0
+
+def finish_package() -> None:
+    global current, hash_count
+    if current is not None:
+        if hash_count == 0:
+            raise SystemExit(f"{lock_path}: {current[0]} has no locked artifact hash")
+        packages.append(current)
+    current = None
+    hash_count = 0
+
+for line_number, line in enumerate(lines, 1):
+    if not line.strip() or line.lstrip().startswith("#"):
+        continue
+    match = re.match(r"^([A-Za-z0-9_.-]+)==([^ ;\\\t]+)(?:[ \t]*;[^\\]*)?[ \t]*\\?$", line)
+    if match:
+        finish_package()
+        current = (match.group(1).lower().replace("_", "-"), match.group(2))
+        continue
+    if re.match(r"^[ \t]+--hash=sha256:[0-9a-fA-F]{64}[ \t]*\\?$", line):
+        if current is None:
+            raise SystemExit(f"{lock_path}:{line_number}: hash without a package")
+        hash_count += 1
+        continue
+    raise SystemExit(f"{lock_path}:{line_number}: unsupported lock entry")
+finish_package()
+
+if not packages:
+    raise SystemExit(f"{lock_path}: no exact packages found")
+if len(set(packages)) != len(packages):
+    raise SystemExit(f"{lock_path}: duplicate normalized package coordinates are ambiguous")
+
+document = {
+    "results": [{
+        "source": {"path": str(lock_path), "type": "lockfile"},
+        "packages": [{
+            "package": {"name": name, "version": version, "ecosystem": "PyPI"}
+        } for name, version in packages],
+    }]
+}
+inventory_path.write_text(json.dumps(document, sort_keys=True) + "\n", encoding="utf-8")
+PY
+}
+
+scan_resolved_inventory() {
+	local label="$1"
+	local lock_type="$2"
+	local inventory="$3"
+	local report="$4"
+	local config="$5"
+	local scan_status
+	set +e
+	osv-scanner scan source --lockfile="$lock_type:$inventory" --all-packages \
+		--format=json --output-file="$report" --config="$config"
+	scan_status=$?
+	set -e
+	[[ -s "$report" ]] || {
+		printf 'OSV-Scanner did not produce a report for %s.\n' "$label" >&2
+		return 1
+	}
+	validate_osv_report "$label" "$lock_type" "$inventory" "$report"
+	if [[ $scan_status -ne 0 ]]; then
+		printf 'OSV-Scanner failed or found vulnerabilities in %s.\n' "$label" >&2
+		return 1
+	fi
+}
+
+validate_osv_report() {
+	local label="$1"
+	local lock_type="$2"
+	local inventory="$3"
+	local report="$4"
+	python3 - "$label" "$lock_type" "$inventory" "$report" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+label, lock_type, inventory_name, report_name = sys.argv[1:]
+inventory_path = Path(inventory_name)
+report_path = Path(report_name)
+
+try:
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as error:
+    raise SystemExit(f"{label}: invalid OSV JSON report: {error}")
+
+if not isinstance(report, dict) or not isinstance(report.get("results"), list):
+    raise SystemExit(f"{label}: OSV report has no results array")
+
+def package_tuple(value: object) -> tuple[str, str, str]:
+    if not isinstance(value, dict):
+        raise SystemExit(f"{label}: malformed package entry")
+    name = value.get("name")
+    version = value.get("version")
+    ecosystem = value.get("ecosystem")
+    if not all(isinstance(item, str) and item for item in (name, version, ecosystem)):
+        raise SystemExit(f"{label}: package entry is not exact")
+    normalized_name = name.lower().replace("_", "-") if ecosystem == "PyPI" else name
+    return normalized_name, version, ecosystem
+
+if lock_type == "osv-scanner":
+    try:
+        source = json.loads(inventory_path.read_text(encoding="utf-8"))
+        source_results = source["results"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+        raise SystemExit(f"{label}: invalid generated inventory: {error}")
+    expected = {
+        package_tuple(item["package"])
+        for result in source_results
+        for item in result["packages"]
+    }
+elif lock_type == "gradle.lockfile":
+    expected = set()
+    for line in inventory_path.read_text(encoding="utf-8").splitlines():
+        if not line or line.startswith("#") or line.startswith("empty="):
+            continue
+        coordinate = line.split("=", 1)[0].split(":")
+        if len(coordinate) != 3 or not all(coordinate):
+            raise SystemExit(f"{label}: malformed Gradle lock entry: {line}")
+        expected.add((f"{coordinate[0]}:{coordinate[1]}", coordinate[2], "Maven"))
+elif lock_type == "package-lock.json":
+    try:
+        lock = json.loads(inventory_path.read_text(encoding="utf-8"))
+        package_entries = lock["packages"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+        raise SystemExit(f"{label}: invalid package-lock inventory: {error}")
+    expected = set()
+    for path, package in package_entries.items():
+        if not path or package.get("link"):
+            continue
+        name = package.get("name") or path.rsplit("node_modules/", 1)[-1]
+        version = package.get("version")
+        if not isinstance(name, str) or not isinstance(version, str):
+            raise SystemExit(f"{label}: non-exact Node package at {path}")
+        expected.add((name, version, "npm"))
+else:
+    raise SystemExit(f"{label}: unsupported inventory type {lock_type}")
+
+if not expected:
+    raise SystemExit(f"{label}: resolved inventory is empty")
+
+scanned = set()
+vulnerability_count = 0
+for result in report["results"]:
+    if not isinstance(result, dict) or not isinstance(result.get("packages"), list):
+        raise SystemExit(f"{label}: malformed OSV result entry")
+    for item in result["packages"]:
+        if not isinstance(item, dict) or "package" not in item:
+            raise SystemExit(f"{label}: malformed OSV package result")
+        scanned.add(package_tuple(item["package"]))
+        vulnerabilities = item.get("vulnerabilities", [])
+        if not isinstance(vulnerabilities, list):
+            raise SystemExit(f"{label}: malformed vulnerability list")
+        vulnerability_count += len(vulnerabilities)
+
+missing = expected - scanned
+unexpected = scanned - expected
+if missing or unexpected:
+    raise SystemExit(
+        f"{label}: OSV report tuple mismatch "
+        f"missing={len(missing)} unexpected={len(unexpected)}"
+    )
+if vulnerability_count:
+    raise SystemExit(f"{label}: OSV report contains {vulnerability_count} vulnerabilities")
+
+print(
+    f"[SCAN] {label} inventory-packages={len(expected)} "
+    f"scanned-packages={len(scanned)} vulnerabilities=0"
+)
+PY
 }
 
 tracked_secrets() {
@@ -210,16 +448,8 @@ run_release() {
 
 mode="all"
 case "${1:-}" in
-  --list)
-    printf '%s\n' "${gate_names[@]}"
-    exit 0
-    ;;
-  --deferred)
+	--deferred)
     print_deferred
-    exit 0
-    ;;
-  --test-failure-propagation)
-    run_gate task13-failure-propagation bash -c "${CI_GATE_TEST_COMMAND:-false}"
     exit 0
     ;;
   --mode)
