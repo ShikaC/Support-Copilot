@@ -12,9 +12,6 @@ jobs:
     name: Workflow, security, and dependency gates
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      TMPDIR: ${{ runner.temp }}
-      SUPPORT_COPILOT_CI_TOOLS_DIR: ${{ runner.temp }}/support-copilot-ci-tools
 
     steps:
       - name: Check out repository with history
@@ -38,4 +35,7 @@ jobs:
           cache: false
 
       - name: Run non-container release gates
+        env:
+          TMPDIR: ${{ runner.temp }}
+          SUPPORT_COPILOT_CI_TOOLS_DIR: ${{ runner.temp }}/support-copilot-ci-tools
         run: ./scripts/verify-ci-gates.sh --mode release

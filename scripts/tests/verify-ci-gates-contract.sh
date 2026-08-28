@@ -36,6 +36,60 @@ fail() {
 
 [[ -x "$aggregate" ]] || fail "aggregate contract is missing or not executable: scripts/verify-ci-gates.sh"
 
+workflow="$repo_root/.github/workflows/release-gates-ci.yml"
+/usr/bin/python3 - "$workflow" <<'PY'
+import sys
+from pathlib import Path
+
+workflow_path = Path(sys.argv[1])
+lines = workflow_path.read_text(encoding="utf-8").splitlines()
+
+def find_line(value, start=0):
+    for index in range(start, len(lines)):
+        if lines[index] == value:
+            return index
+    raise SystemExit(f"workflow contract: missing line {value!r}")
+
+job_env_starts = [index for index, line in enumerate(lines) if line == "    env:"]
+if job_env_starts:
+    job_env_start = job_env_starts[0]
+    job_env_end = next(
+        (index for index in range(job_env_start + 1, len(lines))
+         if lines[index] and len(lines[index]) - len(lines[index].lstrip()) <= 4),
+        len(lines),
+    )
+    if any("runner.temp" in line for line in lines[job_env_start + 1:job_env_end]):
+        raise SystemExit("workflow contract: runner.temp must not be used in jobs.<job_id>.env")
+
+release_step_start = find_line("      - name: Run non-container release gates")
+step_env_start = find_line("        env:", release_step_start)
+step_env_end = next(
+    (index for index in range(step_env_start + 1, len(lines))
+     if lines[index] and len(lines[index]) - len(lines[index].lstrip()) <= 8),
+    len(lines),
+)
+actual = {}
+for line in lines[step_env_start + 1:step_env_end]:
+    stripped = line.strip()
+    if stripped and ":" in stripped:
+        key, value = stripped.split(":", 1)
+        actual[key] = value.strip()
+expected = {
+    "TMPDIR": "${{ runner.temp }}",
+    "SUPPORT_COPILOT_CI_TOOLS_DIR": "${{ runner.temp }}/support-copilot-ci-tools",
+}
+if actual != expected:
+    raise SystemExit(f"workflow contract: release-step env is {actual!r}, expected {expected!r}")
+
+runner_temp_lines = [
+    index for index, line in enumerate(lines)
+    if "runner.temp" in line
+]
+expected_runner_temp_lines = list(range(step_env_start + 1, step_env_end))
+if runner_temp_lines != expected_runner_temp_lines:
+    raise SystemExit("workflow contract: runner.temp must be scoped only to the release step env")
+PY
+
 mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$bootstrap_bin_dir" \
 	"$wrong_tool_dir" "$fixture_tmpdir" \
 	"$(dirname "$venv_python")"
