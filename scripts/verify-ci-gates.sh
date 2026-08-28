@@ -517,157 +517,6 @@ destination.write_text(text, encoding="utf-8")
 PY
 }
 
-create_scan_owner_marker() {
-	local directory="$1"
-	local marker_name="$2"
-	local owner_token="$3"
-	"$ci_python" - "$directory" "$marker_name" "$owner_token" <<'PY'
-import os
-import stat
-import sys
-from pathlib import Path
-
-directory, marker_name, owner_token = sys.argv[1:]
-directory_path = Path(directory)
-directory_mode = directory_path.lstat().st_mode
-if not stat.S_ISDIR(directory_mode) or directory_path.is_symlink():
-    raise SystemExit("owner marker parent is not a real directory")
-if "/" in marker_name or marker_name in ("", ".", ".."):
-    raise SystemExit("invalid owner marker name")
-flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-if hasattr(os, "O_NOFOLLOW"):
-    flags |= os.O_NOFOLLOW
-fd = os.open(directory_path / marker_name, flags, 0o600)
-with os.fdopen(fd, "wb") as marker:
-    marker.write((owner_token + "\n").encode())
-    marker.flush()
-    os.fsync(marker.fileno())
-PY
-}
-
-cleanup_owned_scan_directory() {
-	local evidence_root="$1"
-	local owned_dir="$2"
-	local marker_name="$3"
-	local owner_token="$4"
-	shift 4
-	"$ci_python" - "$evidence_root" "$owned_dir" "$marker_name" "$owner_token" "$@" <<'PY'
-import os
-import stat
-import sys
-from pathlib import Path
-
-root_arg, owned_arg, marker_name, owner_token, *allowed_names = sys.argv[1:]
-root = Path(root_arg).resolve(strict=True)
-owned = Path(owned_arg)
-if owned.parent.resolve(strict=True) != root:
-    raise SystemExit("owned scan directory escaped its evidence root")
-owned_stat = owned.lstat()
-if not stat.S_ISDIR(owned_stat.st_mode) or owned.is_symlink():
-    raise SystemExit("owned scan path is not a real directory")
-entries = list(owned.iterdir())
-allowed = set(allowed_names)
-if marker_name not in allowed or any(entry.name not in allowed for entry in entries):
-    raise SystemExit("owned scan directory contains unexpected entries")
-for entry in entries:
-    entry_stat = entry.lstat()
-    if not stat.S_ISREG(entry_stat.st_mode) or entry.is_symlink():
-        raise SystemExit("owned scan directory contains a non-regular entry")
-marker = owned / marker_name
-if marker.read_bytes() != (owner_token + "\n").encode():
-    raise SystemExit("owned scan directory token mismatch")
-for entry in entries:
-    entry.unlink()
-owned.rmdir()
-PY
-}
-
-publish_staged_scan_evidence() {
-	local staging_dir="$1"
-	local destination="$2"
-	local owner_token="$3"
-	"$ci_python" - "$staging_dir" "$destination" "$owner_token" <<'PY'
-import hashlib
-import json
-import os
-import shutil
-import stat
-import sys
-from pathlib import Path
-
-staging_arg, destination_arg, owner_token = sys.argv[1:]
-staging = Path(staging_arg)
-destination = Path(destination_arg)
-
-for directory in (staging, destination):
-    mode = directory.lstat().st_mode
-    if not stat.S_ISDIR(mode) or directory.is_symlink():
-        raise SystemExit("scan publication path is not a real directory")
-if list(destination.iterdir()):
-    raise SystemExit("claimed scan evidence directory is not empty")
-if (staging / ".owner").read_bytes() != (owner_token + "\n").encode():
-    raise SystemExit("staging owner token mismatch")
-
-source_names = ["inventory", "stderr"]
-if (staging / "report").exists() or (staging / "report").is_symlink():
-    source_names.append("report")
-source_names.append("provenance.json")
-for name in [".owner", *source_names]:
-    source = staging / name
-    source_stat = source.lstat()
-    if not stat.S_ISREG(source_stat.st_mode) or source.is_symlink():
-        raise SystemExit(f"staged scan entry is not a regular file: {name}")
-
-provenance_bytes = (staging / "provenance.json").read_bytes()
-provenance = json.loads(provenance_bytes)
-if provenance.get("publication_owner") != owner_token:
-    raise SystemExit("scan provenance owner token mismatch")
-
-def exclusive_copy(source_name: str, destination_name: str) -> None:
-    source_flags = os.O_RDONLY
-    destination_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    if hasattr(os, "O_NOFOLLOW"):
-        source_flags |= os.O_NOFOLLOW
-        destination_flags |= os.O_NOFOLLOW
-    source_fd = os.open(staging / source_name, source_flags)
-    try:
-        destination_fd = os.open(destination / destination_name, destination_flags, 0o600)
-        try:
-            with os.fdopen(source_fd, "rb", closefd=False) as source_file:
-                with os.fdopen(destination_fd, "wb", closefd=False) as destination_file:
-                    shutil.copyfileobj(source_file, destination_file)
-                    destination_file.flush()
-                    os.fsync(destination_file.fileno())
-        finally:
-            os.close(destination_fd)
-    finally:
-        os.close(source_fd)
-
-exclusive_copy(".owner", "OWNER")
-for name in source_names:
-    exclusive_copy(name, name)
-
-complete = json.dumps({
-    "publication_owner": owner_token,
-    "provenance_sha256": hashlib.sha256(provenance_bytes).hexdigest(),
-    "schema_version": 1,
-}, sort_keys=True).encode() + b"\n"
-complete_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-if hasattr(os, "O_NOFOLLOW"):
-    complete_flags |= os.O_NOFOLLOW
-complete_fd = os.open(destination / "COMPLETE", complete_flags, 0o600)
-with os.fdopen(complete_fd, "wb") as complete_file:
-    complete_file.write(complete)
-    complete_file.flush()
-    os.fsync(complete_file.fileno())
-directory_fd = os.open(destination, os.O_RDONLY)
-try:
-    os.fsync(directory_fd)
-finally:
-    os.close(directory_fd)
-PY
-}
-
 persist_scan_evidence() {
 	local evidence_dir="$1"
 	local label="$2"
@@ -679,8 +528,7 @@ persist_scan_evidence() {
 	local outcome="$8"
 	local occurrence_count="$9"
 	local report_accepted="${10}"
-	local destination lock_dir staging_dir='' report_present=false owner_token
-	local lock_owned=0
+	local report_present=false
 
 	evidence_dir="$(scan_evidence_root "$evidence_dir")" || return 1
 	[[ "$label" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || return 1
@@ -688,86 +536,35 @@ persist_scan_evidence() {
 		printf 'Scan evidence inputs are not regular files for %s.\n' "$label" >&2
 		return 1
 	}
-	destination="$evidence_dir/$label"
-	lock_dir="$evidence_dir/.${label}.publishing"
-	owner_token="$("$ci_python" -c 'import secrets; print(secrets.token_hex(32))')" || return 1
-	[[ ! -e "$destination" && ! -L "$destination" ]] || {
-		printf 'Scan evidence path is not fresh for %s.\n' "$label" >&2
-		return 1
-	}
-	if ! mkdir -m 700 "$lock_dir" 2>/dev/null; then
-		printf 'Scan evidence publication is already in progress for %s.\n' "$label" >&2
-		return 1
-	fi
-	lock_owned=1
-	if ! create_scan_owner_marker "$lock_dir" .owner "$owner_token"; then
-		rmdir "$lock_dir" 2>/dev/null || true
-		return 1
-	fi
-	if [[ -e "$destination" || -L "$destination" ]]; then
-		printf 'Scan evidence path became occupied for %s.\n' "$label" >&2
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	fi
-	staging_dir="$(umask 077 && mktemp -d "$evidence_dir/.${label}.tmp.XXXXXX")" || {
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	}
-	if ! create_scan_owner_marker "$staging_dir" .owner "$owner_token"; then
-		rmdir "$staging_dir" 2>/dev/null || true
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	fi
-	if ! cp "$inventory" "$staging_dir/inventory" || \
-		! cp "$scanner_stderr" "$staging_dir/stderr"; then
-		cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-			.owner inventory stderr report provenance.json || true
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	fi
 	if [[ -e "$report" || -L "$report" ]]; then
 		[[ -f "$report" && ! -L "$report" ]] || {
 			printf 'OSV report path is not a regular file for %s.\n' "$label" >&2
-			cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-				.owner inventory stderr report provenance.json || true
-			cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
 			return 1
 		}
-		if ! cp "$report" "$staging_dir/report"; then
-			cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-				.owner inventory stderr report provenance.json || true
-			cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-			return 1
-		fi
 		report_present=true
 	fi
-	chmod 600 "$staging_dir"/*
-	if ! "$ci_python" - "$staging_dir" "$label" "$lock_type" "$scan_status" \
-		"$outcome" "$occurrence_count" "$report_present" "$report_accepted" "$owner_token" <<'PY'
+	"$ci_python" - "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" \
+		"$scanner_stderr" "$scan_status" "$outcome" "$occurrence_count" \
+		"$report_present" "$report_accepted" <<'PY'
 import hashlib
 import json
 import os
+import stat
 import sys
-from pathlib import Path
 
 (
-    artifact_dir,
+    evidence_root,
     label,
     lock_type,
+    inventory_path,
+    report_path,
+    stderr_path,
     scan_status,
     outcome,
     occurrence_count,
     report_present,
     report_accepted,
-    publication_owner,
 ) = sys.argv[1:]
-artifact_path = Path(artifact_dir)
-
-def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-report_path = artifact_path / "report"
-stderr_path = artifact_path / "stderr"
 status = int(scan_status)
 present = report_present == "true"
 accepted = report_accepted == "true"
@@ -783,61 +580,153 @@ valid_outcome = (
 )
 if not valid_outcome:
     raise SystemExit("refusing inconsistent scan provenance outcome")
-provenance = {
-    "schema_version": 3,
-    "label": label,
-    "lock_type": lock_type,
-    "scanner_exit_status": status,
-    "outcome": outcome,
-    "vulnerability_occurrences": occurrences,
-    "report_present": present,
-    "report_accepted": accepted,
-    "inventory_sha256": sha256(artifact_path / "inventory"),
-    "report_sha256": sha256(report_path) if report_path.is_file() else None,
-    "stderr_sha256": sha256(stderr_path),
-    "stderr_size": stderr_path.stat().st_size,
-    "publication_owner": publication_owner,
-}
-provenance_path = artifact_path / "provenance.json"
-flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+
+directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+source_flags = os.O_RDONLY
+create_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
 if hasattr(os, "O_NOFOLLOW"):
-    flags |= os.O_NOFOLLOW
-fd = os.open(provenance_path, flags, 0o600)
-with os.fdopen(fd, "w", encoding="utf-8") as provenance_file:
-    provenance_file.write(json.dumps(provenance, sort_keys=True) + "\n")
+    directory_flags |= os.O_NOFOLLOW
+    source_flags |= os.O_NOFOLLOW
+    create_flags |= os.O_NOFOLLOW
+
+def open_directory_path(path: str) -> int:
+    if not os.path.isabs(path):
+        raise SystemExit("scan evidence root is not absolute")
+    current_fd = os.open("/", directory_flags)
+    try:
+        for component in [part for part in path.split(os.sep) if part]:
+            next_fd = os.open(component, directory_flags, dir_fd=current_fd)
+            os.close(current_fd)
+            current_fd = next_fd
+        return current_fd
+    except BaseException:
+        os.close(current_fd)
+        raise
+
+def open_regular_source(path: str) -> int:
+    source_fd = os.open(path, source_flags)
+    if not stat.S_ISREG(os.fstat(source_fd).st_mode):
+        os.close(source_fd)
+        raise SystemExit(f"scan evidence source is not regular: {path}")
+    return source_fd
+
+def write_all(fd: int, data: bytes) -> None:
+    remaining = memoryview(data)
+    while remaining:
+        written = os.write(fd, remaining)
+        if written == 0:
+            raise OSError("zero-byte scan evidence write")
+        remaining = remaining[written:]
+
+known_names = ("inventory", "stderr", "report", "provenance.json", "COMPLETE")
+root_fd = open_directory_path(evidence_root)
+destination_fd = -1
+source_fds = []
+destination_identity = None
+claimed = False
+try:
+    try:
+        os.mkdir(label, mode=0o700, dir_fd=root_fd)
+    except FileExistsError:
+        raise SystemExit(f"scan evidence path is not fresh for {label}") from None
+    claimed = True
+    destination_fd = os.open(label, directory_flags, dir_fd=root_fd)
+    destination_stat = os.fstat(destination_fd)
+    destination_identity = (destination_stat.st_dev, destination_stat.st_ino)
+
+    inventory_fd = open_regular_source(inventory_path)
+    source_fds.append(inventory_fd)
+    stderr_fd = open_regular_source(stderr_path)
+    source_fds.append(stderr_fd)
+    report_fd = None
+    if present:
+        report_fd = open_regular_source(report_path)
+        source_fds.append(report_fd)
+
+    def publish_source(name: str, source_fd: int) -> tuple[str, int]:
+        digest = hashlib.sha256()
+        size = 0
+        published_fd = os.open(name, create_flags, 0o600, dir_fd=destination_fd)
+        try:
+            while True:
+                chunk = os.read(source_fd, 1024 * 1024)
+                if not chunk:
+                    break
+                write_all(published_fd, chunk)
+                digest.update(chunk)
+                size += len(chunk)
+            os.fsync(published_fd)
+        finally:
+            os.close(published_fd)
+        return digest.hexdigest(), size
+
+    inventory_digest, _ = publish_source("inventory", inventory_fd)
+    stderr_digest, stderr_size = publish_source("stderr", stderr_fd)
+    report_digest = None
+    if report_fd is not None:
+        report_digest, _ = publish_source("report", report_fd)
+
+    provenance = {
+        "schema_version": 2,
+        "label": label,
+        "lock_type": lock_type,
+        "scanner_exit_status": status,
+        "outcome": outcome,
+        "vulnerability_occurrences": occurrences,
+        "report_present": present,
+        "report_accepted": accepted,
+        "inventory_sha256": inventory_digest,
+        "report_sha256": report_digest,
+        "stderr_sha256": stderr_digest,
+        "stderr_size": stderr_size,
+    }
+    provenance_bytes = (json.dumps(provenance, sort_keys=True) + "\n").encode()
+    provenance_fd = os.open("provenance.json", create_flags, 0o600, dir_fd=destination_fd)
+    try:
+        write_all(provenance_fd, provenance_bytes)
+        os.fsync(provenance_fd)
+    finally:
+        os.close(provenance_fd)
+
+    complete_bytes = (json.dumps({
+        "provenance_sha256": hashlib.sha256(provenance_bytes).hexdigest(),
+        "schema_version": 1,
+    }, sort_keys=True) + "\n").encode()
+    complete_fd = os.open("COMPLETE", create_flags, 0o600, dir_fd=destination_fd)
+    try:
+        write_all(complete_fd, complete_bytes)
+        os.fsync(complete_fd)
+    finally:
+        os.close(complete_fd)
+    os.fsync(destination_fd)
+    os.fsync(root_fd)
+except BaseException:
+    if claimed and destination_fd >= 0:
+        for name in known_names:
+            try:
+                os.unlink(name, dir_fd=destination_fd)
+            except OSError:
+                pass
+        if destination_identity is not None:
+            try:
+                current_stat = os.stat(label, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                current_stat = None
+            if current_stat is not None and stat.S_ISDIR(current_stat.st_mode) and (
+                current_stat.st_dev, current_stat.st_ino
+            ) == destination_identity:
+                try:
+                    os.rmdir(label, dir_fd=root_fd)
+                except OSError:
+                    pass
+    raise
+finally:
+    for source_fd in source_fds:
+        os.close(source_fd)
+    if destination_fd >= 0:
+        os.close(destination_fd)
+    os.close(root_fd)
 PY
-	then
-		cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-			.owner inventory stderr report provenance.json || true
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	fi
-	chmod 600 "$staging_dir/provenance.json"
-	if ! mkdir -m 700 "$destination" 2>/dev/null; then
-		printf 'Scan evidence path became occupied before claim for %s.\n' "$label" >&2
-		cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-			.owner inventory stderr report provenance.json || true
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	fi
-	if ! publish_staged_scan_evidence "$staging_dir" "$destination" "$owner_token"; then
-		cleanup_owned_scan_directory "$evidence_dir" "$destination" OWNER "$owner_token" \
-			OWNER inventory stderr report provenance.json COMPLETE || true
-		cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-			.owner inventory stderr report provenance.json || true
-		cleanup_owned_scan_directory "$evidence_dir" "$lock_dir" .owner "$owner_token" .owner || true
-		return 1
-	fi
-	if ! cleanup_owned_scan_directory "$evidence_dir" "$staging_dir" .owner "$owner_token" \
-		.owner inventory stderr report provenance.json; then
-		return 1
-	fi
-	staging_dir=''
-	if [[ $lock_owned -eq 1 ]] && ! cleanup_owned_scan_directory \
-		"$evidence_dir" "$lock_dir" .owner "$owner_token" .owner; then
-		return 1
-	fi
-	lock_owned=0
 }
 
 dependency_vulnerabilities() (

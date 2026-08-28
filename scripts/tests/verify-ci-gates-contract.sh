@@ -22,9 +22,12 @@ venv_python="$fixture_repo/services/support-copilot-ai/.venv/bin/python"
 override_python="$fixture_root/override-python"
 concurrent_first_pid=''
 concurrent_second_pid=''
+scan_contention_first_pid=''
+scan_contention_second_pid=''
 
 cleanup() {
-	for pid in "$concurrent_first_pid" "$concurrent_second_pid"; do
+	for pid in "$concurrent_first_pid" "$concurrent_second_pid" \
+		"$scan_contention_first_pid" "$scan_contention_second_pid"; do
 		if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
 			kill "$pid" 2>/dev/null || true
 			wait "$pid" 2>/dev/null || true
@@ -121,24 +124,6 @@ set -euo pipefail
 printf 'path-python3 %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 printf 'PATH python3 intentionally unavailable\n' >&2
 exit 89
-SHIM
-
-cat >"$shim_dir/cp" <<'SHIM'
-#!/usr/bin/env bash
-set -euo pipefail
-destination="${!#}"
-if [[ -n "${CI_GATE_CP_COLLISION_TARGET:-}" && \
-	-n "${CI_GATE_CP_COLLISION_LOCK:-}" && \
-	-n "${CI_GATE_CP_COLLISION_EXPECTED:-}" && \
-	-n "${CI_GATE_CP_COLLISION_OBSERVED:-}" && \
-	"$destination" == */.python-production.tmp.*/inventory && \
-	! -e "$CI_GATE_CP_COLLISION_OBSERVED" ]]; then
-	[[ -d "$CI_GATE_CP_COLLISION_LOCK" && ! -L "$CI_GATE_CP_COLLISION_LOCK" ]] || exit 91
-	/bin/mkdir -m 700 "$CI_GATE_CP_COLLISION_TARGET"
-	/bin/cp "$CI_GATE_CP_COLLISION_EXPECTED" "$CI_GATE_CP_COLLISION_TARGET/sentinel"
-	printf 'post-lock-collision-observed\n' >"$CI_GATE_CP_COLLISION_OBSERVED"
-fi
-exec /bin/cp "$@"
 SHIM
 
 cat >"$venv_python" <<'SHIM'
@@ -322,6 +307,18 @@ for argument in "$@"; do
 done
 [[ -n "$output" && -n "$lockfile" ]] || exit 64
 inventory_path="${lockfile#*:}"
+if [[ -n "${CI_GATE_OSV_BARRIER_DIR:-}" && \
+	"$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
+	mkdir -p "$CI_GATE_OSV_BARRIER_DIR"
+	: >"$CI_GATE_OSV_BARRIER_DIR/participant.$$"
+	deadline=$((SECONDS + 10))
+	while [[ "$(find "$CI_GATE_OSV_BARRIER_DIR" -maxdepth 1 -type f -name 'participant.*' | wc -l | tr -d ' ')" -lt 2 && \
+		$SECONDS -lt $deadline ]]; do
+		sleep 0.05
+	done
+	[[ "$(find "$CI_GATE_OSV_BARRIER_DIR" -maxdepth 1 -type f -name 'participant.*' | wc -l | tr -d ' ')" -eq 2 ]] || exit 75
+	: >"$CI_GATE_OSV_BARRIER_DIR/ready"
+fi
 capture_fixture_scan() {
 	[[ -n "${CI_GATE_OSV_CAPTURE_DIR:-}" ]] || return 0
 	local label="${output##*/}"
@@ -476,12 +473,11 @@ assert_no_dependency_workspaces() {
 assert_no_scan_publication_residue() {
 	local scenario="$1"
 	local evidence_dir="$2"
-	local allowed_lock="${3:-}"
 	local leaked=''
 	[[ -d "$evidence_dir" && ! -L "$evidence_dir" ]] || return 0
 	leaked="$(find "$evidence_dir" -mindepth 1 -maxdepth 1 \
-		\( -name '.*.tmp.*' -o -name '.*.publishing' \) \
-		! -name "$allowed_lock" -print -quit)"
+		\( -name '.*.tmp.*' -o -name '.*.publishing' -o -name '*.lock' -o -name '*.locking' \) \
+		-print -quit)"
 	[[ -z "$leaked" ]] || fail \
 		"$scenario left scan publication residue: ${leaked#$evidence_dir/}"
 }
@@ -555,9 +551,8 @@ for label in ("python-production", "python-development", "java", "node"):
     report_path = artifact / "report"
     provenance_path = artifact / "provenance.json"
     stderr_path = artifact / "stderr"
-    owner_path = artifact / "OWNER"
     complete_path = artifact / "COMPLETE"
-    published_paths = (inventory_path, report_path, stderr_path, provenance_path, owner_path, complete_path)
+    published_paths = (inventory_path, report_path, stderr_path, provenance_path, complete_path)
     if not all(path.is_file() and not path.is_symlink() for path in published_paths):
         raise SystemExit(f"{label}: clean scan did not atomically persist all evidence files")
     if artifact.stat().st_mode & 0o777 != 0o700:
@@ -569,11 +564,8 @@ for label in ("python-production", "python-development", "java", "node"):
     if stderr_path.read_bytes() != b"":
         raise SystemExit(f"{label}: clean scanner stderr was not empty")
     provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
-    publication_owner = owner_path.read_text(encoding="utf-8").rstrip("\n")
-    if not re.fullmatch(r"[0-9a-f]{64}", publication_owner):
-        raise SystemExit(f"{label}: publication owner token is malformed")
     if provenance != {
-        "schema_version": 3,
+        "schema_version": 2,
         "label": label,
         "lock_type": {
             "python-production": "osv-scanner",
@@ -590,12 +582,10 @@ for label in ("python-production", "python-development", "java", "node"):
         "report_sha256": hashlib.sha256(report_path.read_bytes()).hexdigest(),
         "stderr_sha256": hashlib.sha256(stderr_path.read_bytes()).hexdigest(),
         "stderr_size": len(stderr_path.read_bytes()),
-        "publication_owner": publication_owner,
     }:
         raise SystemExit(f"{label}: clean scan provenance is not exact")
     complete = json.loads(complete_path.read_text(encoding="utf-8"))
     if complete != {
-        "publication_owner": publication_owner,
         "provenance_sha256": hashlib.sha256(provenance_path.read_bytes()).hexdigest(),
         "schema_version": 1,
     }:
@@ -715,7 +705,8 @@ TOOL_SPECS
 wait_for_path() {
 	local expected_path="$1"
 	local description="$2"
-	local deadline=$((SECONDS + 5))
+	local timeout_seconds="${3:-5}"
+	local deadline=$((SECONDS + timeout_seconds))
 	while [[ ! -e "$expected_path" && $SECONDS -lt $deadline ]]; do
 		sleep 0.05
 	done
@@ -1037,9 +1028,9 @@ assert_persisted_scan_evidence() {
 	local expected_stderr="$9"
 	local artifact_dir="$evidence_dir/python-production"
 	[[ -f "$artifact_dir/inventory" && -f "$artifact_dir/stderr" && \
-		-f "$artifact_dir/provenance.json" && -f "$artifact_dir/OWNER" && \
+		-f "$artifact_dir/provenance.json" && \
 		-f "$artifact_dir/COMPLETE" ]] || \
-		record_dependency_failure "$scenario did not retain complete owner-bound evidence"
+		record_dependency_failure "$scenario did not retain complete evidence"
 	cmp -s "$capture_dir/python-production.inventory" "$artifact_dir/inventory" || \
 		record_dependency_failure "$scenario did not retain the exact scanner inventory"
 	if [[ "$expected_report_present" == true ]]; then
@@ -1053,35 +1044,32 @@ assert_persisted_scan_evidence() {
 	fi
 	[[ "$(<"$artifact_dir/stderr")" == "$expected_stderr" ]] || \
 		record_dependency_failure "$scenario did not persist sanitized scanner stderr"
-	/usr/bin/python3 - "$artifact_dir/provenance.json" "$artifact_dir/OWNER" "$artifact_dir/COMPLETE" \
+	/usr/bin/python3 - "$artifact_dir/provenance.json" "$artifact_dir/COMPLETE" \
 		"$expected_status" "$expected_report_present" \
 		"$expected_outcome" "$expected_occurrences" "$expected_report_accepted" <<'PY' || \
 		record_dependency_failure "$scenario evidence was not COMPLETE with consistent provenance"
 import hashlib
 import json
-import re
 import sys
 from pathlib import Path
 
 provenance_path = Path(sys.argv[1])
-owner_path = Path(sys.argv[2])
-complete_path = Path(sys.argv[3])
-expected_status = int(sys.argv[4])
-expected_report_present = sys.argv[5] == "true"
-expected_outcome = sys.argv[6]
-expected_occurrences = None if sys.argv[7] == "null" else int(sys.argv[7])
-expected_report_accepted = sys.argv[8] == "true"
+complete_path = Path(sys.argv[2])
+expected_status = int(sys.argv[3])
+expected_report_present = sys.argv[4] == "true"
+expected_outcome = sys.argv[5]
+expected_occurrences = None if sys.argv[6] == "null" else int(sys.argv[6])
+expected_report_accepted = sys.argv[7] == "true"
 artifact_dir = provenance_path.parent
 provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
 expected_keys = {
     "schema_version", "label", "lock_type", "scanner_exit_status", "outcome",
     "vulnerability_occurrences", "report_present", "report_accepted",
     "inventory_sha256", "report_sha256", "stderr_sha256", "stderr_size",
-	"publication_owner",
 }
 if set(provenance) != expected_keys:
     raise SystemExit("unexpected provenance fields")
-if provenance["schema_version"] != 3:
+if provenance["schema_version"] != 2:
     raise SystemExit("unexpected schema version")
 if provenance["scanner_exit_status"] != expected_status:
     raise SystemExit("unexpected scanner status")
@@ -1106,20 +1094,14 @@ if provenance["stderr_sha256"] != hashlib.sha256(stderr).hexdigest():
     raise SystemExit("stderr digest mismatch")
 if provenance["stderr_size"] != len(stderr):
     raise SystemExit("stderr size mismatch")
-publication_owner = owner_path.read_text(encoding="utf-8").rstrip("\n")
-if not re.fullmatch(r"[0-9a-f]{64}", publication_owner):
-    raise SystemExit("malformed publication owner")
-if provenance["publication_owner"] != publication_owner:
-    raise SystemExit("provenance owner mismatch")
 complete = json.loads(complete_path.read_text(encoding="utf-8"))
 if complete != {
-    "publication_owner": publication_owner,
     "provenance_sha256": hashlib.sha256(provenance_path.read_bytes()).hexdigest(),
     "schema_version": 1,
 }:
     raise SystemExit("COMPLETE marker mismatch")
 published_paths = [
-    artifact_dir / "inventory", artifact_dir / "stderr", provenance_path, owner_path,
+    artifact_dir / "inventory", artifact_dir / "stderr", provenance_path,
 ]
 if expected_report_present:
     published_paths.append(report_path)
@@ -1238,13 +1220,102 @@ for scenario in invalid-sha256 malformed-continuation unexpected-osv-package mal
 	run_dependency_failure_case "$scenario"
 done
 
+scan_contention_root="$fixture_tmpdir/scan-publication-contention"
+scan_contention_evidence="$scan_contention_root/evidence"
+scan_contention_barrier="$scan_contention_root/barrier"
+scan_contention_first_output="$scan_contention_root/first.out"
+scan_contention_second_output="$scan_contention_root/second.out"
+scan_contention_first_status_file="$scan_contention_root/first.status"
+scan_contention_second_status_file="$scan_contention_root/second.status"
+mkdir -p "$scan_contention_evidence" "$scan_contention_barrier"
+reset_python_production_lock
+(
+	set +e
+	env PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$scan_contention_root" \
+		CI_GATE_SCAN_EVIDENCE_DIR="$scan_contention_evidence" \
+		CI_GATE_OSV_BARRIER_DIR="$scan_contention_barrier" \
+		"$fixture_repo/scripts/verify-ci-gates.sh" --mode release \
+		>"$scan_contention_first_output" 2>&1
+	printf '%s\n' "$?" >"$scan_contention_first_status_file"
+) &
+scan_contention_first_pid=$!
+(
+	set +e
+	env PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$scan_contention_root" \
+		CI_GATE_SCAN_EVIDENCE_DIR="$scan_contention_evidence" \
+		CI_GATE_OSV_BARRIER_DIR="$scan_contention_barrier" \
+		"$fixture_repo/scripts/verify-ci-gates.sh" --mode release \
+		>"$scan_contention_second_output" 2>&1
+	printf '%s\n' "$?" >"$scan_contention_second_status_file"
+) &
+scan_contention_second_pid=$!
+wait_for_path "$scan_contention_barrier/ready" "both fake scanners to reach the publication barrier" 12
+wait_for_path "$scan_contention_first_status_file" "the first scan contention process" 30
+wait_for_path "$scan_contention_second_status_file" "the second scan contention process" 30
+wait "$scan_contention_first_pid"
+wait "$scan_contention_second_pid"
+scan_contention_first_pid=''
+scan_contention_second_pid=''
+scan_contention_first_status="$(<"$scan_contention_first_status_file")"
+scan_contention_second_status="$(<"$scan_contention_second_status_file")"
+if [[ $scan_contention_first_status -eq 0 && $scan_contention_second_status -ne 0 ]]; then
+	scan_contention_winner_output="$scan_contention_first_output"
+	scan_contention_loser_output="$scan_contention_second_output"
+elif [[ $scan_contention_second_status -eq 0 && $scan_contention_first_status -ne 0 ]]; then
+	scan_contention_winner_output="$scan_contention_second_output"
+	scan_contention_loser_output="$scan_contention_first_output"
+else
+	record_dependency_failure "scan contention expected exactly one successful publisher"
+	scan_contention_winner_output="$scan_contention_first_output"
+	scan_contention_loser_output="$scan_contention_second_output"
+fi
+grep -q '^\[PASS\] dependency-vulnerabilities$' "$scan_contention_winner_output" || \
+	record_dependency_failure "scan contention winner did not complete dependency publication"
+grep -q '^\[FAIL\] dependency-vulnerabilities$' "$scan_contention_loser_output" || \
+	record_dependency_failure "scan contention loser did not fail the dependency gate"
+if grep -q '^\[PASS\] dependency-vulnerabilities$' "$scan_contention_loser_output"; then
+	record_dependency_failure "scan contention loser emitted a fake dependency PASS"
+fi
+grep -Fq 'scan evidence path is not fresh for python-production' "$scan_contention_loser_output" || \
+	record_dependency_failure "scan contention loser did not report no-replace claim failure"
+/usr/bin/python3 - "$scan_contention_evidence/python-production" <<'PY' || \
+	record_dependency_failure "scan contention winner evidence is incomplete or inconsistent"
+import hashlib
+import json
+import stat
+import sys
+from pathlib import Path
+
+artifact = Path(sys.argv[1])
+expected_names = {"COMPLETE", "inventory", "provenance.json", "report", "stderr"}
+if {entry.name for entry in artifact.iterdir()} != expected_names:
+    raise SystemExit("unexpected contention evidence entries")
+if any(entry.is_symlink() or not stat.S_ISREG(entry.stat().st_mode) for entry in artifact.iterdir()):
+    raise SystemExit("contention evidence contains a non-regular entry")
+provenance_path = artifact / "provenance.json"
+provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+for name, field in (("inventory", "inventory_sha256"), ("report", "report_sha256"), ("stderr", "stderr_sha256")):
+    if provenance[field] != hashlib.sha256((artifact / name).read_bytes()).hexdigest():
+        raise SystemExit(f"contention evidence digest mismatch: {name}")
+complete = json.loads((artifact / "COMPLETE").read_text(encoding="utf-8"))
+if complete != {
+    "provenance_sha256": hashlib.sha256(provenance_path.read_bytes()).hexdigest(),
+    "schema_version": 1,
+}:
+    raise SystemExit("contention COMPLETE mismatch")
+PY
+assert_no_scan_publication_residue "scan contention" "$scan_contention_evidence"
+scan_contention_nested_dir="$(find "$scan_contention_evidence" -mindepth 2 -type d -print -quit)"
+[[ -z "$scan_contention_nested_dir" ]] || \
+	record_dependency_failure "scan contention left a nested publication directory"
+
 run_scan_publication_boundary_case() {
 	local scenario="$1"
 	local scenario_root="$fixture_tmpdir/publication-$scenario"
 	local scenario_tmpdir="$scenario_root/tmp"
 	local evidence_dir="$scenario_tmpdir/evidence"
 	local outside_dir="$scenario_root/outside"
-	local sentinel='' sentinel_sha='' allowed_lock='' collision_expected='' collision_observed=''
+	local sentinel='' sentinel_sha=''
 	local output status
 	reset_python_production_lock
 	mkdir -p "$scenario_tmpdir" "$outside_dir"
@@ -1265,19 +1336,6 @@ run_scan_publication_boundary_case() {
 			ln -s "$outside_dir" "$evidence_dir/python-production"
 			sentinel="$outside_dir/sentinel"
 			;;
-		publication-lock-collision)
-			mkdir -p "$evidence_dir/.python-production.publishing"
-			sentinel="$evidence_dir/.python-production.publishing/sentinel"
-			printf 'publication-lock-sentinel\n' >"$sentinel"
-			allowed_lock='.python-production.publishing'
-			;;
-		post-lock-pre-claim-collision)
-			mkdir -p "$evidence_dir"
-			sentinel="$evidence_dir/python-production/sentinel"
-			collision_expected="$scenario_root/collision-sentinel.expected"
-			collision_observed="$scenario_root/collision-observed"
-			printf 'post-lock-pre-claim-sentinel\n' >"$collision_expected"
-			;;
 		base-target)
 			evidence_dir="$scenario_tmpdir"
 			printf 'base-target-sentinel\n' >"$scenario_tmpdir/sentinel"
@@ -1295,23 +1353,13 @@ run_scan_publication_boundary_case() {
 			;;
 		*) fail "unknown scan publication boundary scenario: $scenario" ;;
 	esac
-	if [[ -n "$sentinel" && "$scenario" != post-lock-pre-claim-collision ]]; then
+	if [[ -n "$sentinel" ]]; then
 		sentinel_sha="$(shasum -a 256 "$sentinel" | awk '{print $1}')"
 	fi
 	set +e
-	if [[ "$scenario" == post-lock-pre-claim-collision ]]; then
-		output="$(env PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$scenario_tmpdir" \
-			CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" \
-			CI_GATE_CP_COLLISION_TARGET="$evidence_dir/python-production" \
-			CI_GATE_CP_COLLISION_LOCK="$evidence_dir/.python-production.publishing" \
-			CI_GATE_CP_COLLISION_EXPECTED="$collision_expected" \
-			CI_GATE_CP_COLLISION_OBSERVED="$collision_observed" \
-			"$fixture_repo/scripts/verify-ci-gates.sh" --mode release 2>&1)"
-	else
-		output="$(env PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$scenario_tmpdir" \
-			CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" \
-			"$fixture_repo/scripts/verify-ci-gates.sh" --mode release 2>&1)"
-	fi
+	output="$(env PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$scenario_tmpdir" \
+		CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" \
+		"$fixture_repo/scripts/verify-ci-gates.sh" --mode release 2>&1)"
 	status=$?
 	set -e
 	[[ $status -ne 0 ]] || record_dependency_failure \
@@ -1321,36 +1369,17 @@ run_scan_publication_boundary_case() {
 	if grep -q '^\[PASS\] dependency-vulnerabilities$' <<<"$output"; then
 		record_dependency_failure "$scenario emitted fake dependency success"
 	fi
-	if [[ -n "$sentinel" && "$scenario" != post-lock-pre-claim-collision ]]; then
+	if [[ -n "$sentinel" ]]; then
 		[[ "$(shasum -a 256 "$sentinel" | awk '{print $1}')" == "$sentinel_sha" ]] || \
 			record_dependency_failure "$scenario modified its preexisting sentinel"
 	fi
-	if [[ "$scenario" == publication-lock-collision ]]; then
-			[[ ! -e "$evidence_dir/python-production" && ! -L "$evidence_dir/python-production" ]] || \
-				record_dependency_failure "$scenario overwrote the locked ecosystem destination"
-	fi
-	if [[ "$scenario" == post-lock-pre-claim-collision ]]; then
-		[[ -f "$collision_observed" ]] || \
-			record_dependency_failure "$scenario did not create the destination after lock acquisition"
-		[[ -d "$evidence_dir/python-production" && ! -L "$evidence_dir/python-production" ]] || \
-			record_dependency_failure "$scenario deleted or replaced the concurrent destination"
-		cmp -s "$collision_expected" "$sentinel" || \
-			record_dependency_failure "$scenario did not preserve the sentinel byte-identically"
-		[[ "$(find "$evidence_dir/python-production" -mindepth 1 -maxdepth 1 -type d -name '.python-production.tmp.*' | wc -l | tr -d ' ')" == 0 ]] || \
-			record_dependency_failure "$scenario nested staging beneath the concurrent destination"
-		[[ "$(find "$evidence_dir/python-production" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" == 1 ]] || \
-			record_dependency_failure "$scenario modified the concurrent destination"
-		[[ ! -e "$evidence_dir/python-production/COMPLETE" ]] || \
-			record_dependency_failure "$scenario published a fake COMPLETE marker"
-	fi
 	if [[ "$evidence_dir" != / ]]; then
-		assert_no_scan_publication_residue "$scenario" "$evidence_dir" "$allowed_lock"
+		assert_no_scan_publication_residue "$scenario" "$evidence_dir"
 	fi
 	assert_dependency_failure_workspace_cleanup "$scenario" "$scenario_tmpdir"
 }
 
-for scenario in stale-destination symlink-path-escape symlink-destination publication-lock-collision \
-	post-lock-pre-claim-collision base-target sibling-prefix root-target; do
+for scenario in stale-destination symlink-path-escape symlink-destination base-target sibling-prefix root-target; do
 	run_scan_publication_boundary_case "$scenario"
 done
 
