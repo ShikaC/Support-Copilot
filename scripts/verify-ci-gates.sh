@@ -590,20 +590,32 @@ scan_resolved_inventory() {
 	local report="$4"
 	local config="$5"
 	local scan_status
+	local validation_status
+	[[ ! -e "$report" ]] || {
+		printf 'OSV report path is not fresh for %s.\n' "$label" >&2
+		return 1
+	}
 	set +e
 	"$osv_scanner_bin" scan source --lockfile="$lock_type:$inventory" --all-packages \
-		--format=json --output-file="$report" --config="$config"
+		--format=json --output="$report" --config="$config"
 	scan_status=$?
 	set -e
+	if [[ $scan_status -ne 0 && $scan_status -ne 1 ]]; then
+		printf 'OSV-Scanner operational error for %s (exit %s).\n' "$label" "$scan_status" >&2
+		if [[ ! -s "$report" ]]; then
+			printf 'OSV-Scanner did not produce a report for %s.\n' "$label" >&2
+		fi
+		return 1
+	fi
 	[[ -s "$report" ]] || {
 		printf 'OSV-Scanner did not produce a report for %s.\n' "$label" >&2
 		return 1
 	}
-	validate_osv_report "$label" "$lock_type" "$inventory" "$report"
-	if [[ $scan_status -ne 0 ]]; then
-		printf 'OSV-Scanner failed or found vulnerabilities in %s.\n' "$label" >&2
-		return 1
-	fi
+	set +e
+	validate_osv_report "$label" "$lock_type" "$inventory" "$report" "$scan_status"
+	validation_status=$?
+	set -e
+	return "$validation_status"
 }
 
 validate_osv_report() {
@@ -611,12 +623,13 @@ validate_osv_report() {
 	local lock_type="$2"
 	local inventory="$3"
 	local report="$4"
-	"$ci_python" - "$label" "$lock_type" "$inventory" "$report" <<'PY'
+	local scan_status="$5"
+	"$ci_python" - "$label" "$lock_type" "$inventory" "$report" "$scan_status" <<'PY'
 import json
 import sys
 from pathlib import Path
 
-label, lock_type, inventory_name, report_name = sys.argv[1:]
+label, lock_type, inventory_name, report_name, scan_status = sys.argv[1:]
 inventory_path = Path(inventory_name)
 report_path = Path(report_name)
 
@@ -703,6 +716,8 @@ if missing or unexpected:
     )
 if vulnerability_count:
     raise SystemExit(f"{label}: OSV report contains {vulnerability_count} vulnerabilities")
+if scan_status != "0":
+    raise SystemExit(f"{label}: OSV-Scanner exited {scan_status} without reported vulnerabilities")
 
 print(
     f"[SCAN] {label} inventory-packages={len(expected)} "

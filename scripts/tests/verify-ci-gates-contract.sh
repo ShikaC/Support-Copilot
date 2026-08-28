@@ -287,13 +287,17 @@ lockfile=''
 for argument in "$@"; do
 	case "$argument" in
 		--output=*) output="${argument#--output=}" ;;
-		--output-file=*) output="${argument#--output-file=}" ;;
+		--output-file=*)
+			printf 'flag provided but not defined: -output-file\n' >&2
+			exit 127
+			;;
 		--lockfile=*) lockfile="${argument#--lockfile=}" ;;
 	esac
 done
 [[ -n "$output" && -n "$lockfile" ]] || exit 64
-if [[ "${CI_GATE_FAIL_PYTHON_OSV:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
-	exit 73
+if [[ "${CI_GATE_OSV_OPERATIONAL_FAILURE:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
+	printf 'fixture-osv-operational-failure\n' >&2
+	exit 129
 fi
 /usr/bin/python3 - "$lockfile" "$output" <<'PY'
 import json
@@ -340,8 +344,17 @@ result = {
         "source": {"path": str(inventory), "type": "lockfile"},
         "packages": [{
             "package": {"name": name, "version": version, "ecosystem": ecosystem},
-            "vulnerabilities": [],
-        } for name, version, ecosystem in packages],
+            "vulnerabilities": (
+                [{"id": "FIXTURE-OSV-1"}]
+                if (
+                    __import__("os").environ.get("CI_GATE_OSV_VULNERABILITY") == "1"
+                    and lock_type == "osv-scanner"
+                    and inventory.name == "python-production-osv.json"
+                    and index == 0
+                )
+                else []
+            ),
+        } for index, (name, version, ecosystem) in enumerate(packages)],
     }],
 }
 if (
@@ -359,6 +372,10 @@ if (
     })
 Path(output_path).write_text(json.dumps(result))
 PY
+if [[ "${CI_GATE_OSV_VULNERABILITY:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
+	printf 'fixture-osv-vulnerability-exit-one\n' >&2
+	exit 1
+fi
 SHIM
 
 cat >"$fixture_repo/services/support-copilot-api/gradlew" <<'SHIM'
@@ -443,6 +460,12 @@ for inventory in \
 	apps/support-copilot-web/package-lock.json; do
 	grep -q -- "--lockfile=.*${inventory}" "$command_log" || fail "resolved inventory was not explicitly scanned: $inventory"
 done
+if grep -Fq -- '--output-file=' "$command_log"; then
+	fail "OSV scanner was invoked with unsupported --output-file"
+fi
+if grep '^osv-scanner scan source ' "$command_log" | grep -Ev -- '--output=[^[:space:]]+' >/dev/null; then
+	fail "OSV scanner invocation omitted a nonempty --output path"
+fi
 for label in python-production python-development java node; do
 	grep -Eq "^\[SCAN\] $label inventory-packages=[1-9][0-9]* scanned-packages=[1-9][0-9]* vulnerabilities=0$" \
 		"$all_output" || fail "scan report was not validated against the $label inventory"
@@ -901,8 +924,11 @@ run_dependency_failure_case() {
 		unexpected-osv-package)
 			failure_environment='CI_GATE_ADD_UNEXPECTED_PYTHON_PACKAGE=1'
 			;;
-		dependency-scanner-failure)
-			failure_environment='CI_GATE_FAIL_PYTHON_OSV=1'
+		operational-scanner-failure)
+			failure_environment='CI_GATE_OSV_OPERATIONAL_FAILURE=1'
+			;;
+		vulnerability-scanner-failure)
+			failure_environment='CI_GATE_OSV_VULNERABILITY=1'
 			;;
 		*) fail "unknown dependency failure scenario: $scenario" ;;
 	esac
@@ -921,10 +947,33 @@ run_dependency_failure_case() {
 		"$scenario expected dependency-vulnerabilities to fail with nonzero status"
 	grep -q '^\[FAIL\] dependency-vulnerabilities$' <<<"$output" || \
 		record_dependency_failure "$scenario missing stable dependency-vulnerabilities failure output"
+	case "$scenario" in
+		operational-scanner-failure)
+			grep -Fq 'fixture-osv-operational-failure' <<<"$output" || \
+				record_dependency_failure "$scenario did not preserve scanner stderr"
+			grep -Fq 'OSV-Scanner operational error for python-production (exit 129).' <<<"$output" || \
+				record_dependency_failure "$scenario did not identify the scanner operational error"
+			grep -Fq 'OSV-Scanner did not produce a report for python-production.' <<<"$output" || \
+				record_dependency_failure "$scenario did not identify the missing report"
+			if grep -q '^\[SCAN\] python-production ' <<<"$output"; then
+				record_dependency_failure "$scenario reported a scan success"
+			fi
+			;;
+		vulnerability-scanner-failure)
+			grep -Fq 'fixture-osv-vulnerability-exit-one' <<<"$output" || \
+				record_dependency_failure "$scenario did not preserve scanner stderr"
+			grep -Fq 'python-production: OSV report contains 1 vulnerabilities' <<<"$output" || \
+				record_dependency_failure "$scenario did not report the deterministic vulnerability count"
+			if grep -Fq 'OSV-Scanner failed or found vulnerabilities' <<<"$output" || \
+				grep -q '^\[SCAN\] python-production ' <<<"$output"; then
+				record_dependency_failure "$scenario emitted a generic error or scan success"
+			fi
+			;;
+	esac
 	assert_dependency_failure_workspace_cleanup "$scenario" "$scenario_tmpdir"
 }
 
-for scenario in invalid-sha256 malformed-continuation unexpected-osv-package dependency-scanner-failure; do
+for scenario in invalid-sha256 malformed-continuation unexpected-osv-package operational-scanner-failure vulnerability-scanner-failure; do
 	run_dependency_failure_case "$scenario"
 done
 
