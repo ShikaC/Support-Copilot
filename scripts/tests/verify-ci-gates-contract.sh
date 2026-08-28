@@ -3,6 +3,43 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 aggregate="$repo_root/scripts/verify-ci-gates.sh"
+
+fail() {
+	printf 'FAIL: %s\n' "$*" >&2
+	exit 1
+}
+
+resolve_contract_host_python() {
+	local candidate="$1"
+	local policy="$2"
+	local candidate_dir
+	local canonical_candidate
+	local host_version
+
+	[[ -n "$candidate" ]] || fail "contract host Python is empty for policy: $policy"
+	[[ -x "$candidate" ]] || fail "contract host Python is not executable for policy $policy: $candidate"
+	candidate_dir="$(cd -P "$(dirname "$candidate")" && pwd -P)" || \
+		fail "contract host Python directory is not resolvable for policy $policy: $candidate"
+	canonical_candidate="$candidate_dir/$(basename "$candidate")"
+	host_version="$("$canonical_candidate" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null)" || \
+		fail "contract host Python version probe failed for policy $policy: $canonical_candidate"
+	if ! [[ "$host_version" =~ ^([0-9]+)\.([0-9]+)$ ]] || \
+		(( BASH_REMATCH[1] < 3 || (BASH_REMATCH[1] == 3 && BASH_REMATCH[2] < 11) )); then
+		fail "contract host Python must be >=3.11 for policy $policy; got $host_version at $canonical_candidate"
+	fi
+	printf '%s\n' "$canonical_candidate"
+}
+
+if [[ -n "${SUPPORT_COPILOT_CONTRACT_PYTHON:-}" ]]; then
+	contract_host_python="$(resolve_contract_host_python "$SUPPORT_COPILOT_CONTRACT_PYTHON" explicit)"
+elif [[ -x "$repo_root/services/support-copilot-ai/.venv/bin/python" ]]; then
+	contract_host_python="$(resolve_contract_host_python "$repo_root/services/support-copilot-ai/.venv/bin/python" repo-venv)"
+else
+	pre_mutation_python3="$(command -v python3 || true)"
+	contract_host_python="$(resolve_contract_host_python "$pre_mutation_python3" pre-mutation-path-python3)"
+fi
+export CI_GATE_CONTRACT_HOST_PYTHON="$contract_host_python"
+
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-ci-contract.XXXXXX")"
 fixture_root="$(cd -P "$fixture_root" && pwd -P)"
 fixture_repo="$fixture_root/repo"
@@ -22,6 +59,11 @@ outer_evidence_sentinel_sha=''
 scan_capture_root="$fixture_root/captured-scans"
 venv_python="$fixture_repo/services/support-copilot-ai/.venv/bin/python"
 override_python="$fixture_root/override-python"
+fixture_publisher="$fixture_repo/scripts/publish_scan_evidence.py"
+fixture_validator="$fixture_repo/scripts/validate_scan_evidence.py"
+fixture_validator_backup="$fixture_root/validate_scan_evidence.py.original"
+fixture_copy_hash_log="$fixture_root/fixture-source-copy-sha256.log"
+fixture_outside_dir="$fixture_root/outside fixture repo"
 concurrent_first_pid=''
 concurrent_second_pid=''
 scan_contention_first_pid=''
@@ -39,11 +81,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-fail() {
-	printf 'FAIL: %s\n' "$*" >&2
-	exit 1
-}
-
 [[ -x "$aggregate" ]] || fail "aggregate contract is missing or not executable: scripts/verify-ci-gates.sh"
 
 /usr/bin/python3 - "$BASH_SOURCE" <<'PY'
@@ -56,10 +93,13 @@ expected_fixture_setup = [
     'fixture_root="$(cd -P "$fixture_root" && pwd -P)"',
     'fixture_repo="$fixture_root/repo"',
 ]
-if source_lines[5:8] != expected_fixture_setup:
+fixture_setup_start = source_lines.index(expected_fixture_setup[0])
+if source_lines[fixture_setup_start:fixture_setup_start + 3] != expected_fixture_setup:
     raise SystemExit(
         "fixture contract: fixture_root must be physical-canonical before fixture_repo is derived"
     )
+if source_lines.index('resolve_contract_host_python() {') >= fixture_setup_start:
+    raise SystemExit("fixture contract: contract host Python must resolve before fixture creation")
 
 shim_markers = (
     'cat >"$venv_python" <<\'SHIM\'',
@@ -70,7 +110,12 @@ unsupported_argv = 'printf \'unsupported fixture Python argv: %s\\n\' "$*" >&2\n
 for marker in shim_markers:
     start = source_lines.index(marker)
     end = source_lines.index("SHIM", start + 1)
-    if not "\n".join(source_lines[start:end]).endswith(unsupported_argv):
+    shim_body = "\n".join(source_lines[start:end])
+    if 'exec "$CI_GATE_CONTRACT_HOST_PYTHON" "$@"' not in shim_body:
+        raise SystemExit(f"fixture contract: {marker} must delegate through the contract host Python")
+    if 'exec /usr/bin/python3' in shim_body:
+        raise SystemExit(f"fixture contract: {marker} must not delegate through /usr/bin/python3")
+    if not shim_body.endswith(unsupported_argv):
         raise SystemExit(f"fixture contract: {marker} must fail closed on unsupported argv")
 PY
 
@@ -135,12 +180,31 @@ mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$bootstrap_bin_dir" \
 	"$wrong_tool_dir" "$fixture_tmpdir" \
 	"$(dirname "$venv_python")"
 git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$fixture_repo" -xf -
-cp "$repo_root/scripts/publish_scan_evidence.py" "$fixture_repo/scripts/publish_scan_evidence.py"
-cp "$repo_root/scripts/validate_scan_evidence.py" "$fixture_repo/scripts/validate_scan_evidence.py"
+cp "$repo_root/scripts/publish_scan_evidence.py" "$fixture_publisher"
+cp "$repo_root/scripts/validate_scan_evidence.py" "$fixture_validator"
 cp "$repo_root/services/support-copilot-api/gradle.lockfile" \
 	"$fixture_repo/services/support-copilot-api/gradle.lockfile"
 git -C "$fixture_repo" init -q
 git -C "$fixture_repo" add .
+
+assert_fixture_copy_hash() {
+	local file_label="$1"
+	local source_file="$2"
+	local copied_file="$3"
+	local source_hash
+	local copied_hash
+
+	source_hash="$(shasum -a 256 "$source_file" | awk '{print $1}')"
+	copied_hash="$(shasum -a 256 "$copied_file" | awk '{print $1}')"
+	printf '%s source=%s copy=%s\n' "$file_label" "$source_hash" "$copied_hash" \
+		>>"$fixture_copy_hash_log"
+	[[ "$source_hash" == "$copied_hash" ]] || \
+		fail "fixture $file_label copy SHA-256 does not match its source"
+}
+
+assert_fixture_copy_hash publisher "$repo_root/scripts/publish_scan_evidence.py" "$fixture_publisher"
+assert_fixture_copy_hash validator "$repo_root/scripts/validate_scan_evidence.py" "$fixture_validator"
+cp "$fixture_validator" "$fixture_validator_backup"
 
 cat >"$shim_dir/python" <<'SHIM'
 #!/usr/bin/env bash
@@ -185,11 +249,8 @@ fixture_python_module_dispatch() {
 	esac
 	return 64
 }
-if [[ "${1:-}" == "-" ]]; then
-	exec /usr/bin/python3 "$@"
-fi
-if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
-	exec /usr/bin/python3 "$@"
+if [[ "${1:-}" == "-" || "${1:-}" == "$CI_GATE_FIXTURE_PUBLISHER" ]]; then
+	exec "$CI_GATE_CONTRACT_HOST_PYTHON" "$@"
 fi
 if fixture_python_module_dispatch "$@"; then
 	exit 0
@@ -225,11 +286,8 @@ fixture_python_module_dispatch() {
 	esac
 	return 64
 }
-if [[ "${1:-}" == "-" ]]; then
-	exec /usr/bin/python3 "$@"
-fi
-if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
-	exec /usr/bin/python3 "$@"
+if [[ "${1:-}" == "-" || "${1:-}" == "$CI_GATE_FIXTURE_PUBLISHER" ]]; then
+	exec "$CI_GATE_CONTRACT_HOST_PYTHON" "$@"
 fi
 if fixture_python_module_dispatch "$@"; then
 	exit 0
@@ -265,11 +323,8 @@ fixture_python_module_dispatch() {
 	esac
 	return 64
 }
-if [[ "${1:-}" == "-" ]]; then
-	exec /usr/bin/python3 "$@"
-fi
-if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
-	exec /usr/bin/python3 "$@"
+if [[ "${1:-}" == "-" || "${1:-}" == "$CI_GATE_FIXTURE_PUBLISHER" ]]; then
+	exec "$CI_GATE_CONTRACT_HOST_PYTHON" "$@"
 fi
 if fixture_python_module_dispatch "$@"; then
 	exit 0
@@ -573,6 +628,7 @@ chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
 
 export CI_GATE_FIXTURE_REPO="$fixture_repo"
+export CI_GATE_FIXTURE_PUBLISHER="$fixture_publisher"
 
 assert_fixture_python_argv() {
 	local shim_label="$1"
@@ -634,11 +690,137 @@ assert_fixture_python_shim_contract() {
 	assert_fixture_python_argv "$shim_label" "$shim_path" 64 "${non_fixture_publisher[@]}"
 }
 
+assert_fixture_stdin_delegation() {
+	local shim_label="$1"
+	local shim_path="$2"
+	local stdin_token="fixture-host-stdin-${shim_label}-$$-$RANDOM"
+	local stdin_output
+	local stderr_path="$fixture_root/${shim_label}-stdin.stderr"
+
+	if stdin_output="$(printf 'print("%s")\n' "$stdin_token" | (
+		cd "$fixture_outside_dir"
+		env -u PYTHONPATH -u PYTHONHOME CI_GATE_COMMAND_LOG="$fixture_dispatch_log" \
+			"$shim_path" -
+	))" 2>"$stderr_path"; then
+		:
+	else
+		fail "$shim_label did not delegate stdin to the contract host Python"
+	fi
+	[[ "$stdin_output" == "$stdin_token" ]] || \
+		fail "$shim_label stdin delegation did not execute the isolated Python program"
+	[[ ! -s "$stderr_path" ]] || fail "$shim_label stdin delegation emitted stderr"
+}
+
+assert_fixture_publisher_delegation() {
+	local shim_label="$1"
+	local shim_path="$2"
+	local canary_marker="$fixture_root/${shim_label}-validator-canary.marker"
+	local canary_token="fixture-validator-canary-${shim_label}-$$-$RANDOM"
+	local canary_input="$fixture_root/path with spaces/${shim_label} evidence"
+	local non_fixture_publisher="$fixture_root/path with spaces/not-the-fixture-publisher.py"
+	local stderr_path="$fixture_root/${shim_label}-publisher.stderr"
+	local actual_status
+	local shim_log_label
+
+	case "$shim_label" in
+		project-venv) shim_log_label=venv-python ;;
+		fallback-python3) shim_log_label=fallback-python3 ;;
+		explicit-override) shim_log_label=override-python ;;
+		*) fail "unknown fixture Python shim label: $shim_label" ;;
+	esac
+
+	if (
+		cd "$fixture_outside_dir"
+		env -u PYTHONPATH -u PYTHONHOME \
+			CI_GATE_COMMAND_LOG="$fixture_dispatch_log" \
+			CI_GATE_FIXTURE_VALIDATOR_CANARY_MARKER="$canary_marker" \
+			CI_GATE_FIXTURE_VALIDATOR_CANARY_TOKEN="$canary_token" \
+			"$shim_path" "$fixture_publisher" validate "$canary_input"
+	) > /dev/null 2>"$stderr_path"; then
+		:
+	else
+		fail "$shim_label did not delegate the fixture publisher validate command"
+	fi
+	[[ "$(<"$canary_marker")" == "$canary_token" ]] || \
+		fail "$shim_label fixture publisher did not execute the validator canary"
+	[[ ! -s "$stderr_path" ]] || fail "$shim_label fixture publisher emitted stderr"
+	grep -Fqx "$shim_log_label $fixture_publisher validate $canary_input" "$fixture_dispatch_log" || \
+		fail "$shim_label did not log the canonical fixture publisher path"
+	if grep -Fq "$repo_root/scripts/publish_scan_evidence.py" "$fixture_dispatch_log"; then
+		fail "$shim_label logged the real repository publisher during isolated delegation"
+	fi
+
+	if (
+		cd "$fixture_outside_dir"
+		env -u PYTHONPATH -u PYTHONHOME CI_GATE_COMMAND_LOG="$fixture_dispatch_log" \
+			"$shim_path" "$non_fixture_publisher" validate "$canary_input"
+	) > /dev/null 2>"$stderr_path"; then
+		actual_status=0
+	else
+		actual_status=$?
+	fi
+	[[ "$actual_status" -eq 64 ]] || \
+		fail "$shim_label accepted a non-fixture publisher outside the fixture repository"
+	[[ "$(<"$stderr_path")" == "unsupported fixture Python argv: $non_fixture_publisher validate $canary_input" ]] || \
+		fail "$shim_label emitted unstable stderr for a non-fixture publisher"
+}
+
+install_fixture_validator_canary() {
+	cat >"$fixture_validator" <<'PY'
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+
+class EvidenceRejectedError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class ValidatedProvenance:
+    label: str
+    lock_type: str
+    scanner_exit_status: int
+    outcome: str
+    vulnerability_occurrences: int | None
+    report_present: bool
+    report_accepted: bool
+    inventory_sha256: str
+    report_sha256: str | None
+    stderr_sha256: str
+    stderr_size: int
+
+
+def validate_evidence(candidate: Path) -> ValidatedProvenance:
+    marker = Path(os.environ["CI_GATE_FIXTURE_VALIDATOR_CANARY_MARKER"])
+    marker.write_text(os.environ["CI_GATE_FIXTURE_VALIDATOR_CANARY_TOKEN"], encoding="utf-8")
+    return ValidatedProvenance(
+        "fixture-canary", "fixture", 0, "clean", 0, True, True,
+        "0" * 64, "0" * 64, "0" * 64, 0,
+    )
+PY
+}
+
 # Direct shim checks use a separate log so aggregate command assertions remain scoped.
 : >"$fixture_dispatch_log"
 assert_fixture_python_shim_contract project-venv "$venv_python"
 assert_fixture_python_shim_contract fallback-python3 "$fallback_shim_dir/python3"
 assert_fixture_python_shim_contract explicit-override "$override_python"
+mkdir -p "$fixture_outside_dir"
+install_fixture_validator_canary
+for shim_label_and_path in \
+	"project-venv:$venv_python" \
+	"fallback-python3:$fallback_shim_dir/python3" \
+	"explicit-override:$override_python"; do
+	shim_label="${shim_label_and_path%%:*}"
+	shim_path="${shim_label_and_path#*:}"
+	assert_fixture_stdin_delegation "$shim_label" "$shim_path"
+	assert_fixture_publisher_delegation "$shim_label" "$shim_path"
+done
+cp "$fixture_validator_backup" "$fixture_validator"
+assert_fixture_copy_hash validator-restored "$repo_root/scripts/validate_scan_evidence.py" "$fixture_validator"
 
 mkdir -p "$fixture_scan_evidence_root" "$scan_capture_root" "$outer_evidence_dir"
 printf 'outer-evidence-sentinel\n' >"$outer_evidence_sentinel"
