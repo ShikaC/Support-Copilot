@@ -64,7 +64,7 @@ export function App({ authMode = configuredAuthMode(), overviewLoader = loadOver
       <Navigation className="nav-list" label="主导航" view={view} onChange={setView} />
       <div className="sidebar-footer"><ServiceState state={workflow.apiState} authMode={auth.mode} /></div>
     </aside>
-    <div className="app-body"><header className="topbar"><div><h1 className="page-title">{currentCopy.title}</h1><p className="page-subtitle">{currentCopy.subtitle}</p></div><div className="topbar-actions"><button className="user-menu" type="button" onClick={() => workflow.showToast(authState.mode === 'demo' ? '当前为面试演示账号' : authState.status === 'authenticated' ? '当前使用会话访问令牌' : '当前安全模式尚未登录')}><span className="user-avatar">{avatar}</span><span className="user-name">{userLabel}</span><ChevronDown size={13} /></button></div></header>
+    <div className="app-body"><header className={`topbar ${workflow.toast ? 'has-toast' : ''}`}><div><h1 className="page-title">{currentCopy.title}</h1><p className="page-subtitle">{currentCopy.subtitle}</p></div><div className="topbar-actions"><button className="user-menu" type="button" onClick={() => workflow.showToast(authState.mode === 'demo' ? '当前为面试演示账号' : authState.status === 'authenticated' ? '当前使用会话访问令牌' : '当前安全模式尚未登录')}><span className="user-avatar">{avatar}</span><span className="user-name">{userLabel}</span><ChevronDown size={13} /></button>{workflow.toast && <div className="topbar-toast" aria-label="操作反馈"><div className={`toast ${workflow.toast.kind}`} role={workflow.toast.kind === 'error' ? 'alert' : 'status'}>{workflow.toast.kind === 'error' ? <AlertTriangle /> : <CheckCircle2 />}<span>{workflow.toast.message}</span></div></div>}</div></header>
       <Navigation className="mobile-nav" label="移动端导航" view={view} onChange={setView} />
       <main className="page-content" id="main-content"><RetryableLazyViewBoundary onRetry={() => setLazyViews(createLazyViews(overviewLoader))}><Suspense fallback={<div className="view-enter"><section className="knowledge-panel data-loading" role="status">正在加载页面</section></div>}>
         {view === 'workbench' && <WorkbenchView tickets={workflow.tickets} selectedTicket={workflow.selectedTicket} client={client} metrics={workflow.metrics} analyzing={workflow.selectedTicket !== null && workflow.analyzingTicketIds.includes(workflow.selectedTicket.id)} onSelect={workflow.setSelectedTicketId} onAnalyze={workflow.runAnalysis} onReviewSaved={workflow.recordReview} onRefreshTicket={workflow.reconcileTicket} onAssign={workflow.assignSelectedTicket} onUnassign={workflow.unassignSelectedTicket} assigneeUpdating={workflow.selectedTicket !== null && workflow.assigneeTicketIds.includes(workflow.selectedTicket.id)} onToast={workflow.showToast} />}
@@ -74,7 +74,6 @@ export function App({ authMode = configuredAuthMode(), overviewLoader = loadOver
         {view === 'quality' && <QualityView metrics={workflow.metrics} metricsError={workflow.metricsError} />}
       </Suspense></RetryableLazyViewBoundary></main>
     </div></div>
-    {workflow.toast && <div className={`toast ${workflow.toast.kind}`} role={workflow.toast.kind === 'error' ? 'alert' : 'status'}>{workflow.toast.kind === 'error' ? <AlertTriangle /> : <CheckCircle2 />}<span>{workflow.toast.message}</span></div>}
   </ConfigProvider>
 }
 

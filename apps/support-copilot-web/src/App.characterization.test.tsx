@@ -50,3 +50,27 @@ it('preserves the established four-view console structure before extraction', as
   fireEvent.click(screen.getAllByRole('button', { name: '质量评估' })[0])
   expect(await screen.findByText('评估运行')).toBeTruthy()
 })
+
+it('renders the user-menu toast within the sticky topbar', async () => {
+  vi.stubGlobal('ResizeObserver', TestResizeObserver)
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: string | URL | Request) => {
+      const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (path === '/api/tickets') {
+        return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload]), { status: 200 }))
+      }
+      if (path === '/api/metrics') {
+        return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload), { status: 200 }))
+      }
+      return Promise.reject(new TypeError(`Unexpected request: ${path}`))
+    }),
+  )
+
+  render(<App />)
+
+  fireEvent.click(await screen.findByRole('button', { name: /演示管理员/ }))
+
+  const toast = await screen.findByRole('status')
+  expect(toast.closest('header.topbar')).toBeTruthy()
+})

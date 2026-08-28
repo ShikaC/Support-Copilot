@@ -211,6 +211,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.topbar-toast {
+  display: flex;
+  min-width: 0;
 }
 
 .topbar-divider {
@@ -1245,11 +1251,8 @@
 }
 
 .toast {
-  position: fixed;
-  z-index: 50;
-  right: 22px;
-  bottom: 22px;
-  max-width: min(360px, calc(100vw - 32px));
+  max-width: 360px;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -1263,9 +1266,17 @@
 }
 
 .toast svg {
+  flex: 0 0 auto;
   width: 15px;
   height: 15px;
   color: var(--accent-light);
+}
+
+.toast span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toast.error {
@@ -1548,7 +1559,7 @@
 @keyframes toast-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(0);
   }
 
   to {
@@ -1681,6 +1692,28 @@
 @media (max-width: 720px) {
   .topbar {
     min-height: 58px;
+  }
+
+  .topbar.has-toast {
+    gap: 8px;
+  }
+
+  .topbar.has-toast .page-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .topbar.has-toast .topbar-actions,
+  .topbar.has-toast .topbar-toast,
+  .topbar.has-toast .toast {
+    flex: 1 1 0;
   }
 
   .page-subtitle,
