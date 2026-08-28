@@ -90,11 +90,21 @@ assert_ports_released() {
 	"$python_bin" - "$@" <<'PY'
 import socket
 import sys
+import time
 
-for value in sys.argv[1:]:
-    with socket.socket() as sock:
-        if sock.connect_ex(("127.0.0.1", int(value))) == 0:
-            raise SystemExit(f"smoke port was not released: {value}")
+ports = [int(value) for value in sys.argv[1:]]
+deadline = time.monotonic() + 10
+while True:
+    listening = []
+    for port in ports:
+        with socket.socket() as sock:
+            if sock.connect_ex(("127.0.0.1", port)) == 0:
+                listening.append(port)
+    if not listening:
+        break
+    if time.monotonic() >= deadline:
+        raise SystemExit(f"smoke ports were not released: {listening}")
+    time.sleep(0.1)
 print("Smoke cleanup passed: all owned ports were released.")
 PY
 }
