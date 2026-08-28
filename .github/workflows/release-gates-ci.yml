@@ -12,6 +12,9 @@ jobs:
     name: Workflow, security, and dependency gates
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      TMPDIR: ${{ runner.temp }}
+      SUPPORT_COPILOT_CI_TOOLS_DIR: ${{ runner.temp }}/support-copilot-ci-tools
 
     steps:
       - name: Check out repository with history
@@ -33,12 +36,6 @@ jobs:
         with:
           go-version: 1.26.4
           cache: false
-
-      - name: Install pinned scanners and workflow validator
-        run: |
-          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
-          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4
-          go install github.com/gitleaks/gitleaks/v8@v8.30.1
 
       - name: Run non-container release gates
         run: ./scripts/verify-ci-gates.sh --mode release

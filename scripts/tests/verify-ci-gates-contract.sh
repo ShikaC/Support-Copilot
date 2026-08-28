@@ -7,12 +7,24 @@ fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-ci-contract.XXXXXX")"
 fixture_repo="$fixture_root/repo"
 shim_dir="$fixture_root/bin"
 fallback_shim_dir="$fixture_root/fallback-bin"
+bootstrap_bin_dir="$fixture_root/bootstrap-bin"
+wrong_tool_dir="$fixture_root/wrong-tools"
 command_log="$fixture_root/commands.log"
+go_install_log="$fixture_root/go-install.log"
+tool_provenance_log="$fixture_root/tool-provenance.log"
 fixture_tmpdir="$fixture_root/tmp"
 venv_python="$fixture_repo/services/support-copilot-ai/.venv/bin/python"
 override_python="$fixture_root/override-python"
+concurrent_first_pid=''
+concurrent_second_pid=''
 
 cleanup() {
+	for pid in "$concurrent_first_pid" "$concurrent_second_pid"; do
+		if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+			kill "$pid" 2>/dev/null || true
+			wait "$pid" 2>/dev/null || true
+		fi
+	done
 	rm -rf "$fixture_root"
 }
 trap cleanup EXIT
@@ -24,7 +36,8 @@ fail() {
 
 [[ -x "$aggregate" ]] || fail "aggregate contract is missing or not executable: scripts/verify-ci-gates.sh"
 
-mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$fixture_tmpdir" \
+mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$bootstrap_bin_dir" \
+	"$wrong_tool_dir" "$fixture_tmpdir" \
 	"$(dirname "$venv_python")"
 git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$fixture_repo" -xf -
 cp "$repo_root/services/support-copilot-api/gradle.lockfile" \
@@ -93,9 +106,94 @@ set -euo pipefail
 printf 'npm %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 SHIM
 
+cat >"$bootstrap_bin_dir/go" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${CI_GATE_FAKE_GO_FAIL_ON_INVOKE:-}" ]]; then
+	printf 'UNEXPECTED_GO_INVOCATION %s\n' "$*" >>"$CI_GATE_FAKE_GO_LOG"
+	exit 63
+fi
+if [[ "${1:-}" == "version" ]]; then
+	printf 'go version go1.26.4 fixture/amd64\n'
+	exit 0
+fi
+[[ "${1:-}" == "install" && $# -eq 2 ]] || exit 64
+{
+	printf 'BEGIN_GO_INSTALL\n'
+	printf 'module=%s\n' "$2"
+	printf 'GOBIN=%s\n' "${GOBIN:-}"
+	printf 'GOSUMDB=%s\n' "${GOSUMDB:-}"
+	printf 'GOPROXY=%s\n' "${GOPROXY:-}"
+	printf 'GOPRIVATE=%s\n' "${GOPRIVATE:-}"
+	printf 'GONOPROXY=%s\n' "${GONOPROXY:-}"
+	printf 'GONOSUMDB=%s\n' "${GONOSUMDB:-}"
+	printf 'GOINSECURE=%s\n' "${GOINSECURE:-}"
+	printf 'GOFLAGS=%s\n' "${GOFLAGS:-}"
+	printf 'END_GO_INSTALL\n'
+} >>"$CI_GATE_FAKE_GO_LOG"
+[[ -n "${GOBIN:-}" ]] || exit 65
+if [[ "${CI_GATE_FAKE_GO_FAIL_MODULE:-}" == "$2" ]]; then
+	exit 71
+fi
+case "$2" in
+	github.com/rhysd/actionlint/cmd/actionlint@v1.7.7) binary=actionlint ;;
+	github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4) binary=osv-scanner ;;
+	github.com/gitleaks/gitleaks/v8@v8.30.1) binary=gitleaks ;;
+	*) exit 66 ;;
+esac
+if [[ "$binary" == actionlint && -n "${CI_GATE_FAKE_GO_BARRIER_DIR:-}" ]]; then
+	if mkdir "$CI_GATE_FAKE_GO_BARRIER_DIR/first-actionlint" 2>/dev/null; then
+		: >"$CI_GATE_FAKE_GO_BARRIER_DIR/ready"
+		deadline=$((SECONDS + 5))
+		while [[ ! -f "$CI_GATE_FAKE_GO_BARRIER_DIR/release" && $SECONDS -lt $deadline ]]; do
+			sleep 0.05
+		done
+		[[ -f "$CI_GATE_FAKE_GO_BARRIER_DIR/release" ]] || exit 74
+	fi
+fi
+mkdir -p "$GOBIN"
+if [[ "${CI_GATE_FAKE_GO_WRONG_BINARY:-}" == "$binary" ]]; then
+	printf '#!/usr/bin/env bash\nprintf "fixture wrong version 0.0.0\\n"\n' >"$GOBIN/$binary"
+else
+	cp "$CI_GATE_FAKE_GO_TEMPLATE_DIR/$binary" "$GOBIN/$binary"
+fi
+chmod +x "$GOBIN/$binary"
+SHIM
+
+cat >"$bootstrap_bin_dir/mkdir" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${CI_GATE_MKDIR_OBSERVE_LOCK:-}" ]]; then
+	for argument in "$@"; do
+		if [[ "$argument" == "$CI_GATE_MKDIR_OBSERVE_LOCK" ]]; then
+			: >"$CI_GATE_CONCURRENT_SECOND_LOCK_ATTEMPT"
+		fi
+	done
+fi
+exec /bin/mkdir "$@"
+SHIM
+
+for command_name in java rg; do
+	command_path="$(command -v "$command_name")"
+	ln -s "$command_path" "$bootstrap_bin_dir/$command_name"
+done
+
+for tool_name in actionlint osv-scanner gitleaks; do
+	cat >"$wrong_tool_dir/$tool_name" <<'SHIM'
+#!/usr/bin/env bash
+printf 'fixture wrong version 0.0.0\n'
+SHIM
+done
+ln -s "$bootstrap_bin_dir/go" "$wrong_tool_dir/go"
+ln -s "$bootstrap_bin_dir/java" "$wrong_tool_dir/java"
+ln -s "$bootstrap_bin_dir/rg" "$wrong_tool_dir/rg"
+
 cat >"$shim_dir/actionlint" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "${CI_GATE_TOOL_PROVENANCE_LOG:-}" ]]; then
+	printf 'actionlint=%s\n' "$0" >>"$CI_GATE_TOOL_PROVENANCE_LOG"
+fi
 if [[ "${1:-}" == "-version" ]]; then
 	printf 'actionlint 1.7.7\n'
 	exit 0
@@ -106,6 +204,9 @@ SHIM
 cat >"$shim_dir/gitleaks" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "${CI_GATE_TOOL_PROVENANCE_LOG:-}" ]]; then
+	printf 'gitleaks=%s\n' "$0" >>"$CI_GATE_TOOL_PROVENANCE_LOG"
+fi
 if [[ "${1:-}" == "version" ]]; then
 	printf '8.30.1\n'
 	exit 0
@@ -119,6 +220,9 @@ SHIM
 cat >"$shim_dir/osv-scanner" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "${CI_GATE_TOOL_PROVENANCE_LOG:-}" ]]; then
+	printf 'osv-scanner=%s\n' "$0" >>"$CI_GATE_TOOL_PROVENANCE_LOG"
+fi
 if [[ "${1:-}" == "--version" ]]; then
 	printf 'osv-scanner version: 2.2.4\n'
 	exit 0
@@ -218,7 +322,9 @@ set -euo pipefail
 printf 'workflow-contract %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 SHIM
 
-chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$venv_python" "$override_python" \
+chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
+	"$bootstrap_bin_dir/mkdir" \
+	"$wrong_tool_dir"/* "$venv_python" "$override_python" \
 	"$fixture_repo/services/support-copilot-api/gradlew" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
 
@@ -255,7 +361,7 @@ for gate in \
 	python-locks python-tests python-mock-evaluation \
 	java-tests java-profile-contracts java-flyway-contracts \
 	react-install react-lint react-tests react-build react-budget react-node-contracts react-e2e \
-	workflow-syntax workflow-contract static-migration-profile static-security \
+	ci-tooling workflow-syntax workflow-contract static-migration-profile static-security \
 	dependency-vulnerabilities tracked-secrets; do
 	grep -q "^\[RUN\] $gate$" "$all_output" || fail "all mode did not invoke gate: $gate"
 	grep -q "^\[PASS\] $gate$" "$all_output" || fail "all mode did not complete gate: $gate"
@@ -376,6 +482,329 @@ fi
 grep -q '^SUPPORT_COPILOT_CI_PYTHON must resolve to an executable:' "$invalid_override_output" || \
 	fail "invalid explicit Python override did not fail clearly"
 
+assert_no_tool_staging_dirs() {
+	local scenario="$1"
+	local tools_dir="$2"
+	local leaked=''
+	if [[ -d "$tools_dir" ]]; then
+		leaked="$(find "$tools_dir" -type d \( -name '*.tmp.*' -o -name '*.partial.*' \) -print -quit)"
+	fi
+	[[ -z "$leaked" ]] || fail "$scenario left a tool staging directory: $leaked"
+}
+
+assert_exact_cached_tools() {
+	local scenario="$1"
+	local tools_dir="$2"
+	local tool_name tool_version version_flag final_bin observed count
+	while IFS='|' read -r tool_name tool_version version_flag; do
+		final_bin="$tools_dir/$tool_name/$tool_version/$tool_name"
+		[[ -x "$final_bin" ]] || fail "$scenario did not leave an executable $tool_name cache binary"
+		observed="$("$final_bin" "$version_flag" 2>&1)" || fail "$scenario cached $tool_name binary did not report a version"
+		grep -Eq "(^|[^0-9])v?${tool_version//./\\.}([^0-9A-Za-z]|$)" <<<"$observed" || \
+			fail "$scenario cached $tool_name binary did not report exact version $tool_version"
+		count="$(find "$tools_dir/$tool_name/$tool_version" -maxdepth 1 -type f -name "$tool_name" | wc -l | tr -d ' ')"
+		[[ "$count" == 1 ]] || fail "$scenario left $count final $tool_name cache binaries"
+	done <<'TOOL_SPECS'
+actionlint|1.7.7|-version
+osv-scanner|2.2.4|--version
+gitleaks|8.30.1|version
+TOOL_SPECS
+	local leaked_lock
+	leaked_lock="$(find "$tools_dir" -type d -name '*.installing' -print -quit)"
+	[[ -z "$leaked_lock" ]] || fail "$scenario left a tool installation lock: $leaked_lock"
+}
+
+wait_for_path() {
+	local expected_path="$1"
+	local description="$2"
+	local deadline=$((SECONDS + 5))
+	while [[ ! -e "$expected_path" && $SECONDS -lt $deadline ]]; do
+		sleep 0.05
+	done
+	[[ -e "$expected_path" ]] || fail "timed out waiting for $description"
+}
+
+run_tool_bootstrap() {
+	local path_prefix="$1"
+	local tools_dir="$2"
+	shift 2
+	env PATH="$path_prefix:/usr/bin:/bin" CI_GATE_COMMAND_LOG="$command_log" \
+		CI_GATE_FAKE_GO_LOG="$go_install_log" CI_GATE_FAKE_GO_TEMPLATE_DIR="$shim_dir" \
+		SUPPORT_COPILOT_CI_TOOLS_DIR="$tools_dir" TMPDIR="$fixture_tmpdir" "$@" \
+		"$fixture_repo/scripts/verify-ci-gates.sh" --mode release
+}
+
+boundary_failure_count=0
+
+record_boundary_failure() {
+	printf 'FAIL: %s\n' "$*" >&2
+	boundary_failure_count=$((boundary_failure_count + 1))
+}
+
+run_rejected_tools_root_case() {
+	local scenario="$1"
+	local tools_dir="$2"
+	shift 2
+	local output="$fixture_root/rejected-$scenario.out"
+	local status
+	set +e
+	run_tool_bootstrap "$bootstrap_bin_dir" "$tools_dir" "$@" >"$output" 2>&1
+	status=$?
+	set -e
+	[[ $status -ne 0 ]] || record_boundary_failure "$scenario tools root unexpectedly succeeded"
+	grep -q '^CI tools root must be a dedicated descendant of canonical TMPDIR or XDG_CACHE_HOME:' \
+		"$output" || record_boundary_failure "$scenario tools root lacked the stable boundary rejection"
+}
+
+run_rejected_tools_root_case filesystem-root /
+run_rejected_tools_root_case tmp-base "$fixture_tmpdir"
+
+fixture_cache_base="$fixture_root/cache-base"
+mkdir -p "$fixture_cache_base"
+run_rejected_tools_root_case cache-base "$fixture_cache_base" XDG_CACHE_HOME="$fixture_cache_base"
+
+traversal_target="$fixture_root/traversal-target"
+mkdir -p "$traversal_target"
+printf 'preserve\n' >"$traversal_target/sentinel"
+run_rejected_tools_root_case traversal-escape \
+	"$fixture_tmpdir/dedicated/../../traversal-target"
+[[ "$(<"$traversal_target/sentinel")" == preserve ]] || \
+	record_boundary_failure "traversal escape modified its outside target"
+
+symlink_target="$fixture_root/symlink-target"
+mkdir -p "$symlink_target"
+printf 'preserve\n' >"$symlink_target/sentinel"
+ln -s "$symlink_target" "$fixture_tmpdir/tools-root-link"
+run_rejected_tools_root_case symlink-root "$fixture_tmpdir/tools-root-link"
+[[ "$(<"$symlink_target/sentinel")" == preserve ]] || \
+	record_boundary_failure "symlink root modified its outside target"
+
+ancestor_target="$fixture_root/ancestor-target"
+mkdir -p "$ancestor_target"
+printf 'preserve\n' >"$ancestor_target/sentinel"
+ln -s "$ancestor_target" "$fixture_tmpdir/tools-ancestor-link"
+run_rejected_tools_root_case symlink-ancestor "$fixture_tmpdir/tools-ancestor-link/ci-tools"
+[[ "$(<"$ancestor_target/sentinel")" == preserve ]] || \
+	record_boundary_failure "symlink ancestor modified its outside target"
+
+sibling_cache_base="$fixture_root/canonical-cache"
+sibling_tools_dir="$fixture_root/canonical-cache2/tools"
+mkdir -p "$sibling_cache_base" "$(dirname "$sibling_tools_dir")"
+printf 'preserve\n' >"$(dirname "$sibling_tools_dir")/sentinel"
+: >"$go_install_log"
+sibling_output="$fixture_root/sibling-prefix.out"
+set +e
+run_tool_bootstrap "$bootstrap_bin_dir" "$sibling_tools_dir" TMPDIR="$sibling_cache_base" \
+	CI_GATE_FAKE_GO_FAIL_ON_INVOKE=1 >"$sibling_output" 2>&1
+sibling_status=$?
+set -e
+[[ $sibling_status -ne 0 ]] || fail "sibling-prefix tools root unexpectedly succeeded"
+grep -q '^CI tools root must be a dedicated descendant of canonical TMPDIR or XDG_CACHE_HOME:' \
+	"$sibling_output" || fail "sibling-prefix tools root lacked the stable boundary rejection"
+[[ ! -e "$sibling_tools_dir" ]] || fail "sibling-prefix rejection created an outside tools artifact"
+[[ "$(<"$(dirname "$sibling_tools_dir")/sentinel")" == preserve ]] || \
+	fail "sibling-prefix rejection modified its outside cache sibling"
+[[ ! -s "$go_install_log" ]] || fail "sibling-prefix rejection invoked fake Go before failing closed"
+
+missing_tools_dir="$fixture_tmpdir/tools path with spaces/missing"
+missing_tools_output="$fixture_root/tools-missing.out"
+: >"$go_install_log"
+if ! run_tool_bootstrap "$bootstrap_bin_dir" "$missing_tools_dir" \
+	GOPRIVATE=hostile.private.example GONOPROXY=hostile.noproxy.example \
+	GONOSUMDB=hostile.nosumdb.example GOINSECURE=hostile.insecure.example \
+	GOFLAGS=-mod=mod GOSUMDB=off GOPROXY=direct \
+	>"$missing_tools_output" 2>&1; then
+	cat "$missing_tools_output" >&2
+	fail "missing tools were not bootstrapped through fake Go"
+fi
+for module in \
+	github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
+	github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4 \
+	github.com/gitleaks/gitleaks/v8@v8.30.1; do
+	grep -Fxq "module=$module" "$go_install_log" || fail "exact Go install pin was not used: $module"
+done
+grep -Eq '^GOBIN=.*/tools path with spaces/missing/actionlint/1\.7\.7/\.actionlint-1\.7\.7\.tmp\.[^/]+$' \
+	"$go_install_log" || fail "Go install did not preserve the staged GOBIN containing spaces"
+for expected_go_environment in \
+	'GOSUMDB=sum.golang.org' \
+	'GOPROXY=https://proxy.golang.org,direct' \
+	'GOPRIVATE=' \
+	'GONOPROXY=' \
+	'GONOSUMDB=' \
+	'GOINSECURE=' \
+	'GOFLAGS='; do
+	grep -Fxq "$expected_go_environment" "$go_install_log" || \
+		fail "fake Go did not observe exact public install environment: $expected_go_environment"
+done
+grep -q '^\[RUN\] ci-tooling$' "$missing_tools_output" || fail "ci-tooling gate was not explicit"
+grep -q '^\[PASS\] ci-tooling$' "$missing_tools_output" || fail "ci-tooling gate did not pass"
+ci_tooling_line="$(grep -n '^\[RUN\] ci-tooling$' "$missing_tools_output" | cut -d: -f1)"
+workflow_line="$(grep -n '^\[RUN\] workflow-syntax$' "$missing_tools_output" | cut -d: -f1)"
+[[ "$ci_tooling_line" -lt "$workflow_line" ]] || fail "ci-tooling did not precede workflow/scanner gates"
+while IFS='|' read -r tool_name tool_version; do
+	grep -Fqx "[TOOL] name=$tool_name version=$tool_version source=cache" "$missing_tools_output" || \
+		fail "stable cache provenance missing for $tool_name"
+done <<'TOOL_SPECS'
+actionlint|1.7.7
+osv-scanner|2.2.4
+gitleaks|8.30.1
+TOOL_SPECS
+assert_no_tool_staging_dirs "successful missing-tool bootstrap" "$missing_tools_dir"
+
+wrong_tools_dir="$fixture_tmpdir/tools-wrong"
+wrong_tools_output="$fixture_root/tools-wrong.out"
+wrong_tool_hash_before="$(shasum -a 256 "$wrong_tool_dir/gitleaks")"
+if ! run_tool_bootstrap "$wrong_tool_dir" "$wrong_tools_dir" \
+	>"$wrong_tools_output" 2>&1; then
+	cat "$wrong_tools_output" >&2
+	fail "wrong-version PATH tools were not replaced by cache-local exact tools"
+fi
+wrong_tool_hash_after="$(shasum -a 256 "$wrong_tool_dir/gitleaks")"
+[[ "$wrong_tool_hash_before" == "$wrong_tool_hash_after" ]] || fail "unrelated wrong-version PATH binary was overwritten"
+assert_no_tool_staging_dirs "successful wrong-version bootstrap" "$wrong_tools_dir"
+
+validation_tools_dir="$fixture_tmpdir/tools-validation-failure"
+validation_output="$fixture_root/tools-validation-failure.out"
+set +e
+run_tool_bootstrap "$bootstrap_bin_dir" "$validation_tools_dir" \
+	CI_GATE_FAKE_GO_WRONG_BINARY=actionlint >"$validation_output" 2>&1
+validation_status=$?
+set -e
+[[ $validation_status -ne 0 ]] || fail "wrong-version installed binary unexpectedly passed ci-tooling"
+grep -q '^\[FAIL\] ci-tooling$' "$validation_output" || fail "installed version validation failure lacked stable ci-tooling failure"
+if grep -q '^\[RUN\] workflow-syntax$' "$validation_output"; then
+	fail "workflow/scanner gates ran after installed binary validation failed"
+fi
+assert_no_tool_staging_dirs "installed version validation failure" "$validation_tools_dir"
+
+install_failure_tools_dir="$fixture_tmpdir/tools path with spaces/install-failure"
+install_failure_output="$fixture_root/tools-install-failure.out"
+set +e
+run_tool_bootstrap "$bootstrap_bin_dir" "$install_failure_tools_dir" \
+	CI_GATE_FAKE_GO_FAIL_MODULE=github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
+	>"$install_failure_output" 2>&1
+install_failure_status=$?
+set -e
+[[ $install_failure_status -ne 0 ]] || fail "fake Go install failure unexpectedly passed"
+grep -q '^\[FAIL\] ci-tooling$' "$install_failure_output" || fail "Go install failure lacked stable ci-tooling failure"
+if grep -q '^\[RUN\] workflow-syntax$' "$install_failure_output"; then
+	fail "workflow/scanner gates ran after Go install failed"
+fi
+assert_no_tool_staging_dirs "Go install failure" "$install_failure_tools_dir"
+
+path_reuse_bin="$fixture_root/path-reuse-bin"
+mkdir -p "$path_reuse_bin"
+for command_name in actionlint osv-scanner gitleaks; do
+	ln -s "$shim_dir/$command_name" "$path_reuse_bin/$command_name"
+done
+for command_name in go java rg mkdir; do
+	ln -s "$bootstrap_bin_dir/$command_name" "$path_reuse_bin/$command_name"
+done
+path_reuse_bin_canonical="$(cd -P "$path_reuse_bin" && pwd)"
+path_reuse_tools_dir="$fixture_tmpdir/tools-path-reuse"
+path_reuse_output="$fixture_root/tools-path-reuse.out"
+: >"$go_install_log"
+: >"$tool_provenance_log"
+if ! run_tool_bootstrap "$path_reuse_bin" "$path_reuse_tools_dir" \
+	CI_GATE_FAKE_GO_FAIL_ON_INVOKE=1 CI_GATE_TOOL_PROVENANCE_LOG="$tool_provenance_log" \
+	>"$path_reuse_output" 2>&1; then
+	cat "$path_reuse_output" >&2
+	fail "correct-version PATH tools did not complete release mode without Go"
+fi
+grep -q '^\[PASS\] ci-tooling$' "$path_reuse_output" || fail "correct-version PATH tools did not pass ci-tooling"
+[[ ! -s "$go_install_log" ]] || fail "correct-version PATH reuse invoked fake Go"
+while IFS='|' read -r tool_name tool_version; do
+	grep -Fqx "[TOOL] name=$tool_name version=$tool_version source=path" "$path_reuse_output" || \
+		fail "correct-version PATH reuse lacked path provenance for $tool_name"
+	grep -Fqx "$tool_name=$path_reuse_bin_canonical/$tool_name" "$tool_provenance_log" || \
+		fail "scanner gate did not invoke the resolved absolute $tool_name executable"
+done <<'TOOL_SPECS'
+actionlint|1.7.7
+osv-scanner|2.2.4
+gitleaks|8.30.1
+TOOL_SPECS
+[[ ! -e "$path_reuse_tools_dir" ]] || fail "correct-version PATH reuse created a cache artifact"
+
+for partial_state in incomplete wrong-version non-executable; do
+	partial_tools_dir="$fixture_tmpdir/tools-partial-$partial_state"
+	partial_actionlint_dir="$partial_tools_dir/actionlint/1.7.7"
+	partial_output="$fixture_root/tools-partial-$partial_state.out"
+	mkdir -p "$partial_actionlint_dir"
+	case "$partial_state" in
+		incomplete)
+			printf 'incomplete\n' >"$partial_actionlint_dir/incomplete-download"
+			;;
+		wrong-version)
+			cp "$wrong_tool_dir/actionlint" "$partial_actionlint_dir/actionlint"
+			chmod +x "$partial_actionlint_dir/actionlint"
+			;;
+		non-executable)
+			cp "$shim_dir/actionlint" "$partial_actionlint_dir/actionlint"
+			chmod 0644 "$partial_actionlint_dir/actionlint"
+			;;
+	esac
+	: >"$go_install_log"
+	if ! run_tool_bootstrap "$bootstrap_bin_dir" "$partial_tools_dir" >"$partial_output" 2>&1; then
+		cat "$partial_output" >&2
+		fail "partial cache state $partial_state did not repair fail-closed"
+	fi
+	grep -Fq 'module=github.com/rhysd/actionlint/cmd/actionlint@v1.7.7' "$go_install_log" || \
+		fail "partial cache state $partial_state accepted its actionlint binary"
+	assert_exact_cached_tools "partial cache state $partial_state" "$partial_tools_dir"
+	assert_no_tool_staging_dirs "partial cache state $partial_state" "$partial_tools_dir"
+done
+
+concurrent_tools_dir="$fixture_tmpdir/tools-concurrent"
+concurrent_tools_dir_canonical="$(cd -P "$fixture_tmpdir" && pwd)/tools-concurrent"
+concurrent_barrier_dir="$fixture_root/concurrent-barrier"
+concurrent_second_lock_attempt="$concurrent_barrier_dir/second-lock-attempt"
+concurrent_lock_dir="$concurrent_tools_dir_canonical/actionlint/1.7.7.installing"
+concurrent_first_output="$fixture_root/tools-concurrent-first.out"
+concurrent_second_output="$fixture_root/tools-concurrent-second.out"
+mkdir -p "$concurrent_barrier_dir"
+: >"$go_install_log"
+env PATH="$bootstrap_bin_dir:/usr/bin:/bin" CI_GATE_COMMAND_LOG="$command_log" \
+	CI_GATE_FAKE_GO_LOG="$go_install_log" CI_GATE_FAKE_GO_TEMPLATE_DIR="$shim_dir" \
+	SUPPORT_COPILOT_CI_TOOLS_DIR="$concurrent_tools_dir" TMPDIR="$fixture_tmpdir" \
+	CI_GATE_FAKE_GO_BARRIER_DIR="$concurrent_barrier_dir" \
+	"$fixture_repo/scripts/verify-ci-gates.sh" --mode release >"$concurrent_first_output" 2>&1 &
+concurrent_first_pid=$!
+wait_for_path "$concurrent_barrier_dir/ready" "the first concurrent fake Go install"
+env PATH="$bootstrap_bin_dir:/usr/bin:/bin" CI_GATE_COMMAND_LOG="$command_log" \
+	CI_GATE_FAKE_GO_LOG="$go_install_log" CI_GATE_FAKE_GO_TEMPLATE_DIR="$shim_dir" \
+	SUPPORT_COPILOT_CI_TOOLS_DIR="$concurrent_tools_dir" TMPDIR="$fixture_tmpdir" \
+	CI_GATE_MKDIR_OBSERVE_LOCK="$concurrent_lock_dir" \
+	CI_GATE_CONCURRENT_SECOND_LOCK_ATTEMPT="$concurrent_second_lock_attempt" \
+	"$fixture_repo/scripts/verify-ci-gates.sh" --mode release >"$concurrent_second_output" 2>&1 &
+concurrent_second_pid=$!
+wait_for_path "$concurrent_second_lock_attempt" "the second concurrent lock attempt"
+: >"$concurrent_barrier_dir/release"
+set +e
+wait "$concurrent_first_pid"
+concurrent_first_status=$?
+wait "$concurrent_second_pid"
+concurrent_second_status=$?
+set -e
+concurrent_first_pid=''
+concurrent_second_pid=''
+[[ $concurrent_first_status -eq 0 ]] || fail "first concurrent release fixture failed"
+[[ $concurrent_second_status -eq 0 ]] || fail "second concurrent release fixture failed"
+for concurrent_output in "$concurrent_first_output" "$concurrent_second_output"; do
+	grep -q '^\[PASS\] ci-tooling$' "$concurrent_output" || fail "concurrent fixture did not pass ci-tooling"
+	while IFS='|' read -r tool_name tool_version; do
+		grep -Fqx "[TOOL] name=$tool_name version=$tool_version source=cache" "$concurrent_output" || \
+			fail "concurrent fixture lacked cache provenance for $tool_name"
+	done <<'TOOL_SPECS'
+actionlint|1.7.7
+osv-scanner|2.2.4
+gitleaks|8.30.1
+TOOL_SPECS
+done
+assert_exact_cached_tools "concurrent cache" "$concurrent_tools_dir"
+assert_no_tool_staging_dirs "concurrent cache" "$concurrent_tools_dir"
+
+[[ $boundary_failure_count -eq 0 ]] || exit 1
+
 reset_python_production_lock() {
 	cp "$repo_root/services/support-copilot-ai/requirements.lock.txt" \
 		"$fixture_repo/services/support-copilot-ai/requirements.lock.txt"
@@ -470,6 +899,17 @@ for workflow in "$repo_root"/.github/workflows/*.yml; do
 	grep -q 'contents: read' "$workflow" || fail "workflow permissions are not least-privileged: ${workflow#$repo_root/}"
 	grep -q 'scripts/verify-ci-gates.sh' "$workflow" || fail "workflow bypasses aggregate contract: ${workflow#$repo_root/}"
 done
+
+release_workflow="$repo_root/.github/workflows/release-gates-ci.yml"
+grep -q 'SUPPORT_COPILOT_CI_TOOLS_DIR:' "$release_workflow" || \
+	fail "release workflow does not declare the narrow shared tool cache"
+grep -Fq 'TMPDIR: ${{ runner.temp }}' "$release_workflow" || \
+	fail "release workflow does not align TMPDIR with canonical runner temp"
+grep -Fq 'SUPPORT_COPILOT_CI_TOOLS_DIR: ${{ runner.temp }}/support-copilot-ci-tools' "$release_workflow" || \
+	fail "release workflow tools root is not a dedicated runner temp descendant"
+if grep -q 'go install ' "$release_workflow"; then
+	fail "release workflow duplicates raw Go installs instead of relying on the aggregate"
+fi
 
 if rg -n 'check-live-rag|docker|compose|mysql|verify-(backup|restore|rollback)' \
 	"$repo_root/.github/workflows" "$aggregate"; then

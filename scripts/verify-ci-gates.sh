@@ -5,6 +5,14 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly ACTIONLINT_VERSION="1.7.7"
 readonly OSV_SCANNER_VERSION="2.2.4"
 readonly GITLEAKS_VERSION="8.30.1"
+readonly GO_VERSION="1.26.4"
+readonly ACTIONLINT_MODULE="github.com/rhysd/actionlint/cmd/actionlint@v1.7.7"
+readonly OSV_SCANNER_MODULE="github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4"
+readonly GITLEAKS_MODULE="github.com/gitleaks/gitleaks/v8@v8.30.1"
+
+actionlint_bin=''
+osv_scanner_bin=''
+gitleaks_bin=''
 
 usage() {
 	printf 'Usage: %s [--mode python|java|react|release|all | --deferred]\n' "$0"
@@ -54,6 +62,297 @@ require_command() {
   }
 }
 
+absolute_executable() {
+	local executable="$1"
+	local executable_dir
+	executable_dir="$(cd -P "$(dirname "$executable")" && pwd)"
+	printf '%s/%s\n' "$executable_dir" "$(basename "$executable")"
+}
+
+version_matches() {
+	local executable="$1"
+	local expected="$2"
+	local actual
+	shift 2
+	[[ -x "$executable" ]] || return 1
+	actual="$("$executable" "$@" 2>&1)" || return 1
+	grep -Eq "(^|[^0-9])v?${expected//./\\.}([^0-9A-Za-z]|$)" <<<"$actual"
+}
+
+canonical_existing_directory() {
+	local path="$1"
+	[[ "$path" == /* && -d "$path" ]] || return 1
+	(cd -P "$path" && pwd)
+}
+
+canonical_lexical_path() {
+	local path="$1"
+	local remaining="${path#/}"
+	local component normalized=''
+	[[ "$path" == /* ]] || return 1
+	while [[ -n "$remaining" ]]; do
+		component="${remaining%%/*}"
+		if [[ "$remaining" == */* ]]; then
+			remaining="${remaining#*/}"
+		else
+			remaining=''
+		fi
+		[[ "$component" != . && "$component" != .. ]] || return 1
+		[[ -n "$component" ]] || continue
+		normalized="$normalized/$component"
+	done
+	printf '%s\n' "${normalized:-/}"
+}
+
+is_symlink_free_descendant() {
+	local base="$1"
+	local candidate="$2"
+	local relative current component
+	case "$candidate" in
+		"$base"/*) ;;
+		*) return 1 ;;
+	esac
+	relative="${candidate#"$base"/}"
+	[[ -n "$relative" ]] || return 1
+	current="$base"
+	while [[ -n "$relative" ]]; do
+		component="${relative%%/*}"
+		if [[ "$relative" == */* ]]; then
+			relative="${relative#*/}"
+		else
+			relative=''
+		fi
+		[[ -n "$component" ]] || continue
+		current="$current/$component"
+		[[ ! -L "$current" ]] || return 1
+		[[ ! -e "$current" || -d "$current" ]] || return 1
+	done
+}
+
+canonical_descendant_path() {
+	local lexical_base="$1"
+	local canonical_base="$2"
+	local candidate="$3"
+	local candidate_parent candidate_name relative_parent=''
+	candidate_parent="$(canonical_lexical_path "$(dirname "$candidate")")" || return 1
+	candidate_name="$(basename "$candidate")"
+	case "$candidate_parent" in
+		"$lexical_base") ;;
+		"$lexical_base"/*) relative_parent="${candidate_parent#"$lexical_base"/}" ;;
+		"$canonical_base") ;;
+		"$canonical_base"/*) relative_parent="${candidate_parent#"$canonical_base"/}" ;;
+		*) return 1 ;;
+	esac
+	if [[ -n "$relative_parent" ]]; then
+		printf '%s/%s/%s\n' "$canonical_base" "$relative_parent" "$candidate_name"
+	else
+		printf '%s/%s\n' "$canonical_base" "$candidate_name"
+	fi
+}
+
+ci_tools_root() {
+	local tmp_lexical_base tmp_base xdg_lexical_base='' xdg_base='' candidate matched_base=''
+	tmp_lexical_base="$(canonical_lexical_path "${TMPDIR:-/tmp}")" || {
+		printf 'TMPDIR must resolve to an existing absolute directory.\n' >&2
+		return 1
+	}
+	tmp_base="$(canonical_existing_directory "$tmp_lexical_base")" || {
+		printf 'TMPDIR must resolve to an existing absolute directory.\n' >&2
+		return 1
+	}
+	if [[ -n "${XDG_CACHE_HOME:-}" ]]; then
+		xdg_lexical_base="$(canonical_lexical_path "$XDG_CACHE_HOME")" || {
+			printf 'XDG_CACHE_HOME must resolve to an existing absolute directory.\n' >&2
+			return 1
+		}
+		xdg_base="$(canonical_existing_directory "$xdg_lexical_base")" || {
+			printf 'XDG_CACHE_HOME must resolve to an existing absolute directory.\n' >&2
+			return 1
+		}
+	fi
+	candidate="${SUPPORT_COPILOT_CI_TOOLS_DIR:-$tmp_base/support-copilot/ci-tools}"
+	if ! candidate="$(canonical_lexical_path "$candidate")"; then
+		printf 'CI tools root must be a dedicated descendant of canonical TMPDIR or XDG_CACHE_HOME: %q\n' \
+			"$candidate" >&2
+		return 1
+	fi
+	if candidate="$(canonical_descendant_path "$tmp_lexical_base" "$tmp_base" "$candidate")" && \
+		is_symlink_free_descendant "$tmp_base" "$candidate"; then
+		matched_base="$tmp_base"
+	elif [[ -n "$xdg_base" ]] && \
+		candidate="$(canonical_descendant_path "$xdg_lexical_base" "$xdg_base" "$candidate")" && \
+		is_symlink_free_descendant "$xdg_base" "$candidate"; then
+		matched_base="$xdg_base"
+	else
+		printf 'CI tools root must be a dedicated descendant of canonical TMPDIR or XDG_CACHE_HOME: %q\n' \
+			"$candidate" >&2
+		return 1
+	fi
+	printf '[TOOL] cache-root=%q base=%q\n' "$candidate" "$matched_base" >&2
+	printf '%s\n' "$candidate"
+}
+
+cleanup_ci_tool_staging() {
+	local staging_dir="$1"
+	local tool_dir="$2"
+	local name="$3"
+	local expected="$4"
+	local staging_parent tool_dir_canonical staging_name
+	[[ -d "$staging_dir" && ! -L "$staging_dir" ]] || return 1
+	staging_parent="$(canonical_existing_directory "$(dirname "$staging_dir")")" || return 1
+	tool_dir_canonical="$(canonical_existing_directory "$tool_dir")" || return 1
+	staging_name="$(basename "$staging_dir")"
+	[[ "$staging_parent" == "$tool_dir_canonical" ]] || return 1
+	case "$staging_name" in
+		".${name}-${expected}.tmp."*) ;;
+		*) return 1 ;;
+	esac
+	[[ ! -e "$staging_dir/$name" || -f "$staging_dir/$name" ]] || return 1
+	rm -f -- "$staging_dir/$name"
+	rmdir -- "$staging_dir"
+}
+
+install_ci_tool() {
+	local name="$1"
+	local expected="$2"
+	local module="$3"
+	shift 3
+	local tools_root tool_dir final_bin lock_dir staging_dir go_bin lock_deadline lock_acquired=0
+	tools_root="$(ci_tools_root)" || return 1
+	tool_dir="$tools_root/$name/$expected"
+	final_bin="$tool_dir/$name"
+	lock_dir="$tool_dir.installing"
+	is_symlink_free_descendant "$tools_root" "$tool_dir" || {
+		printf 'CI tool cache contains a symlink or non-directory ancestor: %s\n' "$tool_dir" >&2
+		return 1
+	}
+
+	if version_matches "$final_bin" "$expected" "$@"; then
+		absolute_executable "$final_bin"
+		return
+	fi
+
+	go_bin="$(command -v go || true)"
+	[[ -n "$go_bin" ]] || {
+		printf 'Go %s is required to install %s %s.\n' "$GO_VERSION" "$name" "$expected" >&2
+		return 1
+	}
+	go_bin="$(absolute_executable "$go_bin")"
+	version_matches "$go_bin" "$GO_VERSION" version || {
+		printf 'Expected Go %s for CI tool installation.\n' "$GO_VERSION" >&2
+		return 1
+	}
+
+	mkdir -p "$tool_dir"
+	if mkdir "$lock_dir" 2>/dev/null; then
+		lock_acquired=1
+	else
+		lock_deadline=$((SECONDS + 5))
+		while [[ $SECONDS -lt $lock_deadline ]]; do
+			if version_matches "$final_bin" "$expected" "$@"; then
+				absolute_executable "$final_bin"
+				return
+			fi
+			if mkdir "$lock_dir" 2>/dev/null; then
+				lock_acquired=1
+				break
+			fi
+			sleep 0.05
+		done
+	fi
+	if [[ $lock_acquired -ne 1 ]]; then
+		if version_matches "$final_bin" "$expected" "$@"; then
+			absolute_executable "$final_bin"
+			return
+		fi
+		printf 'CI tool cache is concurrently installing or partially locked: %s %s\n' \
+			"$name" "$expected" >&2
+		return 1
+	fi
+
+	staging_dir="$(mktemp -d "$tool_dir/.${name}-${expected}.tmp.XXXXXX")" || {
+		rmdir "$lock_dir" 2>/dev/null || true
+		return 1
+	}
+	printf '[TOOL] staging name=%s version=%s state=created\n' "$name" "$expected" >&2
+	if ! env GOBIN="$staging_dir" GOENV=off GOTOOLCHAIN=local GOFLAGS= \
+		GOSUMDB=sum.golang.org GOPROXY=https://proxy.golang.org,direct \
+		GONOSUMDB= GOPRIVATE= GONOPROXY= GOINSECURE= \
+		"$go_bin" install "$module"; then
+		cleanup_ci_tool_staging "$staging_dir" "$tool_dir" "$name" "$expected" || true
+		rmdir "$lock_dir" 2>/dev/null || true
+		rmdir "$tool_dir" 2>/dev/null || true
+		return 1
+	fi
+	if ! version_matches "$staging_dir/$name" "$expected" "$@"; then
+		printf 'Installed %s binary did not match version %s.\n' "$name" "$expected" >&2
+		cleanup_ci_tool_staging "$staging_dir" "$tool_dir" "$name" "$expected" || true
+		rmdir "$lock_dir" 2>/dev/null || true
+		rmdir "$tool_dir" 2>/dev/null || true
+		return 1
+	fi
+	if ! mv -f "$staging_dir/$name" "$final_bin"; then
+		cleanup_ci_tool_staging "$staging_dir" "$tool_dir" "$name" "$expected" || true
+		rmdir "$lock_dir" 2>/dev/null || true
+		rmdir "$tool_dir" 2>/dev/null || true
+		return 1
+	fi
+	cleanup_ci_tool_staging "$staging_dir" "$tool_dir" "$name" "$expected" || return 1
+	rmdir "$lock_dir" 2>/dev/null || true
+	version_matches "$final_bin" "$expected" "$@" || {
+		printf 'Promoted %s binary did not match version %s.\n' "$name" "$expected" >&2
+		return 1
+	}
+	absolute_executable "$final_bin"
+}
+
+resolve_ci_tool() {
+	local name="$1"
+	local expected="$2"
+	local module="$3"
+	local destination="$4"
+	local candidate resolved source
+	shift 4
+	candidate="$(command -v "$name" || true)"
+	if [[ -n "$candidate" ]]; then
+		candidate="$(absolute_executable "$candidate")"
+	fi
+	if [[ -n "$candidate" ]] && version_matches "$candidate" "$expected" "$@"; then
+		resolved="$candidate"
+		source=path
+	else
+		resolved="$(install_ci_tool "$name" "$expected" "$module" "$@")" || return 1
+		source=cache
+	fi
+	[[ -x "$resolved" ]] || return 1
+	case "$destination" in
+		actionlint_bin) actionlint_bin="$resolved" ;;
+		osv_scanner_bin) osv_scanner_bin="$resolved" ;;
+		gitleaks_bin) gitleaks_bin="$resolved" ;;
+		*) return 1 ;;
+	esac
+	printf '[TOOL] name=%s version=%s source=%s\n' "$name" "$expected" "$source"
+}
+
+resolve_ci_tooling() {
+	resolve_ci_tool actionlint "$ACTIONLINT_VERSION" "$ACTIONLINT_MODULE" actionlint_bin -version || return
+	resolve_ci_tool osv-scanner "$OSV_SCANNER_VERSION" "$OSV_SCANNER_MODULE" osv_scanner_bin --version || return
+	resolve_ci_tool gitleaks "$GITLEAKS_VERSION" "$GITLEAKS_MODULE" gitleaks_bin version || return
+}
+
+run_ci_tooling_gate() {
+	local gate_status
+	printf '[RUN] ci-tooling\n'
+	if resolve_ci_tooling; then
+		printf '[PASS] ci-tooling\n'
+		return
+	else
+		gate_status=$?
+	fi
+	printf '[FAIL] ci-tooling\n' >&2
+	return "$gate_status"
+}
+
 ci_python=''
 
 resolve_ci_python() {
@@ -83,19 +382,6 @@ resolve_ci_python() {
   fi
 
   ci_python="$candidate"
-}
-
-require_version() {
-  local command_name="$1"
-  local expected="$2"
-  shift 2
-  require_command "$command_name"
-  local actual
-  actual="$("$@" 2>&1)"
-  grep -Eq "(^|[^0-9])v?${expected//./\\.}([^0-9]|$)" <<<"$actual" || {
-    printf 'Expected %s %s, observed: %s\n' "$command_name" "$expected" "$actual" >&2
-    return 1
-  }
 }
 
 python_locks() {
@@ -142,9 +428,8 @@ react_install() {
 }
 
 workflow_syntax() {
-  require_version actionlint "$ACTIONLINT_VERSION" actionlint -version
-  actionlint "$repo_root"/.github/workflows/*.{yml,yaml} 2>/dev/null || \
-    actionlint "$repo_root"/.github/workflows/*.yml
+  "$actionlint_bin" "$repo_root"/.github/workflows/*.{yml,yaml} 2>/dev/null || \
+    "$actionlint_bin" "$repo_root"/.github/workflows/*.yml
 }
 
 static_migration_profile() {
@@ -181,7 +466,6 @@ static_security() {
 
 dependency_vulnerabilities() (
 	set -Eeuo pipefail
-	require_version osv-scanner "$OSV_SCANNER_VERSION" osv-scanner --version
 	require_command java
 	local tracked_snapshot=''
 	local scan_workspace=''
@@ -307,7 +591,7 @@ scan_resolved_inventory() {
 	local config="$5"
 	local scan_status
 	set +e
-	osv-scanner scan source --lockfile="$lock_type:$inventory" --all-packages \
+	"$osv_scanner_bin" scan source --lockfile="$lock_type:$inventory" --all-packages \
 		--format=json --output-file="$report" --config="$config"
 	scan_status=$?
 	set -e
@@ -428,15 +712,14 @@ PY
 }
 
 tracked_secrets() {
-  require_version gitleaks "$GITLEAKS_VERSION" gitleaks version
   local tracked_snapshot
   local scan_status=0
   tracked_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-tracked.XXXXXX")"
   trap 'rm -rf "$tracked_snapshot"' RETURN
   git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$tracked_snapshot" -xf -
-  gitleaks dir "$tracked_snapshot" --no-banner --redact --exit-code 1 || scan_status=$?
+  "$gitleaks_bin" dir "$tracked_snapshot" --no-banner --redact --exit-code 1 || scan_status=$?
   if [[ $scan_status -eq 0 ]]; then
-    git -C "$repo_root" log -p --all | gitleaks stdin --no-banner --redact --exit-code 1 || scan_status=$?
+    git -C "$repo_root" log -p --all | "$gitleaks_bin" stdin --no-banner --redact --exit-code 1 || scan_status=$?
   fi
   rm -rf "$tracked_snapshot"
   trap - RETURN
@@ -467,6 +750,7 @@ run_react() {
 
 run_release() {
   require_command rg
+  run_ci_tooling_gate
   run_gate workflow-syntax workflow_syntax
   run_gate workflow-contract "$repo_root/scripts/tests/verify-ci-gates-contract.sh"
   run_gate static-migration-profile static_migration_profile
