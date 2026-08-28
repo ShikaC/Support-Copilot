@@ -23,7 +23,7 @@ API Key，不调用外部模型，也不会把模拟结果描述成真实客服�
 React，验证健康状态、成功分析、React 运行时 Schema 和 Java 分析历史，然后只清理自己
 启动的进程。它不执行 live API、Docker 或 MySQL。
 
-从 tracked-only 临时副本复验文档、测试、构建和同一 smoke，可运行：
+从当前 `HEAD` 的 committed tracked-only 临时副本复验文档、测试、构建和同一 smoke，可运行：
 
 ```bash
 ./scripts/verify-docs.sh

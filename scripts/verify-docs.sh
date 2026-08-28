@@ -45,15 +45,22 @@ resolve_python_311() {
 
 copy_tracked_repository() {
 	local destination="$1"
+	local source_tree fixture_tree
 	mkdir -p "$destination"
-	git -C "$repo_root" ls-files -z | \
-		tar --null -T - -C "$repo_root" -cf - | tar -C "$destination" -xf -
+	git -C "$repo_root" archive --format=tar HEAD | tar -C "$destination" -xf -
 	git -C "$destination" init -q
 	git -C "$destination" add .
 	git -C "$destination" \
 		-c user.name='Support Copilot Docs Verifier' \
 		-c user.email='docs-verifier@localhost.invalid' \
 		commit -qm 'docs verification fixture'
+	source_tree="$(git -C "$repo_root" rev-parse 'HEAD^{tree}')"
+	fixture_tree="$(git -C "$destination" rev-parse 'HEAD^{tree}')"
+	[[ "$source_tree" == "$fixture_tree" ]] || {
+		printf 'Tracked fixture tree does not match source HEAD.\n' >&2
+		return 1
+	}
+	printf 'Tracked fixture matches source tree: %s\n' "$source_tree"
 }
 
 install_locked_dependencies() {
