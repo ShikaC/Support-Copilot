@@ -399,6 +399,13 @@ python_mock_evaluation() {
   AI_MODE=mock OPENAI_API_KEY= OPENAI_EMBEDDING_API_KEY= "$ci_python" -m evaluation.run_mock_evaluation
 }
 
+scan_evidence_python_tests() {
+  cd "$repo_root"
+  "$ci_python" -m pytest -q \
+    scripts/tests/test_publish_scan_evidence.py \
+    scripts/tests/test_validate_scan_evidence.py
+}
+
 java_full_tests() {
   require_command java
   cd "$repo_root/services/support-copilot-api"
@@ -528,205 +535,16 @@ persist_scan_evidence() {
 	local outcome="$8"
 	local occurrence_count="$9"
 	local report_accepted="${10}"
-	local report_present=false
+	local report_argument=-
 
 	evidence_dir="$(scan_evidence_root "$evidence_dir")" || return 1
-	[[ "$label" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || return 1
-	[[ -f "$inventory" && ! -L "$inventory" && -f "$scanner_stderr" && ! -L "$scanner_stderr" ]] || {
-		printf 'Scan evidence inputs are not regular files for %s.\n' "$label" >&2
-		return 1
-	}
 	if [[ -e "$report" || -L "$report" ]]; then
-		[[ -f "$report" && ! -L "$report" ]] || {
-			printf 'OSV report path is not a regular file for %s.\n' "$label" >&2
-			return 1
-		}
-		report_present=true
+		report_argument="$report"
 	fi
-	"$ci_python" - "$evidence_dir" "$label" "$lock_type" "$inventory" "$report" \
+	"$ci_python" "$repo_root/scripts/publish_scan_evidence.py" publish \
+		"$evidence_dir" "$label" "$lock_type" "$inventory" "$report_argument" \
 		"$scanner_stderr" "$scan_status" "$outcome" "$occurrence_count" \
-		"$report_present" "$report_accepted" <<'PY'
-import hashlib
-import json
-import os
-import stat
-import sys
-
-(
-    evidence_root,
-    label,
-    lock_type,
-    inventory_path,
-    report_path,
-    stderr_path,
-    scan_status,
-    outcome,
-    occurrence_count,
-    report_present,
-    report_accepted,
-) = sys.argv[1:]
-status = int(scan_status)
-present = report_present == "true"
-accepted = report_accepted == "true"
-occurrences = None if occurrence_count == "null" else int(occurrence_count)
-valid_outcome = (
-    (outcome == "clean" and status == 0 and occurrences == 0 and present and accepted)
-    or (outcome == "vulnerability" and status == 1 and occurrences is not None
-        and occurrences > 0 and present and accepted)
-    or (outcome == "operational" and status not in (0, 1) and occurrences is None
-        and not accepted)
-    or (outcome == "invalid-report" and status in (0, 1) and occurrences is None
-        and not accepted)
-)
-if not valid_outcome:
-    raise SystemExit("refusing inconsistent scan provenance outcome")
-
-directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-source_flags = os.O_RDONLY
-create_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-if hasattr(os, "O_NOFOLLOW"):
-    directory_flags |= os.O_NOFOLLOW
-    source_flags |= os.O_NOFOLLOW
-    create_flags |= os.O_NOFOLLOW
-
-def open_directory_path(path: str) -> int:
-    if not os.path.isabs(path):
-        raise SystemExit("scan evidence root is not absolute")
-    current_fd = os.open("/", directory_flags)
-    try:
-        for component in [part for part in path.split(os.sep) if part]:
-            next_fd = os.open(component, directory_flags, dir_fd=current_fd)
-            os.close(current_fd)
-            current_fd = next_fd
-        return current_fd
-    except BaseException:
-        os.close(current_fd)
-        raise
-
-def open_regular_source(path: str) -> int:
-    source_fd = os.open(path, source_flags)
-    if not stat.S_ISREG(os.fstat(source_fd).st_mode):
-        os.close(source_fd)
-        raise SystemExit(f"scan evidence source is not regular: {path}")
-    return source_fd
-
-def write_all(fd: int, data: bytes) -> None:
-    remaining = memoryview(data)
-    while remaining:
-        written = os.write(fd, remaining)
-        if written == 0:
-            raise OSError("zero-byte scan evidence write")
-        remaining = remaining[written:]
-
-known_names = ("inventory", "stderr", "report", "provenance.json", "COMPLETE")
-root_fd = open_directory_path(evidence_root)
-destination_fd = -1
-source_fds = []
-destination_identity = None
-claimed = False
-try:
-    try:
-        os.mkdir(label, mode=0o700, dir_fd=root_fd)
-    except FileExistsError:
-        raise SystemExit(f"scan evidence path is not fresh for {label}") from None
-    claimed = True
-    destination_fd = os.open(label, directory_flags, dir_fd=root_fd)
-    destination_stat = os.fstat(destination_fd)
-    destination_identity = (destination_stat.st_dev, destination_stat.st_ino)
-
-    inventory_fd = open_regular_source(inventory_path)
-    source_fds.append(inventory_fd)
-    stderr_fd = open_regular_source(stderr_path)
-    source_fds.append(stderr_fd)
-    report_fd = None
-    if present:
-        report_fd = open_regular_source(report_path)
-        source_fds.append(report_fd)
-
-    def publish_source(name: str, source_fd: int) -> tuple[str, int]:
-        digest = hashlib.sha256()
-        size = 0
-        published_fd = os.open(name, create_flags, 0o600, dir_fd=destination_fd)
-        try:
-            while True:
-                chunk = os.read(source_fd, 1024 * 1024)
-                if not chunk:
-                    break
-                write_all(published_fd, chunk)
-                digest.update(chunk)
-                size += len(chunk)
-            os.fsync(published_fd)
-        finally:
-            os.close(published_fd)
-        return digest.hexdigest(), size
-
-    inventory_digest, _ = publish_source("inventory", inventory_fd)
-    stderr_digest, stderr_size = publish_source("stderr", stderr_fd)
-    report_digest = None
-    if report_fd is not None:
-        report_digest, _ = publish_source("report", report_fd)
-
-    provenance = {
-        "schema_version": 2,
-        "label": label,
-        "lock_type": lock_type,
-        "scanner_exit_status": status,
-        "outcome": outcome,
-        "vulnerability_occurrences": occurrences,
-        "report_present": present,
-        "report_accepted": accepted,
-        "inventory_sha256": inventory_digest,
-        "report_sha256": report_digest,
-        "stderr_sha256": stderr_digest,
-        "stderr_size": stderr_size,
-    }
-    provenance_bytes = (json.dumps(provenance, sort_keys=True) + "\n").encode()
-    provenance_fd = os.open("provenance.json", create_flags, 0o600, dir_fd=destination_fd)
-    try:
-        write_all(provenance_fd, provenance_bytes)
-        os.fsync(provenance_fd)
-    finally:
-        os.close(provenance_fd)
-
-    complete_bytes = (json.dumps({
-        "provenance_sha256": hashlib.sha256(provenance_bytes).hexdigest(),
-        "schema_version": 1,
-    }, sort_keys=True) + "\n").encode()
-    complete_fd = os.open("COMPLETE", create_flags, 0o600, dir_fd=destination_fd)
-    try:
-        write_all(complete_fd, complete_bytes)
-        os.fsync(complete_fd)
-    finally:
-        os.close(complete_fd)
-    os.fsync(destination_fd)
-    os.fsync(root_fd)
-except BaseException:
-    if claimed and destination_fd >= 0:
-        for name in known_names:
-            try:
-                os.unlink(name, dir_fd=destination_fd)
-            except OSError:
-                pass
-        if destination_identity is not None:
-            try:
-                current_stat = os.stat(label, dir_fd=root_fd, follow_symlinks=False)
-            except FileNotFoundError:
-                current_stat = None
-            if current_stat is not None and stat.S_ISDIR(current_stat.st_mode) and (
-                current_stat.st_dev, current_stat.st_ino
-            ) == destination_identity:
-                try:
-                    os.rmdir(label, dir_fd=root_fd)
-                except OSError:
-                    pass
-    raise
-finally:
-    for source_fd in source_fds:
-        os.close(source_fd)
-    if destination_fd >= 0:
-        os.close(destination_fd)
-    os.close(root_fd)
-PY
+		"$report_accepted" >/dev/null
 }
 
 dependency_vulnerabilities() (
@@ -1072,6 +890,7 @@ run_release() {
   run_gate workflow-contract "$repo_root/scripts/tests/verify-ci-gates-contract.sh"
   run_gate static-migration-profile static_migration_profile
   run_gate static-security static_security
+  run_gate scan-evidence-python-tests scan_evidence_python_tests
   run_gate dependency-vulnerabilities dependency_vulnerabilities
   run_gate tracked-secrets tracked_secrets
 }

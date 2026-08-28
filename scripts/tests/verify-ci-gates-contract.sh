@@ -105,6 +105,8 @@ mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$bootstrap_bin_dir" \
 	"$wrong_tool_dir" "$fixture_tmpdir" \
 	"$(dirname "$venv_python")"
 git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$fixture_repo" -xf -
+cp "$repo_root/scripts/publish_scan_evidence.py" "$fixture_repo/scripts/publish_scan_evidence.py"
+cp "$repo_root/scripts/validate_scan_evidence.py" "$fixture_repo/scripts/validate_scan_evidence.py"
 cp "$repo_root/services/support-copilot-api/gradle.lockfile" \
 	"$fixture_repo/services/support-copilot-api/gradle.lockfile"
 git -C "$fixture_repo" init -q
@@ -133,6 +135,9 @@ printf 'venv-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 if [[ "${1:-}" == "-" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
+if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
+	exec /usr/bin/python3 "$@"
+fi
 SHIM
 
 cat >"$fallback_shim_dir/python3" <<'SHIM'
@@ -142,6 +147,9 @@ printf 'fallback-python3 %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 if [[ "${1:-}" == "-" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
+if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
+	exec /usr/bin/python3 "$@"
+fi
 SHIM
 
 cat >"$override_python" <<'SHIM'
@@ -149,6 +157,9 @@ cat >"$override_python" <<'SHIM'
 set -euo pipefail
 printf 'override-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 if [[ "${1:-}" == "-" ]]; then
+	exec /usr/bin/python3 "$@"
+fi
+if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
 SHIM
@@ -325,8 +336,15 @@ capture_fixture_scan() {
 	label="${label%-report.json}"
 	mkdir -p "$CI_GATE_OSV_CAPTURE_DIR"
 	cp "$inventory_path" "$CI_GATE_OSV_CAPTURE_DIR/$label.inventory"
-	cp "$output" "$CI_GATE_OSV_CAPTURE_DIR/$label.report"
+	if [[ -e "$output" ]]; then
+		cp "$output" "$CI_GATE_OSV_CAPTURE_DIR/$label.report"
+	fi
 }
+if [[ "${CI_GATE_OSV_OPERATIONAL_NO_REPORT:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
+	capture_fixture_scan
+	printf 'fixture-osv-operational-no-report token=fixture-secret %s\n' "$inventory_path" >&2
+	exit 129
+fi
 if [[ "${CI_GATE_OSV_OPERATIONAL_FAILURE:-}" == 1 && "$lockfile" == "osv-scanner:"*"python-production-osv.json" ]]; then
 	printf '{"fixture":"operational"}\n' >"$output"
 	capture_fixture_scan
@@ -440,6 +458,8 @@ chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
 	"$fixture_repo/services/support-copilot-api/gradlew" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
 
+export CI_GATE_FIXTURE_REPO="$fixture_repo"
+
 mkdir -p "$fixture_scan_evidence_root" "$scan_capture_root" "$outer_evidence_dir"
 printf 'outer-evidence-sentinel\n' >"$outer_evidence_sentinel"
 outer_evidence_sentinel_sha="$(shasum -a 256 "$outer_evidence_sentinel" | awk '{print $1}')"
@@ -495,7 +515,7 @@ for gate in \
 	java-tests java-profile-contracts java-flyway-contracts \
 	react-install react-lint react-tests react-build react-budget react-node-contracts react-e2e \
 	ci-tooling workflow-syntax workflow-contract static-migration-profile static-security \
-	dependency-vulnerabilities tracked-secrets; do
+	scan-evidence-python-tests dependency-vulnerabilities tracked-secrets; do
 	grep -q "^\[RUN\] $gate$" "$all_output" || fail "all mode did not invoke gate: $gate"
 	grep -q "^\[PASS\] $gate$" "$all_output" || fail "all mode did not complete gate: $gate"
 done
@@ -506,6 +526,13 @@ grep -q '^venv-python -m pytest -q$' "$command_log" || \
 	fail "project venv did not run the Python test gate"
 grep -q '^venv-python -m evaluation.run_mock_evaluation$' "$command_log" || \
 	fail "project venv did not run the Python mock evaluation gate"
+grep -Fqx 'venv-python -m pytest -q scripts/tests/test_publish_scan_evidence.py scripts/tests/test_validate_scan_evidence.py' \
+	"$command_log" || fail "project venv did not run the focused 23-case scan evidence gate"
+grep -Fq "venv-python $fixture_repo/scripts/publish_scan_evidence.py publish " "$command_log" || \
+	fail "aggregate did not invoke the fixture publisher CLI"
+if grep -Fq "venv-python $repo_root/scripts/publish_scan_evidence.py" "$command_log"; then
+	fail "fixture aggregate imported the real repository publisher"
+fi
 grep -q '^venv-python - ' "$command_log" || \
 	fail "project venv did not run inline Python inventory validation"
 if grep -Eq '^path-python(3)? ' "$command_log"; then
@@ -531,6 +558,12 @@ fi
 for label in python-production python-development java node; do
 	grep -Eq "^\[SCAN\] $label inventory-packages=[1-9][0-9]* scanned-packages=[1-9][0-9]* vulnerabilities=0$" \
 		"$all_output" || fail "scan report was not validated against the $label inventory"
+done
+
+for label in python-production python-development java node; do
+	"$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
+		"$fixture_scan_evidence_root/all/$label" >/dev/null || \
+		fail "fixture publisher CLI rejected accepted $label evidence"
 done
 
 /usr/bin/python3 - "$fixture_scan_evidence_root/all" "$scan_capture_root/all" "$all_output" <<'PY'
@@ -621,6 +654,19 @@ for label in ("python-production", "python-development"):
         raise SystemExit(f"{label}: scan summary counts do not match inventory/report coordinates")
 PY
 
+tampered_evidence="$fixture_tmpdir/tampered-evidence"
+incomplete_evidence="$fixture_tmpdir/incomplete-evidence"
+cp -R "$fixture_scan_evidence_root/all/python-production" "$tampered_evidence"
+cp -R "$fixture_scan_evidence_root/all/python-production" "$incomplete_evidence"
+printf 'tampered\n' >>"$tampered_evidence/inventory"
+rm "$incomplete_evidence/COMPLETE"
+for rejected_evidence in "$tampered_evidence" "$incomplete_evidence"; do
+	if "$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
+		"$rejected_evidence" >/dev/null 2>&1; then
+		fail "fixture publisher CLI accepted tampered or incomplete evidence"
+	fi
+done
+
 project_venv="$(dirname "$(dirname "$venv_python")")"
 stashed_venv="$fixture_root/project-venv"
 fallback_log="$fixture_root/fallback-commands.log"
@@ -635,6 +681,8 @@ if ! PATH="$fallback_shim_dir:$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$fallback_lo
 fi
 grep -q '^fallback-python3 -m scripts.check_dependency_locks$' "$fallback_log" || \
 	fail "python3 fallback did not run the Python lock gate"
+grep -Fqx 'fallback-python3 -m pytest -q scripts/tests/test_publish_scan_evidence.py scripts/tests/test_validate_scan_evidence.py' \
+	"$fallback_log" || fail "python3 fallback did not run the focused scan evidence gate"
 grep -q '^fallback-python3 - ' "$fallback_log" || \
 	fail "python3 fallback did not run inline Python inventory validation"
 if grep -Eq '^path-python(3)? ' "$fallback_log"; then
@@ -654,6 +702,8 @@ if ! PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$override_log" TMPDIR="$fixture
 fi
 grep -q '^override-python -m scripts.check_dependency_locks$' "$override_log" || \
 	fail "explicit Python override did not run the Python lock gate"
+grep -Fqx 'override-python -m pytest -q scripts/tests/test_publish_scan_evidence.py scripts/tests/test_validate_scan_evidence.py' \
+	"$override_log" || fail "explicit Python override did not run the focused scan evidence gate"
 grep -q '^override-python - ' "$override_log" || \
 	fail "explicit Python override did not run inline Python inventory validation"
 if grep -Eq '^(path-python(3)?|venv-python|fallback-python3) ' "$override_log"; then
@@ -1112,6 +1162,9 @@ if artifact_dir.stat().st_mode & 0o777 != 0o700:
 if complete_path.stat().st_mtime_ns < max(path.stat().st_mtime_ns for path in published_paths):
     raise SystemExit("COMPLETE marker was not created last")
 PY
+	"$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
+		"$artifact_dir" >/dev/null || \
+		record_dependency_failure "$scenario fixture publisher CLI rejected accepted evidence"
 	assert_no_scan_publication_residue "$scenario" "$evidence_dir"
 }
 
@@ -1142,6 +1195,9 @@ run_dependency_failure_case() {
 			;;
 		operational-scanner-failure)
 			failure_environment='CI_GATE_OSV_OPERATIONAL_FAILURE=1'
+			;;
+		operational-scanner-no-report)
+			failure_environment='CI_GATE_OSV_OPERATIONAL_NO_REPORT=1'
 			;;
 		vulnerability-scanner-failure)
 			failure_environment='CI_GATE_OSV_VULNERABILITY=1'
@@ -1181,6 +1237,20 @@ run_dependency_failure_case() {
 				129 true operational null false \
 				'fixture-osv-operational-failure token=<redacted> <scan-workspace>/python-production-osv.json'
 			;;
+		operational-scanner-no-report)
+			grep -Fq 'OSV-Scanner did not produce a report for python-production.' <<<"$output" || \
+				record_dependency_failure "$scenario did not identify the absent scanner report"
+			if grep -Fq 'fixture-secret' <<<"$output" || grep -Fq "$scenario_tmpdir" <<<"$output"; then
+				record_dependency_failure "$scenario leaked scanner secrets or workspace paths"
+			fi
+			assert_persisted_scan_evidence "$scenario" "$scenario_evidence_dir" "$scenario_capture_dir" \
+				129 false operational null false \
+				'fixture-osv-operational-no-report token=<redacted> <scan-workspace>/python-production-osv.json'
+			grep -Fq "venv-python $fixture_repo/scripts/publish_scan_evidence.py publish $scenario_evidence_dir python-production osv-scanner " \
+				"$command_log" || record_dependency_failure "$scenario did not invoke the fixture publisher"
+			grep -Eq "^venv-python $fixture_repo/scripts/publish_scan_evidence.py publish .* python-production osv-scanner .* - .* 129 operational null false$" \
+				"$command_log" || record_dependency_failure "$scenario did not pass report '-' with the exact logical fields"
+			;;
 		vulnerability-scanner-failure)
 			grep -Fq 'fixture-osv-vulnerability-exit-one' <<<"$output" || \
 				record_dependency_failure "$scenario did not preserve scanner stderr"
@@ -1216,7 +1286,7 @@ run_dependency_failure_case() {
 }
 
 for scenario in invalid-sha256 malformed-continuation unexpected-osv-package malformed-osv-report \
-	operational-scanner-failure vulnerability-scanner-failure; do
+	operational-scanner-failure operational-scanner-no-report vulnerability-scanner-failure; do
 	run_dependency_failure_case "$scenario"
 done
 
@@ -1304,6 +1374,9 @@ if complete != {
 }:
     raise SystemExit("contention COMPLETE mismatch")
 PY
+"$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
+	"$scan_contention_evidence/python-production" >/dev/null || \
+	record_dependency_failure "scan contention fixture publisher CLI rejected winner evidence"
 assert_no_scan_publication_residue "scan contention" "$scan_contention_evidence"
 scan_contention_nested_dir="$(find "$scan_contention_evidence" -mindepth 2 -type d -print -quit)"
 [[ -z "$scan_contention_nested_dir" ]] || \
@@ -1428,6 +1501,13 @@ fi
 if rg -n 'check-live-rag|docker|compose|mysql|verify-(backup|restore|rollback)' \
 	"$repo_root/.github/workflows" "$aggregate"; then
 	fail "Task 15 or live behavior leaked into Task 13 execution"
+fi
+
+persist_body="$(sed -n '/^persist_scan_evidence()/,/^}/p' "$aggregate")"
+grep -Fq '"$ci_python" "$repo_root/scripts/publish_scan_evidence.py" publish' <<<"$persist_body" || \
+	fail "aggregate publisher invocation is not the guarded CLI boundary"
+if grep -Eq "<<'?PY'?|hashlib|provenance|os\.open|os\.close|mv[[:space:]]" <<<"$persist_body"; then
+	fail "aggregate reintroduced embedded publication, provenance, fd, or directory-move logic"
 fi
 
 printf 'PASS: Task 13 aggregate behavioral contract\n'
