@@ -1,8 +1,10 @@
 package com.cyagent.supportcopilot.analysis;
 
+import java.io.InterruptedIOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -87,6 +89,7 @@ public class AiServiceClient {
 			.maxAttempts(properties.retryMaxAttempts())
 			.waitDuration(Duration.ofMillis(properties.retryWaitMs()))
 			.retryExceptions(AiTransientFailureException.class)
+			.ignoreExceptions(AiRequestCancelledException.class)
 			.build());
 		this.retry.getEventPublisher().onRetry(event -> log.atWarn()
 			.addKeyValue("trace_id", retryTraceId.get())
@@ -101,6 +104,7 @@ public class AiServiceClient {
 			.failureRateThreshold(properties.circuitFailureRateThreshold())
 			.waitDurationInOpenState(Duration.ofMillis(properties.circuitOpenMs()))
 			.recordException(exception -> exception instanceof AiTransientFailureException)
+			.ignoreExceptions(AiRequestCancelledException.class)
 			.build());
 		this.bulkhead = Bulkhead.of("ai", BulkheadConfig.custom()
 			.maxConcurrentCalls(properties.bulkheadMaxConcurrentCalls())
@@ -255,6 +259,9 @@ public class AiServiceClient {
 			recordAttempt("request_error");
 			throw new AiServiceRequestException(exception.getStatusCode().value(), exception);
 		} catch (ResourceAccessException exception) {
+			if (isCancellation(exception)) {
+				throw new AiRequestCancelledException(exception);
+			}
 			var timeout = hasTimeoutCause(exception);
 			recordAttempt(timeout ? "timeout" : "unavailable");
 			if (timeout) {
@@ -325,14 +332,35 @@ public class AiServiceClient {
 	}
 
 	private boolean hasTimeoutCause(Throwable exception) {
+		return hasCause(exception, HttpTimeoutException.class);
+	}
+
+	private boolean isCancellation(Throwable exception) {
+		var interrupted = Thread.currentThread().isInterrupted()
+			|| hasCause(exception, InterruptedException.class)
+			|| hasCause(exception, InterruptedIOException.class);
+		if (interrupted) {
+			Thread.currentThread().interrupt();
+		}
+		return interrupted || hasCause(exception, CancellationException.class);
+	}
+
+	private boolean hasCause(Throwable exception, Class<? extends Throwable> causeType) {
 		var current = exception;
 		while (current != null) {
-			if (current instanceof HttpTimeoutException) {
+			if (causeType.isInstance(current)) {
 				return true;
 			}
 			current = current.getCause();
 		}
 		return false;
+	}
+
+	private static final class AiRequestCancelledException extends RuntimeException {
+
+		private AiRequestCancelledException(Throwable cause) {
+			super(cause);
+		}
 	}
 
 	@PreDestroy

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,6 +28,8 @@ class AiResilienceContractTests {
 
 	private static final String INTERNAL_TOKEN = "synthetic-contract-token";
 	private static final String SENSITIVE_CONTENT = "private-ticket-content-4111111111111111";
+	private static final long SHORT_CANCELLATION_DEADLINE_MS = 500;
+	private static final long RETRY_AND_PROTECTION_TEST_BUDGET_MS = 2_000;
 
 	@Test
 	void boundedRateLimitRetryRecoversAndRecordsMetrics() throws Exception {
@@ -40,7 +43,7 @@ class AiResilienceContractTests {
 			respond(exchange, 200, successBody("trace-rate-limit", "live"));
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 2, 100, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 3, 2, 1));
 
 			var response = client.analyze(ticket(), "trace-rate-limit");
 
@@ -65,7 +68,7 @@ class AiResilienceContractTests {
 			respond(exchange, 200, successBody("trace-server-error", "mock"));
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 2, 100, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 3, 2, 1));
 
 			assertThat(client.analyze(ticket(), "trace-server-error").mode()).isEqualTo("mock");
 			assertThat(requests).hasValue(2);
@@ -84,7 +87,7 @@ class AiResilienceContractTests {
 			exchange.close();
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 2, 100, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 3, 2, 1));
 
 			assertThatThrownBy(() -> client.analyze(ticket(), "trace-no-retry-" + status))
 				.isNotInstanceOf(AiServiceCallException.class);
@@ -98,7 +101,12 @@ class AiResilienceContractTests {
 	void timeoutCancelsTheAttemptWithoutRetrying() throws Exception {
 		var entered = new CountDownLatch(1);
 		var release = new CountDownLatch(1);
+		var handlerFinished = new CountDownLatch(1);
 		var requests = new AtomicInteger();
+		var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(AiServiceClient.class);
+		var appender = new ListAppender<ILoggingEvent>();
+		appender.start();
+		logger.addAppender(appender);
 		try (var server = server(exchange -> {
 			requests.incrementAndGet();
 			entered.countDown();
@@ -108,23 +116,45 @@ class AiResilienceContractTests {
 				Thread.currentThread().interrupt();
 			} finally {
 				exchange.close();
+				handlerFinished.countDown();
 			}
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 2, 100, 1));
+			var client = client(server, registry, shortCancellationDeadlineProperties(server));
 
-			try {
-				assertThatThrownBy(() -> client.analyze(ticket(), "trace-timeout"))
-					.isInstanceOfSatisfying(AiServiceCallException.class, exception ->
-						assertThat(exception.getFallbackReason()).isEqualTo(FallbackReason.AI_SERVICE_TIMEOUT)
+			try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+				var analysis = executor.submit(() -> client.analyze(ticket(), "trace-timeout"));
+				assertThat(entered.await(2, TimeUnit.SECONDS)).isTrue();
+				assertThatThrownBy(() -> analysis.get(6, TimeUnit.SECONDS))
+					.isInstanceOfSatisfying(ExecutionException.class, exception ->
+						assertThat(exception.getCause())
+							.isInstanceOfSatisfying(AiServiceCallException.class, failure ->
+								assertThat(failure.getFallbackReason()).isEqualTo(FallbackReason.AI_SERVICE_TIMEOUT)
+							)
 					);
-				assertThat(entered.await(1, TimeUnit.SECONDS)).isTrue();
+
+				release.countDown();
+				assertThat(handlerFinished.await(1, TimeUnit.SECONDS)).isTrue();
 				assertThat(requests).hasValue(1);
 				assertThat(counter(registry, "support.copilot.ai.boundary.timeouts", "stage", "java_deadline"))
 					.isEqualTo(1);
+				assertThat(appender.list)
+					.extracting(ILoggingEvent::getFormattedMessage)
+					.as("a canceled Java-deadline attempt must not emit a retry event")
+					.noneMatch(message -> message.startsWith("ai.boundary.retry"));
+				assertThat(counter(registry, "support.copilot.ai.boundary.attempts", "outcome", "unavailable"))
+					.as("cancellation must not be counted as a retryable unavailable attempt")
+					.isZero();
+				assertThat(appender.list)
+					.extracting(ILoggingEvent::getFormattedMessage)
+					.allSatisfy(message -> assertThat(message).doesNotContain(SENSITIVE_CONTENT, INTERNAL_TOKEN));
 			} finally {
 				release.countDown();
+				client.close();
 			}
+		} finally {
+			logger.detachAppender(appender);
+			appender.stop();
 		}
 	}
 
@@ -137,7 +167,7 @@ class AiResilienceContractTests {
 			exchange.close();
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 10, 1_000, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 3, 10, 1));
 
 			assertThatThrownBy(() -> client.analyze(ticket(), "trace-python-deadline"))
 				.isInstanceOfSatisfying(AiServiceCallException.class, exception ->
@@ -158,7 +188,7 @@ class AiResilienceContractTests {
 			respond(exchange, 200, "{not-json");
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 2, 100, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 3, 2, 1));
 
 			assertThatThrownBy(() -> client.analyze(ticket(), "trace-malformed"))
 				.isInstanceOf(AiServiceContractException.class)
@@ -177,7 +207,7 @@ class AiResilienceContractTests {
 			exchange.close();
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 1, 2, 100, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 1, 2, 1));
 
 			for (var attempt = 0; attempt < 2; attempt++) {
 				assertThatThrownBy(() -> client.analyze(ticket(), "trace-circuit-prime"))
@@ -209,7 +239,7 @@ class AiResilienceContractTests {
 			}
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 1, 10, 1_000, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 1, 10, 1));
 			try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 				var first = executor.submit(() -> client.analyze(ticket(), "trace-bulkhead-first"));
 				assertThat(entered.await(1, TimeUnit.SECONDS)).isTrue();
@@ -246,7 +276,7 @@ class AiResilienceContractTests {
 			respond(exchange, 200, successBody("trace-redaction", "mock"));
 		})) {
 			var registry = new SimpleMeterRegistry();
-			var client = client(server, registry, properties(server, 3, 2, 100, 1));
+			var client = client(server, registry, retryAndProtectionBudgetProperties(server, 3, 2, 1));
 
 			client.analyze(ticket(), "trace-redaction");
 
@@ -279,7 +309,26 @@ class AiResilienceContractTests {
 		return new AiServiceClient(properties, INTERNAL_TOKEN, registry);
 	}
 
-	private AiServiceProperties properties(
+	private AiServiceProperties shortCancellationDeadlineProperties(TestServer server) {
+		return propertiesWithOverallBudget(server, 3, 2, SHORT_CANCELLATION_DEADLINE_MS, 1);
+	}
+
+	private AiServiceProperties retryAndProtectionBudgetProperties(
+		TestServer server,
+		int maxAttempts,
+		int minimumCircuitCalls,
+		int maxConcurrentCalls
+	) {
+		return propertiesWithOverallBudget(
+			server,
+			maxAttempts,
+			minimumCircuitCalls,
+			RETRY_AND_PROTECTION_TEST_BUDGET_MS,
+			maxConcurrentCalls
+		);
+	}
+
+	private AiServiceProperties propertiesWithOverallBudget(
 		TestServer server,
 		int maxAttempts,
 		int minimumCircuitCalls,
