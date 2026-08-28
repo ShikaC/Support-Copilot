@@ -46,6 +46,14 @@ Task 13 增加统一 `verify-ci-gates.sh` 和只读权限的 release workflow，
 
 修复后独立代码复核结论为 `APPROVE`，无 CRITICAL/HIGH 阻塞。保留两项 `WATCH` 级债务：聚合门禁及其行为契约文件仍然过大，后续应按工具解析、扫描发布和工作流策略拆分；最新 release 扫描目录只保存四类结构化扫描证据，没有同时保存聚合 stdout/stderr、退出码和计时元数据，后续证据采集应将这些运行元数据一并持久化。
 
+### Task 14 发布文档与证据边界（2026-08-29）
+
+Task 14 已把根 README、前端 README、5 至 8 分钟演示脚本和 pilot 运维边界更新为当前代码事实，并增加 fail-closed 文档验证。验证器从 committed `HEAD` 导出 tracked-only 临时仓库，要求源与 fixture Git tree 完全相同，再检查 Markdown 本地链接、API/文档一致性、profile、AI mode、模型环境变量、限制声明和文档中的启动/测试/演示命令。
+
+完整验证在提交 `bb276ebae4fc9294dac921ca91155b904d404bb8`、Git tree `62e2fd21e68deb1e8620977f0f3ce0227f8cc2e9` 上通过：4 个文档契约测试、157 个 Python 测试、31 个 mock 评估案例、Java 全量测试、React lint/build、62 个通过且 3 个跳过的 Vitest、11 个 Node 契约、3 个运行时 API 契约和本地 mock smoke 均成功；验证器拥有的端口全部释放。完整记录耗时 140.19 秒，日志 SHA-256 为 `0c6df874747c140f5fd64c8ff7a76fa15527fbeaed682bb05734f136f074c307`，保存在本地 `.omo/evidence/task-14-enterprise-minimum-pilot.md` 账本中。
+
+该结果只证明上述提交的本地、非容器、mock 可复现路径。Task 10 可发布 live 人工评估仍受已重复出现两次的 provider structured-output 失败阻塞；真实 OIDC、Docker、Compose、MySQL parity、重启持久化、备份恢复和部署回滚仍属于 Task 15，不能据此宣称生产部署、SLO、真实用户规模或企业客户效果。
+
 ### 2.1 当前架构
 
 ~~~text
