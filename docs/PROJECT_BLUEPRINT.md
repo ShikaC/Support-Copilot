@@ -585,7 +585,7 @@ flowchart TB
 | 技术 | 当前版本或状态 | 用途 | 招聘信号 |
 | --- | --- | --- | --- |
 | Java | 21 | 主要业务语言 | LTS Java 和现代语言特性 |
-| Spring Boot | 4.0.0 | 应用框架 | 企业 Java 后端能力 |
+| Spring Boot | 4.0.8 | 应用框架 | 企业 Java 后端能力 |
 | Spring Web MVC | 已配置 | REST API | Web 服务开发 |
 | Spring Data JPA | 已配置 | 持久化和仓储层 | ORM 和数据访问 |
 | Spring Validation | 已配置 | 请求参数和领域校验 | API 边界质量 |
@@ -597,7 +597,7 @@ flowchart TB
 | Gradle Wrapper | 已配置 | 可复现构建 | 构建工程化 |
 | JUnit Platform | 已配置 | 自动化测试 | 后端测试能力 |
 
-说明：项目当前使用 Spring Boot 4.0.0。求职时还需要理解 Spring Boot 3.x，因为大量企业项目仍处于 3.x 或迁移阶段。是否降级不应只看招聘关键词，而应根据依赖兼容性和项目稳定性决定。
+说明：项目当前使用 Spring Boot 4.0.8。求职时还需要理解 Spring Boot 3.x，因为大量企业项目仍处于 3.x 或迁移阶段。是否降级不应只看招聘关键词，而应根据依赖兼容性和项目稳定性决定。
 
 ### 11.3 计划中的 Python AI 技术
 
@@ -1996,7 +1996,7 @@ React、TypeScript、Ant Design、ECharts、Java 21、Spring Boot、JPA、Python
 - 已建立 `apps/`、`services/`、`infra/` 和 `docs/` 目录。
 - 已创建 React + TypeScript + Vite 前端工程。
 - 已安装 Ant Design、ECharts 和 Lucide 图标依赖。
-- 已创建 Java 21 + Spring Boot 4.0.0 后端工程。
+- 已创建 Java 21 + Spring Boot 4.0.8 后端工程。
 - 已配置 Web MVC、JPA、Security、Validation、Actuator、H2 和 MySQL Driver。
 - 已包含 Gradle Wrapper。
 - 已完成多篇 RAG 理论课程和学习记录。
