@@ -1,0 +1,35 @@
+name: Non-container Release Gates CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-gates:
+    name: Workflow, security, and dependency gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository with history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go 1.26.4
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00
+        with:
+          go-version: 1.26.4
+          cache: false
+
+      - name: Install pinned scanners and workflow validator
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4
+          go install github.com/gitleaks/gitleaks/v8@v8.30.1
+
+      - name: Run non-container release gates
+        run: ./scripts/verify-ci-gates.sh --mode release

@@ -14,10 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    defaults:
-      run:
-        working-directory: services/support-copilot-ai
-
     steps:
       - name: Check out repository
         # actions/checkout v6.0.2，固定 SHA 防止版本标签被替换。
@@ -32,13 +28,7 @@ jobs:
           cache-dependency-path: services/support-copilot-ai/requirements-dev.lock.txt
 
       - name: Install locked dependencies
-        run: python -m pip install --require-hashes -r requirements-dev.lock.txt
+        run: python -m pip install --require-hashes -r services/support-copilot-ai/requirements-dev.lock.txt
 
-      - name: Check dependency locks
-        run: python -m scripts.check_dependency_locks
-
-      - name: Run Python tests
-        run: python -m pytest -q
-
-      - name: Run mock evaluation
-        run: python -m evaluation.run_mock_evaluation
+      - name: Run Python aggregate gates
+        run: ./scripts/verify-ci-gates.sh --mode python

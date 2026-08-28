@@ -13,10 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    defaults:
-      run:
-        working-directory: apps/support-copilot-web
-
     steps:
       - name: Check out repository
         # actions/checkout v7.0.1，固定 SHA 防止版本标签被替换。
@@ -30,14 +26,5 @@ jobs:
           cache: npm
           cache-dependency-path: apps/support-copilot-web/package-lock.json
 
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Lint frontend
-        run: npm run lint
-
-      - name: Run frontend unit tests
-        run: npm run test
-
-      - name: Build frontend
-        run: npm run build
+      - name: Run React aggregate gates
+        run: ./scripts/verify-ci-gates.sh --mode react

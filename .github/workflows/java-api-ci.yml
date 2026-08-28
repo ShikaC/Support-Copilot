@@ -14,10 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    defaults:
-      run:
-        working-directory: services/support-copilot-api
-
     steps:
       - name: Check out repository
         # actions/checkout v6.0.2，固定 SHA 防止版本标签被替换。
@@ -34,5 +30,5 @@ jobs:
         # gradle/actions/setup-gradle v6.3.0，验证 Wrapper 并缓存 Gradle 依赖。
         uses: gradle/actions/setup-gradle@67621b124fd2e251c5e8a0e6e3b91318f2287669
 
-      - name: Run Java tests
-        run: ./gradlew test --no-daemon
+      - name: Run Java aggregate gates
+        run: ./scripts/verify-ci-gates.sh --mode java
