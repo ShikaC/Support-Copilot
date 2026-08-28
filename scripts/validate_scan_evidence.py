@@ -85,18 +85,22 @@ def _read_regular(directory_fd: int, name: str, path: Path) -> tuple[bytes, int]
 def _parse_provenance(value: JsonValue, path: Path) -> ValidatedProvenance:
     match value:  # noqa: MATCH_OK - untrusted JSON must have a rejecting default.
         case {
-            "schema_version": 2, "label": str(label), "lock_type": str(lock_type),
-            "scanner_exit_status": int(status), "outcome": str(outcome),
+            "schema_version": schema_version, "label": str(label), "lock_type": str(lock_type),
+            "scanner_exit_status": status, "outcome": str(outcome),
             "vulnerability_occurrences": occurrences, "report_present": bool(present),
             "report_accepted": bool(accepted), "inventory_sha256": str(inventory_sha),
             "report_sha256": report_sha, "stderr_sha256": str(stderr_sha),
-            "stderr_size": int(stderr_size),
+            "stderr_size": stderr_size,
         } if set(value) == _PROVENANCE_KEYS:
+            if type(schema_version) is not int or schema_version != 2:
+                raise EvidenceRejectedError(path, "provenance schema version is invalid")
+            if type(status) is not int:
+                raise EvidenceRejectedError(path, "scanner exit status has an invalid type")
             if not (occurrences is None or type(occurrences) is int):
                 raise EvidenceRejectedError(path, "vulnerability count has an invalid type")
             if not (report_sha is None or type(report_sha) is str):
                 raise EvidenceRejectedError(path, "report digest has an invalid type")
-            if stderr_size < 0:
+            if type(stderr_size) is not int or stderr_size < 0:
                 raise EvidenceRejectedError(path, "stderr size is negative")
             return ValidatedProvenance(
                 label, lock_type, status, outcome, occurrences, present, accepted,
@@ -106,17 +110,24 @@ def _parse_provenance(value: JsonValue, path: Path) -> ValidatedProvenance:
             raise EvidenceRejectedError(path, "provenance shape is invalid")
 
 
+def _validate_complete(value: JsonValue, provenance_digest: str, path: Path) -> None:
+    match value:  # noqa: MATCH_OK - untrusted JSON must have a rejecting default.
+        case {"provenance_sha256": str(digest), "schema_version": schema_version} if set(value) == {"provenance_sha256", "schema_version"}:
+            if type(schema_version) is not int or schema_version != 1:
+                raise EvidenceRejectedError(path, "COMPLETE schema version is invalid")
+            if digest != provenance_digest:
+                raise EvidenceRejectedError(path, "COMPLETE marker is inconsistent")
+        case _:
+            raise EvidenceRejectedError(path, "COMPLETE shape is invalid")
+
+
 def validate_evidence(path: Path) -> ValidatedProvenance:
     directory_fd = _open_directory(path)
     try:
         complete_bytes, complete_time = _read_regular(directory_fd, "COMPLETE", path)
         provenance_bytes, provenance_time = _read_regular(directory_fd, "provenance.json", path)
-        expected_complete = {
-            "provenance_sha256": hashlib.sha256(provenance_bytes).hexdigest(),
-            "schema_version": 1,
-        }
-        if _decode(complete_bytes, path) != expected_complete:
-            raise EvidenceRejectedError(path, "COMPLETE marker is inconsistent")
+        provenance_digest = hashlib.sha256(provenance_bytes).hexdigest()
+        _validate_complete(_decode(complete_bytes, path), provenance_digest, path)
         provenance = _parse_provenance(_decode(provenance_bytes, path), path)
         expected_names = {"COMPLETE", "inventory", "provenance.json", "stderr"}
         if provenance.report_present:

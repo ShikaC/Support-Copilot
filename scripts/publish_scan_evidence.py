@@ -3,10 +3,11 @@
 # requires-python = ">=3.11"
 # dependencies = []
 # ///
-# Usage:
-#   python -m scripts.publish_scan_evidence publish <root> <label> <lock-type> \
+# How to run from the repository root:
+#   Module: python -m scripts.publish_scan_evidence publish <root> <label> <lock-type> \
 #     <inventory> <report-or-> <stderr> <status> <outcome> <occurrences-or-null> <accepted>
-#   python -m scripts.publish_scan_evidence validate <evidence-directory>
+#   Executable: ./scripts/publish_scan_evidence.py publish <the same arguments>
+#   Validate: python -m scripts.publish_scan_evidence validate <evidence-directory>
 # The release gate uses stdlib boundary parsing so a fresh CI runner needs no new package.
 
 from __future__ import annotations
@@ -22,10 +23,16 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Final, NewType, assert_never
 
-from scripts.validate_scan_evidence import (
-    EvidenceRejectedError,
-    validate_evidence as _validate_evidence_files,
-)
+if __package__:
+    from scripts.validate_scan_evidence import (
+        EvidenceRejectedError,
+        validate_evidence as _validate_evidence_files,
+    )
+else:
+    from validate_scan_evidence import (  # noqa: PLC0415 - direct PEP 723 execution.
+        EvidenceRejectedError,
+        validate_evidence as _validate_evidence_files,
+    )
 
 EvidenceLabel = NewType("EvidenceLabel", str)
 LockType = NewType("LockType", str)
