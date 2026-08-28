@@ -1045,6 +1045,7 @@ incomplete_evidence="$fixture_tmpdir/incomplete-evidence"
 cp -R "$fixture_scan_evidence_root/all/python-production" "$tampered_evidence"
 cp -R "$fixture_scan_evidence_root/all/python-production" "$incomplete_evidence"
 printf 'tampered\n' >>"$tampered_evidence/inventory"
+touch "$tampered_evidence/COMPLETE"
 rm "$incomplete_evidence/COMPLETE"
 for rejected_evidence in "$tampered_evidence" "$incomplete_evidence"; do
 	rejected_validator_stderr="$fixture_root/$(basename "$rejected_evidence")-validator.stderr"
