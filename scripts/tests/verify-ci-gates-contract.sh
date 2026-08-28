@@ -6,8 +6,11 @@ aggregate="$repo_root/scripts/verify-ci-gates.sh"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-ci-contract.XXXXXX")"
 fixture_repo="$fixture_root/repo"
 shim_dir="$fixture_root/bin"
+fallback_shim_dir="$fixture_root/fallback-bin"
 command_log="$fixture_root/commands.log"
 fixture_tmpdir="$fixture_root/tmp"
+venv_python="$fixture_repo/services/support-copilot-ai/.venv/bin/python"
+override_python="$fixture_root/override-python"
 
 cleanup() {
 	rm -rf "$fixture_root"
@@ -21,7 +24,8 @@ fail() {
 
 [[ -x "$aggregate" ]] || fail "aggregate contract is missing or not executable: scripts/verify-ci-gates.sh"
 
-mkdir -p "$fixture_repo" "$shim_dir" "$fixture_tmpdir"
+mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$fixture_tmpdir" \
+	"$(dirname "$venv_python")"
 git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$fixture_repo" -xf -
 cp "$repo_root/services/support-copilot-api/gradle.lockfile" \
 	"$fixture_repo/services/support-copilot-api/gradle.lockfile"
@@ -31,7 +35,44 @@ git -C "$fixture_repo" add .
 cat >"$shim_dir/python" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+printf 'path-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+printf 'PATH python intentionally unavailable\n' >&2
+exit 88
+SHIM
+
+cat >"$shim_dir/python3" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'path-python3 %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+printf 'PATH python3 intentionally unavailable\n' >&2
+exit 89
+SHIM
+
+cat >"$venv_python" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'venv-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+if [[ "${1:-}" == "-" ]]; then
+	exec /usr/bin/python3 "$@"
+fi
+SHIM
+
+cat >"$fallback_shim_dir/python3" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'fallback-python3 %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+if [[ "${1:-}" == "-" ]]; then
+	exec /usr/bin/python3 "$@"
+fi
+SHIM
+
+cat >"$override_python" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'override-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+if [[ "${1:-}" == "-" ]]; then
+	exec /usr/bin/python3 "$@"
+fi
 SHIM
 
 cat >"$shim_dir/java" <<'SHIM'
@@ -177,7 +218,8 @@ set -euo pipefail
 printf 'workflow-contract %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 SHIM
 
-chmod +x "$shim_dir"/* "$fixture_repo/services/support-copilot-api/gradlew" \
+chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$venv_python" "$override_python" \
+	"$fixture_repo/services/support-copilot-api/gradlew" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
 
 mkdir -p "$fixture_root/scans"
@@ -219,7 +261,17 @@ for gate in \
 	grep -q "^\[PASS\] $gate$" "$all_output" || fail "all mode did not complete gate: $gate"
 done
 
-grep -q '^python -m scripts.check_dependency_locks$' "$command_log" || fail "Python lock gate command was not invoked"
+grep -q '^venv-python -m scripts.check_dependency_locks$' "$command_log" || \
+	fail "project venv did not run the Python lock gate"
+grep -q '^venv-python -m pytest -q$' "$command_log" || \
+	fail "project venv did not run the Python test gate"
+grep -q '^venv-python -m evaluation.run_mock_evaluation$' "$command_log" || \
+	fail "project venv did not run the Python mock evaluation gate"
+grep -q '^venv-python - ' "$command_log" || \
+	fail "project venv did not run inline Python inventory validation"
+if grep -Eq '^path-python(3)? ' "$command_log"; then
+	fail "aggregate mixed PATH Python with the selected project venv"
+fi
 grep -q '^gradlew dependencies --write-locks --no-daemon$' "$command_log" || fail "Java resolved inventory was not regenerated"
 grep -q '^npm ci$' "$command_log" || fail "React install gate command was not invoked"
 for inventory in python-production-osv.json python-development-osv.json; do
@@ -276,6 +328,53 @@ for label, inventory_name, report_name in (
     if tuple(map(int, summary.groups())) != (len(inventory_coordinates), len(report_coordinates)):
         raise SystemExit(f"{label}: scan summary counts do not match inventory/report coordinates")
 PY
+
+project_venv="$(dirname "$(dirname "$venv_python")")"
+stashed_venv="$fixture_root/project-venv"
+fallback_log="$fixture_root/fallback-commands.log"
+fallback_output="$fixture_root/fallback.out"
+mv "$project_venv" "$stashed_venv"
+if ! PATH="$fallback_shim_dir:$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$fallback_log" TMPDIR="$fixture_tmpdir" \
+	CI_GATE_SCAN_EVIDENCE_DIR="$fixture_root/scans" \
+	"$fixture_repo/scripts/verify-ci-gates.sh" --mode all >"$fallback_output" 2>&1; then
+	cat "$fallback_output" >&2
+	fail "all mode failed without a project venv despite python3 fallback"
+fi
+grep -q '^fallback-python3 -m scripts.check_dependency_locks$' "$fallback_log" || \
+	fail "python3 fallback did not run the Python lock gate"
+grep -q '^fallback-python3 - ' "$fallback_log" || \
+	fail "python3 fallback did not run inline Python inventory validation"
+if grep -Eq '^path-python(3)? ' "$fallback_log"; then
+	fail "no-venv release mode mixed PATH Python interpreters"
+fi
+assert_no_dependency_workspaces "no-venv python3 fallback"
+mv "$stashed_venv" "$project_venv"
+
+override_log="$fixture_root/override-commands.log"
+override_output="$fixture_root/override.out"
+if ! PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$override_log" TMPDIR="$fixture_tmpdir" \
+	CI_GATE_SCAN_EVIDENCE_DIR="$fixture_root/scans" SUPPORT_COPILOT_CI_PYTHON="$override_python" \
+	"$fixture_repo/scripts/verify-ci-gates.sh" --mode all >"$override_output" 2>&1; then
+	cat "$override_output" >&2
+	fail "all mode failed with an explicit Python override"
+fi
+grep -q '^override-python -m scripts.check_dependency_locks$' "$override_log" || \
+	fail "explicit Python override did not run the Python lock gate"
+grep -q '^override-python - ' "$override_log" || \
+	fail "explicit Python override did not run inline Python inventory validation"
+if grep -Eq '^(path-python(3)?|venv-python|fallback-python3) ' "$override_log"; then
+	fail "explicit Python override mixed interpreters"
+fi
+assert_no_dependency_workspaces "explicit Python override"
+
+invalid_override_output="$fixture_root/invalid-override.out"
+if PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$fixture_root/invalid-override-commands.log" \
+	TMPDIR="$fixture_tmpdir" SUPPORT_COPILOT_CI_PYTHON="$fixture_root/missing-python" \
+	"$fixture_repo/scripts/verify-ci-gates.sh" --mode python >"$invalid_override_output" 2>&1; then
+	fail "an invalid explicit Python override unexpectedly succeeded"
+fi
+grep -q '^SUPPORT_COPILOT_CI_PYTHON must resolve to an executable:' "$invalid_override_output" || \
+	fail "invalid explicit Python override did not fail clearly"
 
 reset_python_production_lock() {
 	cp "$repo_root/services/support-copilot-ai/requirements.lock.txt" \

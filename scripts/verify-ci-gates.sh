@@ -54,6 +54,37 @@ require_command() {
   }
 }
 
+ci_python=''
+
+resolve_ci_python() {
+  local candidate=''
+  local project_venv="$repo_root/services/support-copilot-ai/.venv/bin/python"
+
+  if [[ -n "${SUPPORT_COPILOT_CI_PYTHON:-}" ]]; then
+    if [[ "$SUPPORT_COPILOT_CI_PYTHON" == */* ]]; then
+      candidate="$SUPPORT_COPILOT_CI_PYTHON"
+    else
+      candidate="$(command -v "$SUPPORT_COPILOT_CI_PYTHON" || true)"
+    fi
+    [[ -n "$candidate" && -x "$candidate" ]] || {
+      printf 'SUPPORT_COPILOT_CI_PYTHON must resolve to an executable: %s\n' \
+        "$SUPPORT_COPILOT_CI_PYTHON" >&2
+      return 1
+    }
+  elif [[ -x "$project_venv" ]]; then
+    candidate="$project_venv"
+  else
+    candidate="$(command -v python3 || true)"
+    [[ -n "$candidate" && -x "$candidate" ]] || {
+      printf 'Python interpreter unavailable: expected %s or python3 from CI setup.\n' \
+        "$project_venv" >&2
+      return 1
+    }
+  fi
+
+  ci_python="$candidate"
+}
+
 require_version() {
   local command_name="$1"
   local expected="$2"
@@ -68,19 +99,18 @@ require_version() {
 }
 
 python_locks() {
-  require_command python
   cd "$repo_root/services/support-copilot-ai"
-  python -m scripts.check_dependency_locks
+  "$ci_python" -m scripts.check_dependency_locks
 }
 
 python_tests() {
   cd "$repo_root/services/support-copilot-ai"
-  AI_MODE=mock OPENAI_API_KEY= OPENAI_EMBEDDING_API_KEY= python -m pytest -q
+  AI_MODE=mock OPENAI_API_KEY= OPENAI_EMBEDDING_API_KEY= "$ci_python" -m pytest -q
 }
 
 python_mock_evaluation() {
   cd "$repo_root/services/support-copilot-ai"
-  AI_MODE=mock OPENAI_API_KEY= OPENAI_EMBEDDING_API_KEY= python -m evaluation.run_mock_evaluation
+  AI_MODE=mock OPENAI_API_KEY= OPENAI_EMBEDDING_API_KEY= "$ci_python" -m evaluation.run_mock_evaluation
 }
 
 java_full_tests() {
@@ -152,7 +182,6 @@ static_security() {
 dependency_vulnerabilities() (
 	set -Eeuo pipefail
 	require_version osv-scanner "$OSV_SCANNER_VERSION" osv-scanner --version
-	require_command python3
 	require_command java
 	local tracked_snapshot=''
 	local scan_workspace=''
@@ -215,7 +244,7 @@ dependency_vulnerabilities() (
 generate_python_osv_inventory() {
 	local lockfile="$1"
 	local inventory="$2"
-	python3 - "$lockfile" "$inventory" <<'PY'
+	"$ci_python" - "$lockfile" "$inventory" <<'PY'
 import json
 import re
 import sys
@@ -298,7 +327,7 @@ validate_osv_report() {
 	local lock_type="$2"
 	local inventory="$3"
 	local report="$4"
-	python3 - "$label" "$lock_type" "$inventory" "$report" <<'PY'
+	"$ci_python" - "$label" "$lock_type" "$inventory" "$report" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -458,6 +487,12 @@ case "${1:-}" in
     ;;
   '') ;;
   *) usage >&2; exit 2 ;;
+esac
+
+case "$mode" in
+	python|release|all) resolve_ci_python ;;
+	java|react) ;;
+	*) usage >&2; exit 2 ;;
 esac
 
 case "$mode" in
