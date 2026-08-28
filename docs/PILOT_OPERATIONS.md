@@ -142,6 +142,22 @@ Mock 报告绑定数据集、知识库 hash、prompt/config 和 Git 状态，适
 ./scripts/verify-docs.sh
 ```
 
+`verify-docs.sh` 的 full 模式在 committed tracked-only fixture 中执行下列规范命令。该表由
+静态文档契约逐项比对，命令新增、删除或漂移都会令门禁失败：
+
+| Verification ID | Executed command |
+| --- | --- |
+| verify-python-tests | `cd services/support-copilot-ai && .venv/bin/pytest -q` |
+| verify-mock-evaluation | `cd services/support-copilot-ai && AI_MODE=mock .venv/bin/python -m evaluation.run_mock_evaluation` |
+| verify-java-tests | `cd services/support-copilot-api && ./gradlew test --no-daemon` |
+| verify-react-lint | `cd apps/support-copilot-web && npm run lint` |
+| verify-react-tests | `cd apps/support-copilot-web && npm test -- --run` |
+| verify-react-build-budget | `cd apps/support-copilot-web && npm run build:budget` |
+| verify-react-node-contracts | `cd apps/support-copilot-web && npm run test:node` |
+| verify-react-e2e | `cd apps/support-copilot-web && npm run test:e2e` |
+| verify-preflight | `./scripts/check-local-startup.sh --preflight` |
+| verify-smoke | `./scripts/run-local-smoke.sh` |
+
 故障处置顺序：
 
 1. 记录用户可见错误码和 `traceId`，不要记录正文或 token。

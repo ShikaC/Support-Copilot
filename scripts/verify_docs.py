@@ -1,52 +1,32 @@
 from __future__ import annotations
 
 import argparse
-import ast
-import re
-import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
 
-from markdown_it import MarkdownIt
-
-
-JAVA_CONTROLLERS = (
-    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/"
-    "ticket/TicketController.java",
-    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/"
-    "metrics/MetricsController.java",
-    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/"
-    "audit/AuditEventController.java",
-    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/"
-    "knowledge/KnowledgeController.java",
-    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/"
-    "knowledge/KnowledgeReleaseController.java",
-    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/"
-    "analysis/review/AnalysisReviewController.java",
+from scripts.markdown_contracts import tracked_markdown, validate_markdown_links
+from scripts.source_contracts import (
+    ai_modes,
+    documented_api_routes,
+    documented_verification_commands,
+    executed_verification_ids,
+    settings_environment_names,
+    source_api_routes,
 )
-FASTAPI_MAIN = "services/support-copilot-ai/app/main.py"
+
+
 AI_CONFIG = "services/support-copilot-ai/app/config.py"
+VERIFIER_SCRIPT = "scripts/verify-docs.sh"
 OPERATIONS_DOC = "docs/PILOT_OPERATIONS.md"
 RELEASE_SURFACES = (
     "README.md",
+    "apps/support-copilot-web/README.md",
     "docs/DEMO.md",
     OPERATIONS_DOC,
     "docs/PROJECT_BLUEPRINT.md",
     "docs/learning/V1_PROJECT_MAP.md",
+    "docs/optimizations/ROADMAP.md",
 )
-
-JAVA_MAPPING = re.compile(
-    r"@(Get|Post|Patch|Put|Delete)Mapping(?:\(\s*\"([^\"]*)\"\s*\))?"
-)
-REQUEST_MAPPING = re.compile(r'@RequestMapping\(\s*"([^"]+)"\s*\)')
-FASTAPI_MAPPING = re.compile(
-    r'@app\.(get|post|patch|put|delete)\(\s*"([^"]+)"', re.IGNORECASE
-)
-DOCUMENTED_API_ROW = re.compile(
-    r"^\|\s*(GET|POST|PATCH|PUT|DELETE)\s*\|\s*`([^`]+)`\s*\|"
-)
-
 REQUIRED_BOUNDARIES = (
     "single-tenant",
     "synthetic/redacted data",
@@ -76,123 +56,21 @@ REQUIRED_MODEL_SETTINGS = (
     "OPENAI_CHAT_MODEL",
     "OPENAI_EMBEDDING_MODEL",
 )
-
-
-class DocumentationContractError(RuntimeError):
-    pass
-
-
-def tracked_markdown(repo_root: Path) -> list[Path]:
-    result = subprocess.run(
-        ["git", "-C", str(repo_root), "ls-files", "-z", "--", "*.md"],
-        check=True,
-        capture_output=True,
-    )
-    return [repo_root / entry.decode() for entry in result.stdout.split(b"\0") if entry]
-
-
-def markdown_targets(markdown: str) -> list[str]:
-    targets: list[str] = []
-    for token in MarkdownIt("commonmark").parse(markdown):
-        children = token.children or []
-        for child in children:
-            if child.type == "link_open":
-                href = child.attrGet("href")
-                if href is not None:
-                    targets.append(href)
-            elif child.type == "image":
-                src = child.attrGet("src")
-                if src is not None:
-                    targets.append(src)
-    return targets
-
-
-def validate_markdown_links(repo_root: Path, markdown_paths: list[Path]) -> list[str]:
-    errors: list[str] = []
-    for markdown_path in markdown_paths:
-        relative_markdown = markdown_path.relative_to(repo_root)
-        for target in markdown_targets(markdown_path.read_text(encoding="utf-8")):
-            parsed = urlsplit(target)
-            if parsed.scheme or parsed.netloc or (not parsed.path and parsed.fragment):
-                continue
-            decoded_path = unquote(parsed.path)
-            if not decoded_path:
-                continue
-            if decoded_path.startswith("/"):
-                errors.append(f"{relative_markdown}: repository link must be relative: {target}")
-                continue
-            resolved = (markdown_path.parent / decoded_path).resolve()
-            try:
-                resolved.relative_to(repo_root.resolve())
-            except ValueError:
-                errors.append(f"{relative_markdown}: link escapes repository: {target}")
-                continue
-            if not resolved.exists():
-                errors.append(f"{relative_markdown}: missing local link target: {target}")
-    return errors
-
-
-def join_route(base: str, suffix: str) -> str:
-    if not suffix:
-        return base
-    return f"{base.rstrip('/')}/{suffix.lstrip('/')}"
-
-
-def java_routes(source: str) -> set[tuple[str, str]]:
-    base_match = REQUEST_MAPPING.search(source)
-    if base_match is None:
-        raise DocumentationContractError("Java controller is missing @RequestMapping")
-    base = base_match.group(1)
-    return {
-        (match.group(1).upper(), join_route(base, match.group(2) or ""))
-        for match in JAVA_MAPPING.finditer(source)
-    }
-
-
-def fastapi_routes(source: str) -> set[tuple[str, str]]:
-    return {
-        (match.group(1).upper(), match.group(2))
-        for match in FASTAPI_MAPPING.finditer(source)
-    }
-
-
-def source_api_routes(repo_root: Path) -> set[tuple[str, str]]:
-    routes: set[tuple[str, str]] = set()
-    for controller in JAVA_CONTROLLERS:
-        routes.update(java_routes((repo_root / controller).read_text(encoding="utf-8")))
-    routes.update(fastapi_routes((repo_root / FASTAPI_MAIN).read_text(encoding="utf-8")))
-    return routes
-
-
-def documented_api_routes(operations_doc: str) -> set[tuple[str, str]]:
-    return {
-        (match.group(1), match.group(2))
-        for line in operations_doc.splitlines()
-        if (match := DOCUMENTED_API_ROW.match(line)) is not None
-    }
-
-
-def ai_modes(config_source: str) -> set[str]:
-    tree = ast.parse(config_source)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.AnnAssign):
-            continue
-        if not isinstance(node.target, ast.Name) or node.target.id != "ai_mode":
-            continue
-        annotation = node.annotation
-        if not isinstance(annotation, ast.Subscript):
-            break
-        if not isinstance(annotation.value, ast.Name) or annotation.value.id != "Literal":
-            break
-        slice_nodes = annotation.slice.elts if isinstance(annotation.slice, ast.Tuple) else [annotation.slice]
-        values = {
-            item.value
-            for item in slice_nodes
-            if isinstance(item, ast.Constant) and isinstance(item.value, str)
-        }
-        if values:
-            return values
-    raise DocumentationContractError("could not derive AI_MODE values from Settings.ai_mode")
+REQUIRED_DOCUMENTED_COMMANDS = {
+    "verify-python-tests": "cd services/support-copilot-ai && .venv/bin/pytest -q",
+    "verify-mock-evaluation": (
+        "cd services/support-copilot-ai && "
+        "AI_MODE=mock .venv/bin/python -m evaluation.run_mock_evaluation"
+    ),
+    "verify-java-tests": "cd services/support-copilot-api && ./gradlew test --no-daemon",
+    "verify-react-lint": "cd apps/support-copilot-web && npm run lint",
+    "verify-react-tests": "cd apps/support-copilot-web && npm test -- --run",
+    "verify-react-build-budget": "cd apps/support-copilot-web && npm run build:budget",
+    "verify-react-node-contracts": "cd apps/support-copilot-web && npm run test:node",
+    "verify-react-e2e": "cd apps/support-copilot-web && npm run test:e2e",
+    "verify-preflight": "./scripts/check-local-startup.sh --preflight",
+    "verify-smoke": "./scripts/run-local-smoke.sh",
+}
 
 
 def unsupported_release_claims(text: str) -> list[str]:
@@ -226,30 +104,47 @@ def validate_release_contract(repo_root: Path) -> list[str]:
     for method, route in sorted(documented_routes - actual_routes):
         errors.append(f"{OPERATIONS_DOC}: documents unknown API route: {method} {route}")
 
+    documented_commands = documented_verification_commands(operations)
+    for command_id, command in REQUIRED_DOCUMENTED_COMMANDS.items():
+        if command_id not in documented_commands:
+            errors.append(f"{OPERATIONS_DOC}: missing verification command: {command_id}")
+        elif documented_commands[command_id] != command:
+            errors.append(f"{OPERATIONS_DOC}: command drift: {command_id}")
+    for command_id in sorted(documented_commands.keys() - REQUIRED_DOCUMENTED_COMMANDS.keys()):
+        errors.append(f"{OPERATIONS_DOC}: unknown verification command: {command_id}")
+    executed_commands = executed_verification_ids(
+        (repo_root / VERIFIER_SCRIPT).read_text(encoding="utf-8")
+    )
+    for command_id in sorted(REQUIRED_DOCUMENTED_COMMANDS.keys() - executed_commands):
+        errors.append(f"{VERIFIER_SCRIPT}: verification command is not executed: {command_id}")
+    for command_id in sorted(executed_commands - REQUIRED_DOCUMENTED_COMMANDS.keys()):
+        errors.append(f"{VERIFIER_SCRIPT}: executes unknown verification command: {command_id}")
+
     profile_dir = repo_root / "services/support-copilot-api/src/main/resources"
     profiles = {
         path.stem.removeprefix("application-")
         for path in profile_dir.glob("application-*.properties")
     }
-    expected_profile_statement = "Runtime profiles: `demo`, `test`, `local`, `pilot`."
     if profiles != {"demo", "test", "local", "pilot"}:
         errors.append(f"unexpected runtime profile set in code: {sorted(profiles)}")
-    if expected_profile_statement not in operations:
+    if "Runtime profiles: `demo`, `test`, `local`, `pilot`." not in operations:
         errors.append(f"{OPERATIONS_DOC}: missing exact runtime profile statement")
 
     config_source = (repo_root / AI_CONFIG).read_text(encoding="utf-8")
     modes = ai_modes(config_source)
-    expected_mode_statement = "Configured AI_MODE values: `mock`, `live`, `auto`."
     if modes != {"mock", "live", "auto"}:
         errors.append(f"unexpected AI_MODE set in code: {sorted(modes)}")
-    if expected_mode_statement not in operations:
+    if "Configured AI_MODE values: `mock`, `live`, `auto`." not in operations:
         errors.append(f"{OPERATIONS_DOC}: missing exact AI_MODE statement")
-    if "`fallback` is an analysis result mode, not an `AI_MODE` configuration value." not in operations:
+    fallback_statement = (
+        "`fallback` is an analysis result mode, not an `AI_MODE` configuration value."
+    )
+    if fallback_statement not in operations:
         errors.append(f"{OPERATIONS_DOC}: missing fallback/configuration boundary")
 
-    normalized_config = config_source.upper()
+    configured_environment_names = settings_environment_names(config_source)
     for setting in REQUIRED_MODEL_SETTINGS:
-        if setting not in normalized_config:
+        if setting not in configured_environment_names:
             errors.append(f"{AI_CONFIG}: missing expected model setting: {setting}")
         if setting not in operations:
             errors.append(f"{OPERATIONS_DOC}: missing model setting: {setting}")
@@ -263,8 +158,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    args = parse_args()
-    repo_root = args.repo_root.resolve()
+    repo_root = parse_args().repo_root.resolve()
     errors = validate_markdown_links(repo_root, tracked_markdown(repo_root))
     errors.extend(validate_release_contract(repo_root))
     if errors:

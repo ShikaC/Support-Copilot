@@ -27,6 +27,16 @@ run_gate() {
 	printf '[PASS] %s\n' "$name"
 }
 
+run_documented_gate() {
+	run_gate "$@"
+}
+
+run_in_directory() {
+	local directory="$1"
+	shift
+	(cd "$directory" && "$@")
+}
+
 resolve_python_311() {
 	local candidate
 	for candidate in \
@@ -120,7 +130,7 @@ run_static_verification() {
 	local fixture_repo="$1"
 	local python_bin="$2"
 	(cd "$fixture_repo" && "$python_bin" -m pytest -q scripts/tests/test_verify_docs.py)
-	"$python_bin" "$fixture_repo/scripts/verify_docs.py" --repo-root "$fixture_repo"
+	(cd "$fixture_repo" && "$python_bin" -m scripts.verify_docs --repo-root "$fixture_repo")
 }
 
 run_clean_tests_and_demo() {
@@ -128,19 +138,29 @@ run_clean_tests_and_demo() {
 	local python_bin="$fixture_repo/services/support-copilot-ai/.venv/bin/python"
 	local ports ai_port java_port web_port
 
-	(cd "$fixture_repo/services/support-copilot-ai" && "$python_bin" -m pytest -q)
-	(cd "$fixture_repo/services/support-copilot-ai" && AI_MODE=mock \
-		"$python_bin" -m evaluation.run_mock_evaluation)
-	(cd "$fixture_repo/services/support-copilot-api" && ./gradlew test --no-daemon)
-	(cd "$fixture_repo/apps/support-copilot-web" && npm run lint)
-	(cd "$fixture_repo/apps/support-copilot-web" && npm test -- --run)
-	(cd "$fixture_repo/apps/support-copilot-web" && npm run build)
-	(cd "$fixture_repo/apps/support-copilot-web" && npm run test:node)
-	"$fixture_repo/scripts/check-local-startup.sh" --preflight
+	run_documented_gate verify-python-tests run_in_directory \
+		"$fixture_repo/services/support-copilot-ai" "$python_bin" -m pytest -q
+	run_documented_gate verify-mock-evaluation run_in_directory \
+		"$fixture_repo/services/support-copilot-ai" env AI_MODE=mock \
+		"$python_bin" -m evaluation.run_mock_evaluation
+	run_documented_gate verify-java-tests run_in_directory \
+		"$fixture_repo/services/support-copilot-api" ./gradlew test --no-daemon
+	run_documented_gate verify-react-lint run_in_directory \
+		"$fixture_repo/apps/support-copilot-web" npm run lint
+	run_documented_gate verify-react-tests run_in_directory \
+		"$fixture_repo/apps/support-copilot-web" npm test -- --run
+	run_documented_gate verify-react-build-budget run_in_directory \
+		"$fixture_repo/apps/support-copilot-web" npm run build:budget
+	run_documented_gate verify-react-node-contracts run_in_directory \
+		"$fixture_repo/apps/support-copilot-web" npm run test:node
+	run_documented_gate verify-react-e2e run_in_directory \
+		"$fixture_repo/apps/support-copilot-web" npm run test:e2e
+	run_documented_gate verify-preflight \
+		"$fixture_repo/scripts/check-local-startup.sh" --preflight
 
 	ports="$(allocate_ports "$python_bin")"
 	read -r ai_port java_port web_port <<<"$ports"
-	env \
+	run_documented_gate verify-smoke env \
 		SUPPORT_COPILOT_SMOKE_AI_PORT="$ai_port" \
 		SUPPORT_COPILOT_SMOKE_JAVA_PORT="$java_port" \
 		SUPPORT_COPILOT_SMOKE_WEB_PORT="$web_port" \
