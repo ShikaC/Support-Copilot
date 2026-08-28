@@ -50,7 +50,9 @@ Task 13 增加统一 `verify-ci-gates.sh` 和只读权限的 release workflow，
 
 Task 14 已把根 README、前端 README、5 至 8 分钟演示脚本和 pilot 运维边界更新为当前代码事实，并增加 fail-closed 文档验证。验证器从 committed `HEAD` 导出 tracked-only 临时仓库，要求源与 fixture Git tree 完全相同，再检查 Markdown 本地链接、API/文档一致性、profile、AI mode、模型环境变量、限制声明和文档中的启动/测试/演示命令。
 
-完整验证在提交 `bb276ebae4fc9294dac921ca91155b904d404bb8`、Git tree `62e2fd21e68deb1e8620977f0f3ce0227f8cc2e9` 上通过：4 个文档契约测试、157 个 Python 测试、31 个 mock 评估案例、Java 全量测试、React lint/build、62 个通过且 3 个跳过的 Vitest、11 个 Node 契约、3 个运行时 API 契约和本地 mock smoke 均成功；验证器拥有的端口全部释放。完整记录耗时 140.19 秒，日志 SHA-256 为 `0c6df874747c140f5fd64c8ff7a76fa15527fbeaed682bb05734f136f074c307`，保存在本地 `.omo/evidence/task-14-enterprise-minimum-pilot.md` 账本中。
+首次完整验证在提交 `bb276ebae4fc9294dac921ca91155b904d404bb8` 上通过，但独立复核发现两个假阳性风险：runner 没有执行或机械映射前端文档中的 bundle budget 和 Playwright 命令，能力声明检查也没有覆盖最终修改的路线图和前端 README。修复提交 `a29b7466709d2ae922926a4ff3ca413afcc919dc` 改为动态发现 Java controller、支持并约束 Spring `path/value` mapping、检查 Markdown 锚点、通过 AST 读取真实模型配置字段，并把规范文档命令 ID 与 runner 一一比对；失效锚点、常量路由、注释伪配置、遗漏命令和遗漏声明面均有回归测试。
+
+修复后的完整门禁在 Git tree `82c9b1e9af6ed8ac4c60ae4a707252e6a6d3f50b` 上通过：12 个文档契约测试、157 个 Python 测试、31 个 mock 评估案例、Java 全量测试、62 个通过且 3 个跳过的 Vitest、四项前端体积预算、11 个 Node 契约、21 个三视口 Playwright 场景、3 个运行时 API 契约和本地 mock smoke 均成功；浏览器与 smoke 拥有的进程和端口全部释放。完整记录耗时 217.17 秒，日志 SHA-256 为 `f265c5038aa16387acdb375bf4a7f8d0a0cd134f33720d87a4be6da375328613`，保存在本地 `.omo/evidence/task-14-enterprise-minimum-pilot.md` 账本中。
 
 该结果只证明上述提交的本地、非容器、mock 可复现路径。Task 10 可发布 live 人工评估仍受已重复出现两次的 provider structured-output 失败阻塞；真实 OIDC、Docker、Compose、MySQL parity、重启持久化、备份恢复和部署回滚仍属于 Task 15，不能据此宣称生产部署、SLO、真实用户规模或企业客户效果。
 
