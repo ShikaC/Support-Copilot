@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 aggregate="$repo_root/scripts/verify-ci-gates.sh"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-ci-contract.XXXXXX")"
+fixture_root="$(cd -P "$fixture_root" && pwd -P)"
 fixture_repo="$fixture_root/repo"
 shim_dir="$fixture_root/bin"
 fallback_shim_dir="$fixture_root/fallback-bin"
@@ -43,6 +44,34 @@ fail() {
 }
 
 [[ -x "$aggregate" ]] || fail "aggregate contract is missing or not executable: scripts/verify-ci-gates.sh"
+
+/usr/bin/python3 - "$BASH_SOURCE" <<'PY'
+import sys
+from pathlib import Path
+
+source_lines = Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
+expected_fixture_setup = [
+    'fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-ci-contract.XXXXXX")"',
+    'fixture_root="$(cd -P "$fixture_root" && pwd -P)"',
+    'fixture_repo="$fixture_root/repo"',
+]
+if source_lines[5:8] != expected_fixture_setup:
+    raise SystemExit(
+        "fixture contract: fixture_root must be physical-canonical before fixture_repo is derived"
+    )
+
+shim_markers = (
+    'cat >"$venv_python" <<\'SHIM\'',
+    'cat >"$fallback_shim_dir/python3" <<\'SHIM\'',
+    'cat >"$override_python" <<\'SHIM\'',
+)
+unsupported_argv = 'printf \'unsupported fixture Python argv: %s\\n\' "$*" >&2\nexit 64'
+for marker in shim_markers:
+    start = source_lines.index(marker)
+    end = source_lines.index("SHIM", start + 1)
+    if not "\n".join(source_lines[start:end]).endswith(unsupported_argv):
+        raise SystemExit(f"fixture contract: {marker} must fail closed on unsupported argv")
+PY
 
 # Fixture invocations must never inherit a release caller's evidence destination.
 unset CI_GATE_SCAN_EVIDENCE_DIR
@@ -138,6 +167,8 @@ fi
 if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
+printf 'unsupported fixture Python argv: %s\n' "$*" >&2
+exit 64
 SHIM
 
 cat >"$fallback_shim_dir/python3" <<'SHIM'
@@ -150,6 +181,8 @@ fi
 if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
+printf 'unsupported fixture Python argv: %s\n' "$*" >&2
+exit 64
 SHIM
 
 cat >"$override_python" <<'SHIM'
@@ -162,6 +195,8 @@ fi
 if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
+printf 'unsupported fixture Python argv: %s\n' "$*" >&2
+exit 64
 SHIM
 
 cat >"$shim_dir/java" <<'SHIM'
