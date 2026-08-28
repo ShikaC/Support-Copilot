@@ -435,8 +435,17 @@ react_install() {
 }
 
 workflow_syntax() {
-  "$actionlint_bin" "$repo_root"/.github/workflows/*.{yml,yaml} 2>/dev/null || \
-    "$actionlint_bin" "$repo_root"/.github/workflows/*.yml
+	local workflow
+	local workflows=()
+	for workflow in "$repo_root"/.github/workflows/*.yml "$repo_root"/.github/workflows/*.yaml; do
+		[[ -f "$workflow" ]] || continue
+		workflows+=("$workflow")
+	done
+	if [[ ${#workflows[@]} -eq 0 ]]; then
+		printf 'No GitHub Actions workflow files found.\n' >&2
+		return 1
+	fi
+	"$actionlint_bin" "${workflows[@]}"
 }
 
 static_migration_profile() {

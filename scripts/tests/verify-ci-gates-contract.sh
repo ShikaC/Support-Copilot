@@ -444,6 +444,14 @@ if [[ "${1:-}" == "-version" ]]; then
 	exit 0
 fi
 printf 'actionlint %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+if [[ "${CI_GATE_FAIL_ACTIONLINT_YAML:-}" == 1 ]]; then
+	for workflow in "$@"; do
+		if [[ "$workflow" == *.yaml ]]; then
+			printf 'fixture malformed workflow: %s\n' "$workflow" >&2
+			exit 1
+		fi
+	done
+fi
 SHIM
 
 cat >"$shim_dir/gitleaks" <<'SHIM'
@@ -888,6 +896,41 @@ for mode in python java react release all; do
 	run_fixture_mode "$mode"
 done
 unset CI_GATE_SCAN_EVIDENCE_DIR
+
+malformed_workflow="$fixture_repo/.github/workflows/malformed-workflow.yaml"
+malformed_workflow_output="$fixture_root/malformed-workflow.out"
+malformed_workflow_evidence="$fixture_scan_evidence_root/malformed-workflow"
+malformed_workflow_capture="$scan_capture_root/malformed-workflow"
+printf 'jobs: [\n' >"$malformed_workflow"
+mkdir -p "$malformed_workflow_evidence" "$malformed_workflow_capture"
+workflow_syntax_calls_before="$(grep -c '^actionlint ' "$command_log" || true)"
+set +e
+PATH="$shim_dir:$PATH" CI_GATE_COMMAND_LOG="$command_log" TMPDIR="$fixture_tmpdir" \
+	CI_GATE_SCAN_EVIDENCE_DIR="$malformed_workflow_evidence" \
+	CI_GATE_OSV_CAPTURE_DIR="$malformed_workflow_capture" CI_GATE_FAIL_ACTIONLINT_YAML=1 \
+	"$fixture_repo/scripts/verify-ci-gates.sh" --mode release >"$malformed_workflow_output" 2>&1
+malformed_workflow_status=$?
+set -e
+workflow_syntax_calls_after="$(grep -c '^actionlint ' "$command_log" || true)"
+[[ $malformed_workflow_status -ne 0 ]] || \
+	fail "malformed .yaml workflow was accepted by release mode"
+grep -q '^\[RUN\] workflow-syntax$' "$malformed_workflow_output" || \
+	fail "malformed .yaml workflow did not run the workflow-syntax gate"
+grep -q '^\[FAIL\] workflow-syntax$' "$malformed_workflow_output" || \
+	fail "malformed .yaml workflow did not fail the workflow-syntax gate"
+if grep -q '^\[PASS\] workflow-syntax$' "$malformed_workflow_output"; then
+	fail "malformed .yaml workflow emitted a false workflow-syntax PASS"
+fi
+if grep -q '^\[RUN\] workflow-contract$' "$malformed_workflow_output"; then
+	fail "release mode continued after the malformed .yaml workflow"
+fi
+[[ $((workflow_syntax_calls_after - workflow_syntax_calls_before)) -eq 1 ]] || \
+	fail "workflow-syntax retried after malformed .yaml input"
+grep -Fq "$malformed_workflow" "$command_log" || \
+	fail "workflow-syntax did not pass the .yaml workflow to actionlint"
+rm -f "$malformed_workflow"
+assert_no_dependency_workspaces "malformed .yaml workflow"
+assert_no_scan_publication_residue "malformed .yaml workflow" "$malformed_workflow_evidence"
 
 all_output="$fixture_root/all.out"
 for gate in \
