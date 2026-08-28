@@ -87,7 +87,7 @@ React + TypeScript + Ant Design + ECharts
 - Java 对 AI 服务调用失败提供本地 fallback。
 - 前端展示分类、置信度、分析轨迹、检索证据、引用、建议回复、人工升级原因和分析模式。
 - 当前知识数据是本地 JSON 文件，当前向量存储是进程内存实现。
-- Java 已实现 Resource Server JWT 角色门禁；`demo` 是唯一匿名业务 profile，`test` 使用合成 decoder。真实 OIDC、浏览器登录和 pilot parity 尚未完成。
+- Java 已实现 Resource Server JWT 角色门禁；`demo` 是唯一匿名业务 profile，`test` 使用合成 decoder。React 已实现 session/memory token adapter 和 secured 状态，但真实 OIDC 登录、token refresh 和 pilot parity 尚未完成。
 - H2 当前为内存数据库，应用重启后数据会重新初始化。
 
 ### 2.3 本次基线检查结果

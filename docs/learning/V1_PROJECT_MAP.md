@@ -311,7 +311,7 @@ usage                耗时和 token 信息
 
 ### 尚未完成的设计
 
-- Java 已按 JWT roles 保护 tickets、knowledge、metrics、reviews 和 actuator；React 登录/token adapter 尚未完成，真实 OIDC issuer 联调留待 Task 15。
+- Java 已按 JWT roles 保护 tickets、knowledge、metrics、reviews 和 actuator；React 已有 session/memory 范围的 typed token adapter 和安全状态，但真实 OIDC 登录、token refresh 与 issuer 联调留待 Task 15。
 - 取消负责人已经有命令接口、版本冲突和终态检查，但尚未形成可信的权限检查。
 - 安全 profile 的审核与审计 actor 来自同一个 JWT trusted actor provider，浏览器 actor/action/metadata 不被信任；只有 `demo` 使用明确的 `anonymous-demo` actor。
 - `GET /api/audit-events` 只允许 reviewer/admin，并使用 `createdAt + id` keyset 分页；事件 metadata 只允许变更字段、分析状态/模式/fallback、审核动作、来源版本和结果 ID。

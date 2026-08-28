@@ -1,32 +1,22 @@
-# React + TypeScript + Vite
+# Support Copilot Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript 工单工作台。页面通过 typed API client 和 Zod 校验读取 Java API，支持
+明确区分的 `demo` 与 `secured` auth mode；它不包含真实 OIDC 登录或 token refresh。
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+常用验证：
+
+```bash
+npm run lint
+npm test -- --run
+npm run build:budget
+npm run test:e2e
+```
+
+完整环境、三服务启动、演示和能力边界见仓库根目录的
+[README](../../README.md)、[面试演示](../../docs/DEMO.md) 和
+[Pilot 运行手册](../../docs/PILOT_OPERATIONS.md)。

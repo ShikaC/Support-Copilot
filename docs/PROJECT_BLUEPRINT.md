@@ -1978,10 +1978,10 @@ React、TypeScript、Ant Design、ECharts、Java 21、Spring Boot、JPA、Python
 | ADR-002 | 业务 API 使用 Java 21 + Spring Boot | 已确定 | 展示企业后端和事务业务能力 |
 | ADR-003 | AI 编排使用 Python + FastAPI | 已确定 | AI/RAG 生态成熟，便于独立演进 |
 | ADR-004 | 模型供应商使用 OpenAI | 已确定 | 用户指定，官方 SDK 与结构化输出能力完整 |
-| ADR-005 | V1 使用 H2 | 已确定 | 当前无 Docker，优先保证本地可运行 |
+| ADR-005 | `demo`/`test` 使用隔离 H2 | 已确定 | 保证本地演示和自动化测试可复现，不作为 pilot 持久化结论 |
 | ADR-006 | AI 不可用时保留人工流程 | 已确定 | AI 是辅助能力，不能成为业务单点故障 |
 | ADR-007 | 可视化业务轨迹而非隐藏思维链 | 已确定 | 结果可验证、可审计、适合企业场景 |
-| ADR-008 | V2 业务数据库使用 MySQL | 计划 | 与企业 Java 岗位常见技术栈匹配 |
+| ADR-008 | `local`/`pilot` 使用 MySQL 8 + Flyway | 配置完成、运行待验收 | profile 和 migration 契约已建立，Task 15 验证真实运行与持久化 |
 | ADR-009 | V2 向量存储在 pgvector 与 Milvus 间基准选择 | 待验证 | 需要根据规模、过滤和运维成本决策 |
 | ADR-010 | V2 是否加入 Elasticsearch | 待验证 | 只有混合检索评估证明有价值时引入 |
 
@@ -1989,46 +1989,49 @@ React、TypeScript、Ant Design、ECharts、Java 21、Spring Boot、JPA、Python
 
 ## 31. 当前仓库状态
 
-截至 2026-07-28，真实状态如下。
+截至 2026-08-29，真实状态如下。可执行命令和能力边界以
+[Pilot 运行手册](PILOT_OPERATIONS.md)为准。
 
 ### 31.1 已完成
 
-- 已建立 `apps/`、`services/`、`infra/` 和 `docs/` 目录。
-- 已创建 React + TypeScript + Vite 前端工程。
-- 已安装 Ant Design、ECharts 和 Lucide 图标依赖。
-- 已创建 Java 21 + Spring Boot 4.0.8 后端工程。
-- 已配置 Web MVC、JPA、Security、Validation、Actuator、H2 和 MySQL Driver。
-- 已包含 Gradle Wrapper。
-- 已完成多篇 RAG 理论课程和学习记录。
-- 已建立 RAG 术语表和学习资源清单。
-- 已恢复并实现 React 工单工作台，包含运营概览、工单、知识库和质量评估视图。
-- 前端支持后端不可用时的显式演示数据模式。
-- 已实现 Spring Boot 工单、分析历史、知识搜索和指标接口。
-- 已使用 H2 保存工单和分析运行，并加入 8 条企业场景演示工单。
-- 已实现 Java 到 Python 的调用超时与 fallback 降级。
-- 已创建 FastAPI AI 服务和 mock、live、fallback 三种模式。
-- 已实现 OpenAI 结构化输出边界与 LangChain 内存向量检索实时模式。
-- 已加入 Python 本地知识数据、检索测试和 API 测试。
-- 已创建根目录运行说明。
+- React 工单工作台已覆盖队列、分析、人工审核、知识 release、审计和质量报告；Zod 在
+  HTTP 信任边界校验响应，Playwright 覆盖三种视口、关键可访问性和体积预算。
+- React 已实现 `demo`/`secured` typed token adapter、Authorization 注入和明确的
+  401/403/409 状态；真实 OIDC 登录与 token refresh 未实现。
+- Spring Boot 已实现工单版本校验、持久化分析、人工审核、命令幂等、可信 append-only
+  审计、知识 release/范围治理，以及 Java-to-Python 有界重试、熔断、bulkhead 和 fallback。
+- `demo`/`test` 使用隔离 H2；`local`/`pilot` 使用 MySQL/Flyway/JWT 的失败关闭配置和
+  migration 契约，真实 MySQL 行为留待 Task 15。
+- FastAPI 配置支持 `mock`、`live`、`auto`，分析结果明确标识 `mock`、`live` 或
+  `fallback`；内部 `/analyze` 在 workflow 前校验服务身份与 trace 契约。
+- live 路径已实现正式 chat/Embedding 双端点、外发脱敏、结构化输出、scope-first 检索和
+  版本化 file-backed embedding artifact；2026-08-26 完成过一次脱敏合成工单成功验证。
+- Mock 评估已形成固定 31-case 报告并接入 Java/React；live 评估具备 provenance、严格
+  verifier 和人工 worksheet，但当前 4-case 发布门禁未通过且 0/4 完成人审。
+- 三条服务 CI 和一条只读非容器 release gate 已建立；本地聚合覆盖测试、构建、浏览器、
+  工作流、依赖漏洞和 secrets，并明确延后 Task 15 容器项。
+- 已提供一键本地 smoke、跨服务成功/fallback/contract 检查、面试演示脚本和自动文档契约。
 
 ### 31.2 尚未完成
 
-- OpenAI 实时模式尚未使用用户 API Key 完成外部调用验证。
-- 当前向量存储为进程内存实现，尚未迁移到 pgvector 或 Milvus。
-- 知识库页面尚未实现真实文档上传、解析和索引任务。
-- 质量评估页面使用演示基线，尚未接入持久化评估运行。
-- 认证目前为面试演示用的开放配置，尚未实现 JWT/OAuth2 和 RBAC。
-- 独立演示脚本尚未从总纲拆分为 `docs/DEMO.md`。
-- 当前环境没有 Docker，V2 容器编排尚不能本地验证。
+- Task 10 的 4-case live 评估仍因 chat provider structured-output 错误而未通过，同一原因已
+  两次出现；人工 factual-support label 仍为 0/4，不能发布 live 质量结论。
+- 真实 OIDC issuer/login/token refresh 与 `pilot` 组合尚未验证；当前只证明 Resource
+  Server 策略、合成 JWT 和受限前端 token adapter。
+- MySQL 8 runtime、Testcontainers parity、Compose、备份恢复和部署回滚统一留待 Task 15。
+- 知识构建支持授权 Markdown 和文本型 PDF，但没有上传 UI、扫描件 OCR、增量索引或
+  Java release 到 Python corpus/artifact 的自动部署。
+- 评估报告仍是 file-backed，不是持久化评估运行表；没有生产流量、SLO、容量或成本结论。
+- 当前是单租户、合成/脱敏数据、人工审核的非生产 pilot，没有真实 CRM、邮件、支付或
+  身份系统集成。
 
 ### 31.3 下一步执行顺序
 
-1. 完成前端、Java 与 Python 三层联调和浏览器视觉验证。
-2. 使用用户提供的 OpenAI API Key 验证实时结构化输出与 Embedding。
-3. 补充前端端到端测试和跨服务契约测试。
-4. 将固定知识片段演进为文档上传、解析、分块和索引流程。
-5. 建立可重复的真实评估集和回归报告。
-6. 开始 V2 的 MySQL、Redis、向量数据库和容器编排。
+1. 用 `scripts/verify-docs.sh` 完成 tracked-only 文档、测试、构建和 mock 演示验收。
+2. 最后执行 Task 15：真实 MySQL/Testcontainers、容器、持久化、备份恢复和部署回滚。
+3. 外部 chat endpoint 能稳定满足结构化输出 schema 后，再开启新的 bounded live 评估和
+   人工 factual-support 审核；在此之前不重复消耗同一失败原因。
+4. 只有真实数据规模和检索评估证明需要时，才评估向量数据库、混合检索或其他中间件。
 
 ---
 

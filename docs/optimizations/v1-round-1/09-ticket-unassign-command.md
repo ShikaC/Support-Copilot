@@ -88,11 +88,11 @@ V1
 
 ## 对应代码
 
-- [TicketController.java](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketController.java:62)：取消负责人 HTTP 入口。
-- [TicketService.java](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketService.java:84)：版本、终态、幂等和事务逻辑。
-- [TicketDtos.java](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketDtos.java:35)：请求 DTO 和返回的 `version`。
-- [api.ts](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/services/api.ts:88)：React 调用命令接口。
-- [App.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/App.tsx:1328)：真实/演示工单的负责人取消处理。
+- [TicketController.java](../../../services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketController.java#L62)：取消负责人 HTTP 入口。
+- [TicketService.java](../../../services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketService.java#L84)：版本、终态、幂等和事务逻辑。
+- [TicketDtos.java](../../../services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketDtos.java#L35)：请求 DTO 和返回的 `version`。
+- [api.ts](../../../apps/support-copilot-web/src/services/api.ts#L88)：React 调用命令接口。
+- [App.tsx](../../../apps/support-copilot-web/src/App.tsx#L1328)：真实/演示工单的负责人取消处理。
 
 ## 测试
 

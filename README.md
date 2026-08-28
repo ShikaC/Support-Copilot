@@ -15,7 +15,7 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - Java Resource Server 已按 `SUPPORT_AGENT`、`SUPPORT_REVIEWER`、`SUPPORT_ADMIN` 执行 JWT 角色门禁；真实 pilot OIDC/MySQL 联调仍留待 Task 15。
 - Java 调用 Python 时使用仅服务端可见的 `X-Internal-Service-Token`；Python `/health` 公开，`/analyze` 在进入工作流前校验该凭据。
 - 工单创建/实际变更、分析持久化和人工审核会在同一事务写入不可编辑的可信审计事件；事件只保存 JWT/演示身份、受控动作与目标、版本、`traceId` 和白名单元数据。
-- FastAPI `mock`、`live` 和 `fallback` 三种运行模式。
+- FastAPI 配置支持 `mock`、`live` 和 `auto`；分析结果会明确标识 `mock`、`live` 或 `fallback`。
 - Java 到 Python 的超时与业务降级。
 - OpenAI Responses API 结构化输出和进程内向量检索的 live 模式；2026-08-26 已在干净提交上完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
 
@@ -37,7 +37,7 @@ React + TypeScript + Ant Design + ECharts
                  OpenAI API
 ```
 
-详细的产品目标、架构、数据模型、接口、学习路线与面试材料见 [项目总纲](docs/PROJECT_BLUEPRINT.md)。
+详细的产品目标、架构和数据模型见 [项目总纲](docs/PROJECT_BLUEPRINT.md)；可复现讲解路径见 [面试演示](docs/DEMO.md)，运行、事故处置和能力证据边界见 [Pilot 运行手册](docs/PILOT_OPERATIONS.md)。
 
 ## 目录
 
@@ -57,6 +57,8 @@ RAG 理论课程、词汇表和学习记录保留在独立的 `CY-Agent` 学习�
 - Java 21
 - Python 3.11
 - npm
+- Git
+- curl
 
 Java API 没有隐式数据库配置。必须且只能明确选择 `demo`、`test`、`local` 或 `pilot` 中的一个；未选择、显式选择 `default`、使用未知 profile 或同时选择多个 profile，都会在创建 datasource 前拒绝启动，错误会列出允许的四个 profile，避免 Spring Boot 自动打开嵌入式 H2。
 
@@ -64,7 +66,7 @@ Java API 没有隐式数据库配置。必须且只能明确选择 `demo`、`tes
 
 需要三个终端。建议先启动 AI 服务和 Java API，再启动前端。
 
-启动前先在仓库根目录执行一次本地依赖检查：
+完成下面三个模块的首次依赖安装后，在仓库根目录执行本地依赖检查：
 
 ```bash
 ./scripts/check-local-startup.sh --preflight
@@ -184,7 +186,7 @@ curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 | `GET /api/audit-events` | 401 | 403 | 允许 | 允许 |
 | 其他 `/actuator/**` | 401 | 403 | 403 | 允许 |
 
-401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。知识访问范围只读取 JWT 的 `support_scopes`，经过 `GENERAL`、`BILLING`、`ACCOUNT`、`PRIVACY`、`TECHNICAL` 白名单后再与当前发布范围求交集；缺失或空 claim 都表示零知识权限，工单正文不能扩展权限。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。当前 React 仍只支持匿名 demo 工作流，浏览器 JWT adapter 属于 Task 11；真实 OIDC issuer、MySQL 与 pilot 组合验收属于 Task 15。
+401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。知识访问范围只读取 JWT 的 `support_scopes`，经过 `GENERAL`、`BILLING`、`ACCOUNT`、`PRIVACY`、`TECHNICAL` 白名单后再与当前发布范围求交集；缺失或空 claim 都表示零知识权限，工单正文不能扩展权限。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。React 已实现 `demo`/`secured` typed token adapter、Authorization 注入和 401/403/409 状态，但没有真实 OIDC 登录或 token refresh；真实 issuer、MySQL 与 pilot 组合验收属于 Task 15。
 
 ### 3. React 前端
 
@@ -192,7 +194,7 @@ curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 
 ```bash
 cd apps/support-copilot-web
-npm install
+npm ci
 ```
 
 启动：
@@ -548,21 +550,16 @@ CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" ./scripts/verify-ci-gates.sh --mode re
 | GET | `/api/metrics` | 查询当前工单、已持久化运行态指标和可追溯 mock 评估报告；没有来源的数据返回空值 |
 | POST | `/analyze` | Java 调用的 AI 服务内部接口；要求 `X-Internal-Service-Token`，不属于浏览器 API |
 
-## 演示建议
+## 演示
 
-1. 打开工单工作台，选择“本月套餐出现重复扣款”。
-2. 查看结构化分类、置信度和支付争议升级规则。
-3. 打开“知识依据”，检查文档片段和引用。
-4. 打开“回复建议”，编辑后采纳，或拒绝建议并填写原因，再展开审核历史。
-5. 选择“能否恢复三个月前删除的项目”，展示无证据时的拒绝承诺与人工复核。
-6. 切换运营概览和质量评估，展示评估报告的来源、指标和门禁状态；删除或改坏报告后，页面会回到“暂无评估报告”，不会保留静态数字。
+正式演示前运行 `./scripts/run-local-smoke.sh`。完整 5 至 8 分钟讲解顺序、预期结果、故障演练和禁止表述见 [面试演示脚本](docs/DEMO.md)。
 
 ## 当前限制
 
 - `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，但真实 MySQL 持久化仍待 Task 15 验证。
 - 当前 append-only 审计覆盖已提交的工单创建/实际变更、分析持久化、`APPROVED`/`EDITED`/`REJECTED` 审核和知识 release 创建/审批/发布/回滚；元数据白名单不保存工单正文、回复、拒绝原因、证据、provider payload、token 或异常消息。
 - 审计在 H2 `test` profile 已完成事务与真实 HTTP 验证，但 V2 migration 尚未在 MySQL 执行；checksum、索引与事务 parity 属于 Task 15，当前不构成生产或合规审计声明。
-- JWT endpoint policy 与合成 test decoder 已验证，但 React 登录/token adapter 尚未实现；真实 pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
+- JWT endpoint policy、合成 test decoder 和 React session/memory token adapter 已验证，但真实登录、token refresh、pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - Java release 发布不会热加载 Python file-backed corpus/artifact；新 release 仍需要显式部署 corpus、构建并激活 artifact。当前只验证本地文件系统原子生命周期，不代表共享存储或跨主机协调。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
