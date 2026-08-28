@@ -66,6 +66,7 @@ export async function layoutEvidence(page: Page) {
     const usabilityOcclusions = new Set<string>()
     const stickyOcclusions = new Set<string>()
     const overlaps = new Set<string>()
+    const fixedOverlayOcclusions = new Set<string>()
     const waitForLayout = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
     const collectOverlaps = () => {
       const visibleControls = controls.filter((candidate) => {
@@ -88,6 +89,46 @@ export async function layoutEvidence(page: Page) {
           const overlapHeight = Math.min(leftBox.bottom, rightBox.bottom) - Math.max(leftBox.top, rightBox.top)
           if (overlapWidth > 1 && overlapHeight > 1) {
             overlaps.add(`${left.description} [${leftBox.left},${leftBox.top},${leftBox.right},${leftBox.bottom}] <> ${right.description} [${rightBox.left},${rightBox.top},${rightBox.right},${rightBox.bottom}]`)
+          }
+        }
+      }
+    }
+    const collectFixedOverlayOcclusions = () => {
+      const visibleControls = controls.filter((candidate) => {
+        const box = candidate.element.getBoundingClientRect()
+        return box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+      })
+      const fixedOverlays = [...document.querySelectorAll<HTMLElement>('*')].filter((element) => {
+        const box = element.getBoundingClientRect()
+        return !element.matches(selector)
+          && getComputedStyle(element).position === 'fixed'
+          && element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+          && box.width >= 8 && box.height >= 8
+          && box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
+      })
+      for (const [overlayIndex, overlay] of fixedOverlays.entries()) {
+        const overlayBox = overlay.getBoundingClientRect()
+        const overlayIdentity = `${overlay.tagName}:${overlay.getAttribute('aria-label') || overlay.id || overlay.className || overlay.innerText.trim() || `fixed-overlay-${overlayIndex}`}`
+        for (const control of visibleControls) {
+          if (overlay === control.element || overlay.contains(control.element) || control.element.contains(overlay)) continue
+          const controlBox = control.element.getBoundingClientRect()
+          const left = Math.max(0, overlayBox.left, controlBox.left)
+          const top = Math.max(0, overlayBox.top, controlBox.top)
+          const right = Math.min(window.innerWidth, overlayBox.right, controlBox.right)
+          const bottom = Math.min(window.innerHeight, overlayBox.bottom, controlBox.bottom)
+          if (right - left <= 1 || bottom - top <= 1) continue
+          const horizontalInset = Math.min(2, (right - left) / 4)
+          const verticalInset = Math.min(2, (bottom - top) / 4)
+          const samples = [
+            [(left + right) / 2, (top + bottom) / 2],
+            [left + horizontalInset, top + verticalInset],
+            [right - horizontalInset, bottom - verticalInset],
+          ] as const
+          if (samples.some(([x, y]) => {
+            const [topElement] = document.elementsFromPoint(x, y)
+            return topElement !== undefined && (topElement === overlay || overlay.contains(topElement))
+          })) {
+            fixedOverlayOcclusions.add(`${overlayIdentity} covers ${control.description} [${left},${top},${right},${bottom}]`)
           }
         }
       }
@@ -127,6 +168,7 @@ export async function layoutEvidence(page: Page) {
     window.scrollTo({ left: initialWindowScroll.left, top: initialWindowScroll.top, behavior: 'instant' })
     await waitForLayout()
     collectOverlaps()
+    collectFixedOverlayOcclusions()
     return {
       clientWidth: root.clientWidth,
       scrollWidth: root.scrollWidth,
@@ -137,6 +179,7 @@ export async function layoutEvidence(page: Page) {
       usabilityOcclusions: [...usabilityOcclusions],
       overlaps: [...overlaps],
       stickyOcclusions: [...stickyOcclusions],
+      fixedOverlayOcclusions: [...fixedOverlayOcclusions],
     }
   })
 }

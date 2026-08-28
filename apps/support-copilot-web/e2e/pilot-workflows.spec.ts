@@ -25,6 +25,45 @@ async function navigate(page: Page, name: '运营概览' | '知识库' | '审计
   await page.locator('nav:visible').getByRole('button', { name }).click()
 }
 
+// Audit self-calibration only: this sentinel exercises the layout detector, not a product feature.
+async function calibrateAuditFixedOverlay(page: Page): Promise<void> {
+  const sentinelId = 'audit-self-calibration-fixed-overlay-sentinel'
+  await expect(page.locator('button.user-menu')).toBeVisible()
+  try {
+    const controlIdentity = await page.evaluate((id) => {
+      const control = document.querySelector<HTMLElement>('button.user-menu')
+      if (control === null) throw new Error('Visible user-menu control is required for audit self-calibration')
+      const box = control.getBoundingClientRect()
+      const label = control.getAttribute('aria-label') ?? control.innerText.trim()
+      if (label === '') throw new Error('User-menu control identity is required for audit self-calibration')
+      const sentinel = document.createElement('div')
+      sentinel.id = id
+      sentinel.textContent = id
+      sentinel.setAttribute('aria-hidden', 'true')
+      Object.assign(sentinel.style, {
+        position: 'fixed',
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+        zIndex: '2147483647',
+        boxSizing: 'border-box',
+        pointerEvents: 'auto',
+        background: 'transparent',
+        overflow: 'hidden',
+      })
+      document.body.append(sentinel)
+      return `${control.tagName}:${label}`
+    }, sentinelId)
+    const layout = await layoutEvidence(page)
+    const sentinelIdentity = `DIV:${sentinelId}`
+    expect(layout.fixedOverlayOcclusions, JSON.stringify(layout.fixedOverlayOcclusions)).not.toHaveLength(0)
+    expect(layout.fixedOverlayOcclusions.some((entry) => entry.includes(sentinelIdentity) && entry.includes(controlIdentity))).toBe(true)
+  } finally {
+    await page.evaluate((id) => document.getElementById(id)?.remove(), sentinelId)
+  }
+}
+
 async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, errors: BrowserErrors, extra: Readonly<Record<string, unknown>> = {}) {
   await page.evaluate(async () => {
     await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
@@ -44,6 +83,7 @@ async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, er
   expect(layout.usabilityOcclusions, JSON.stringify(layout.usabilityOcclusions)).toHaveLength(0)
   expect(layout.overlaps, JSON.stringify(layout.overlaps)).toHaveLength(0)
   expect(layout.stickyOcclusions, JSON.stringify(layout.stickyOcclusions)).toHaveLength(0)
+  expect(layout.fixedOverlayOcclusions, JSON.stringify(layout.fixedOverlayOcclusions)).toHaveLength(0)
   expect(errors.consoleErrors, JSON.stringify(errors.consoleErrors)).toHaveLength(0)
   expect(errors.pageErrors, JSON.stringify(errors.pageErrors)).toHaveLength(0)
 
@@ -209,6 +249,8 @@ test('audit pagination, quality evidence, chart pixels, text equivalents, and re
   expect(overviewResourcesAfterNavigation).toHaveLength(1)
   const motionDuration = await page.locator('.view-enter').evaluate((element) => getComputedStyle(element).animationDuration)
   expect(Number.parseFloat(motionDuration)).toBeLessThanOrEqual(0.01)
+  // Audit self-calibration is complete before the normal page audit; the sentinel is removed by the helper.
+  await calibrateAuditFixedOverlay(page)
   await verifyPage(page, testInfo, 'audit-quality', errors, { chartColorVariation, textualChartTables: 2, motionDuration, overviewResourcesBeforeNavigation, overviewResourcesAfterNavigation })
 })
 
