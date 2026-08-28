@@ -507,6 +507,26 @@ React Web CI：
 
 React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflows/react-web-ci.yml)。它不会复用开发者本机的 `node_modules`；依赖安装、lint、单元测试或 build 任意一步失败，整个任务都会失败。
 
+仓库还提供统一的非容器门禁：
+
+```bash
+./scripts/verify-ci-gates.sh
+```
+
+默认 `all` 模式会串行执行 Python 锁文件、测试和 mock 评估，Java 全量/profile/Flyway 契约，React 安装、lint、测试、构建、体积预算和 Playwright，以及工作流语法、静态安全检查、依赖漏洞扫描和 tracked/history secret 扫描。也可以使用 `--mode python|java|react|release` 运行指定分组。发布工作流 [`.github/workflows/release-gates-ci.yml`](.github/workflows/release-gates-ci.yml) 只执行不依赖外部模型和容器的 `release` 分组，并使用只读仓库权限。
+
+依赖扫描对 Python 生产/开发锁、Gradle 锁和 npm lock 分别生成可验证报告；任一扫描器运行错误、报告损坏或已知漏洞都会令门禁失败。Docker、Compose、MySQL/Testcontainers、备份恢复和部署回滚会明确显示为 `DEFERRED`，统一留到 Task 15，不能把该提示理解为已通过。完整门禁不需要 API Key，也不会调用 live 模型。
+
+如需保留本地依赖扫描证据，调用方必须提供一个预先创建、尚未包含任何扫描结果的目录：
+
+```bash
+evidence_dir="$PWD/.local-evidence/release-$(date +%Y%m%d-%H%M%S)"
+mkdir -m 700 -p "$evidence_dir"
+CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" ./scripts/verify-ci-gates.sh --mode release
+```
+
+发布器不会覆盖同名证据目录；每个结果目录都可用 `services/support-copilot-ai/.venv/bin/python scripts/validate_scan_evidence.py "$evidence_dir/<label>"` 独立校验，其中 `<label>` 为 `python-production`、`python-development`、`java` 或 `node`。
+
 ## 关键接口
 
 | 方法 | 路径 | 用途 |
@@ -549,4 +569,4 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。
-- MySQL 运行时、Redis、持久化向量数据库、Compose 和自动化部署/CD 尚未完成验收；当前已有三条 GitHub CI，但不包含部署。
+- MySQL 运行时、Redis、持久化向量数据库、Compose 和自动化部署/CD 尚未完成验收；当前有三条服务 CI 和一条非容器 release gate，但都不包含部署。

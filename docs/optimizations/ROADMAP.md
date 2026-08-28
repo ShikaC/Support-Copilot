@@ -38,6 +38,14 @@ Task 10 增加独立于 31-case deterministic mock 报告的版本化合成 live
 
 Task 10 live evidence 状态：首次运行的 Git SHA 长度缺陷由 `be9ac60` 修复；`be9ac60` 上的数据集运行首次观察到 1 live success、3 `invalid_model_response` fallbacks，并暴露 no-evidence metric inflation，由 `3e59a07` 修复。修正不同根因的尝试分类后，`b856019` 上的一次受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallbacks，0/4 human reviewed；修复后的无证据 case 不再误增 retrieval/citation rate。该 provider structured-output 签名已第二次出现，按停止规则不得继续调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model。产品实现完成，publishable live/human evidence 仍阻塞。
 
+### Task 13 非容器发布门禁（2026-08-29）
+
+Task 13 增加统一 `verify-ci-gates.sh` 和只读权限的 release workflow，把 Python、Java、React、浏览器、工作流、静态安全、依赖与 secret 检查组成 fail-closed 门禁。actionlint 1.7.7、OSV-Scanner 2.2.4 和 gitleaks 8.30.1 使用固定版本；Python 生产/开发、Gradle 和 npm lock 分别扫描。扫描证据以不可替换目录发布，包含原始 inventory/report、脱敏 stderr、严格 provenance 和最后写入的 `COMPLETE`；异常、并发竞争、篡改、不完整和旧目标均有契约覆盖。
+
+首次可归因真实扫描发现旧 Spring Boot 4.0.0 依赖图存在 71 次漏洞命中（65 个唯一公告、21 个受影响坐标），门禁按预期失败。随后只升级同一维护线到 Spring Boot 4.0.8 并重建严格 Gradle 锁；Java 全测通过，fresh release 扫描观察到 Python 57/66、Java 181、Node 234 个坐标均为 0 个已知漏洞。最终 `all` 聚合在 196.13 秒内通过 157 个 Python 测试、31 个 mock 评估案例、Java 全量/profile/Flyway 契约、React 62 个通过/3 个跳过的组件测试、11 个 Node 契约、21 个三视口 Playwright 场景和四项前端体积预算。独立复核随后发现 `.yaml` 语法错误可能被 `.yml` 回退掩盖；`e9852c7` 改为一次检查全部实际工作流，并加入损坏 `.yaml` 必须失败且不得继续后续 gate 的回归场景。修复后完整契约在 45.17 秒内通过，真实 release 在 62.20 秒内再次得到 57/66/181/234 个坐标、0 个已知漏洞的结果。该记录只证明本地当前锁文件与当时 OSV 数据源的非容器门禁结果；远端 workflow 尚未在本次提交后运行，Docker、Compose、MySQL/Testcontainers、备份恢复和部署回滚仍明确属于 Task 15。
+
+修复后独立代码复核结论为 `APPROVE`，无 CRITICAL/HIGH 阻塞。保留两项 `WATCH` 级债务：聚合门禁及其行为契约文件仍然过大，后续应按工具解析、扫描发布和工作流策略拆分；最新 release 扫描目录只保存四类结构化扫描证据，没有同时保存聚合 stdout/stderr、退出码和计时元数据，后续证据采集应将这些运行元数据一并持久化。
+
 ### 2.1 当前架构
 
 ~~~text
