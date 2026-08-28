@@ -66,9 +66,35 @@ export async function layoutEvidence(page: Page) {
     const usabilityOcclusions = new Set<string>()
     const stickyOcclusions = new Set<string>()
     const overlaps = new Set<string>()
+    const waitForLayout = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    const collectOverlaps = () => {
+      const visibleControls = controls.filter((candidate) => {
+        const candidateBox = candidate.element.getBoundingClientRect()
+        return candidateBox.right > 0 && candidateBox.left < window.innerWidth
+          && candidateBox.bottom > 0 && candidateBox.top < window.innerHeight
+      })
+      for (let leftIndex = 0; leftIndex < visibleControls.length; leftIndex += 1) {
+        const left = visibleControls[leftIndex]
+        if (left === undefined) continue
+        for (let rightIndex = leftIndex + 1; rightIndex < visibleControls.length; rightIndex += 1) {
+          const right = visibleControls[rightIndex]
+          if (right === undefined || left.element.contains(right.element) || right.element.contains(left.element)) continue
+          const leftPositioned = positionedAncestor(left.element)
+          const rightPositioned = positionedAncestor(right.element)
+          if ((leftPositioned === null) !== (rightPositioned === null)) continue
+          const leftBox = left.element.getBoundingClientRect()
+          const rightBox = right.element.getBoundingClientRect()
+          const overlapWidth = Math.min(leftBox.right, rightBox.right) - Math.max(leftBox.left, rightBox.left)
+          const overlapHeight = Math.min(leftBox.bottom, rightBox.bottom) - Math.max(leftBox.top, rightBox.top)
+          if (overlapWidth > 1 && overlapHeight > 1) {
+            overlaps.add(`${left.description} [${leftBox.left},${leftBox.top},${leftBox.right},${leftBox.bottom}] <> ${right.description} [${rightBox.left},${rightBox.top},${rightBox.right},${rightBox.bottom}]`)
+          }
+        }
+      }
+    }
     for (const control of controls) {
       control.element.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' })
-      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      await waitForLayout()
       const box = control.element.getBoundingClientRect()
       const intersectsViewport = box.right > 0 && box.left < window.innerWidth && box.bottom > 0 && box.top < window.innerHeight
       if (!intersectsViewport) {
@@ -96,30 +122,11 @@ export async function layoutEvidence(page: Page) {
       if (!hits.some((hit) => hit !== null && control.element.contains(hit))) {
         usabilityOcclusions.add(`${control.description} has no usable hit-test sample after scrollIntoView`)
       }
-      const visibleControls = controls.filter((candidate) => {
-        const candidateBox = candidate.element.getBoundingClientRect()
-        return candidateBox.right > 0 && candidateBox.left < window.innerWidth
-          && candidateBox.bottom > 0 && candidateBox.top < window.innerHeight
-      })
-      for (let leftIndex = 0; leftIndex < visibleControls.length; leftIndex += 1) {
-        const left = visibleControls[leftIndex]
-        if (left === undefined) continue
-        for (let rightIndex = leftIndex + 1; rightIndex < visibleControls.length; rightIndex += 1) {
-          const right = visibleControls[rightIndex]
-          if (right === undefined || left.element.contains(right.element) || right.element.contains(left.element)) continue
-          const leftBox = left.element.getBoundingClientRect()
-          const rightBox = right.element.getBoundingClientRect()
-          const overlapWidth = Math.min(leftBox.right, rightBox.right) - Math.max(leftBox.left, rightBox.left)
-          const overlapHeight = Math.min(leftBox.bottom, rightBox.bottom) - Math.max(leftBox.top, rightBox.top)
-          if (overlapWidth > 1 && overlapHeight > 1) {
-            overlaps.add(`${left.description} [${leftBox.left},${leftBox.top},${leftBox.right},${leftBox.bottom}] <> ${right.description} [${rightBox.left},${rightBox.top},${rightBox.right},${rightBox.bottom}]`)
-          }
-        }
-      }
     }
-    for (const position of scrollPositions) position.element.scrollTo(position.left, position.top)
-    window.scrollTo(initialWindowScroll.left, initialWindowScroll.top)
-    await new Promise<void>((resolve) => requestAnimationFrame(resolve))
+    for (const position of scrollPositions) position.element.scrollTo({ left: position.left, top: position.top, behavior: 'instant' })
+    window.scrollTo({ left: initialWindowScroll.left, top: initialWindowScroll.top, behavior: 'instant' })
+    await waitForLayout()
+    collectOverlaps()
     return {
       clientWidth: root.clientWidth,
       scrollWidth: root.scrollWidth,
