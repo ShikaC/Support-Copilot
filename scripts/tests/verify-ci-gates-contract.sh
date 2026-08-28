@@ -13,6 +13,7 @@ wrong_tool_dir="$fixture_root/wrong-tools"
 command_log="$fixture_root/commands.log"
 go_install_log="$fixture_root/go-install.log"
 tool_provenance_log="$fixture_root/tool-provenance.log"
+fixture_dispatch_log="$fixture_root/python-dispatch.log"
 fixture_tmpdir="$fixture_root/tmp"
 fixture_scan_evidence_root="$fixture_tmpdir/scan-evidence"
 outer_evidence_dir="$fixture_root/outer-evidence"
@@ -161,11 +162,37 @@ cat >"$venv_python" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'venv-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+fixture_python_module_dispatch() {
+	case "$#" in
+		2)
+			if [[ "$1" == "-m" && ( "$2" == "scripts.check_dependency_locks" || \
+				"$2" == "evaluation.run_mock_evaluation" ) ]]; then
+				return 0
+			fi
+			;;
+		3)
+			if [[ "$1" == "-m" && "$2" == "pytest" && "$3" == "-q" ]]; then
+				return 0
+			fi
+			;;
+		5)
+			if [[ "$1" == "-m" && "$2" == "pytest" && "$3" == "-q" && \
+				"$4" == "scripts/tests/test_publish_scan_evidence.py" && \
+				"$5" == "scripts/tests/test_validate_scan_evidence.py" ]]; then
+				return 0
+			fi
+			;;
+	esac
+	return 64
+}
 if [[ "${1:-}" == "-" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
 if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
+fi
+if fixture_python_module_dispatch "$@"; then
+	exit 0
 fi
 printf 'unsupported fixture Python argv: %s\n' "$*" >&2
 exit 64
@@ -175,11 +202,37 @@ cat >"$fallback_shim_dir/python3" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'fallback-python3 %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+fixture_python_module_dispatch() {
+	case "$#" in
+		2)
+			if [[ "$1" == "-m" && ( "$2" == "scripts.check_dependency_locks" || \
+				"$2" == "evaluation.run_mock_evaluation" ) ]]; then
+				return 0
+			fi
+			;;
+		3)
+			if [[ "$1" == "-m" && "$2" == "pytest" && "$3" == "-q" ]]; then
+				return 0
+			fi
+			;;
+		5)
+			if [[ "$1" == "-m" && "$2" == "pytest" && "$3" == "-q" && \
+				"$4" == "scripts/tests/test_publish_scan_evidence.py" && \
+				"$5" == "scripts/tests/test_validate_scan_evidence.py" ]]; then
+				return 0
+			fi
+			;;
+	esac
+	return 64
+}
 if [[ "${1:-}" == "-" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
 if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
+fi
+if fixture_python_module_dispatch "$@"; then
+	exit 0
 fi
 printf 'unsupported fixture Python argv: %s\n' "$*" >&2
 exit 64
@@ -189,11 +242,37 @@ cat >"$override_python" <<'SHIM'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'override-python %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+fixture_python_module_dispatch() {
+	case "$#" in
+		2)
+			if [[ "$1" == "-m" && ( "$2" == "scripts.check_dependency_locks" || \
+				"$2" == "evaluation.run_mock_evaluation" ) ]]; then
+				return 0
+			fi
+			;;
+		3)
+			if [[ "$1" == "-m" && "$2" == "pytest" && "$3" == "-q" ]]; then
+				return 0
+			fi
+			;;
+		5)
+			if [[ "$1" == "-m" && "$2" == "pytest" && "$3" == "-q" && \
+				"$4" == "scripts/tests/test_publish_scan_evidence.py" && \
+				"$5" == "scripts/tests/test_validate_scan_evidence.py" ]]; then
+				return 0
+			fi
+			;;
+	esac
+	return 64
+}
 if [[ "${1:-}" == "-" ]]; then
 	exec /usr/bin/python3 "$@"
 fi
 if [[ "${1:-}" == "$CI_GATE_FIXTURE_REPO/scripts/publish_scan_evidence.py" ]]; then
 	exec /usr/bin/python3 "$@"
+fi
+if fixture_python_module_dispatch "$@"; then
+	exit 0
 fi
 printf 'unsupported fixture Python argv: %s\n' "$*" >&2
 exit 64
@@ -494,6 +573,72 @@ chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
 
 export CI_GATE_FIXTURE_REPO="$fixture_repo"
+
+assert_fixture_python_argv() {
+	local shim_label="$1"
+	local shim_path="$2"
+	local expected_status="$3"
+	local stderr_path="$fixture_root/${shim_label}-dispatch.stderr"
+	local expected_stderr=''
+	local actual_status
+	shift 3
+	local -a argv=("$@")
+
+	if CI_GATE_COMMAND_LOG="$fixture_dispatch_log" "$shim_path" "${argv[@]}" \
+		>/dev/null 2>"$stderr_path"; then
+		actual_status=0
+	else
+		actual_status=$?
+	fi
+	[[ "$actual_status" -eq "$expected_status" ]] || fail \
+		"$shim_label returned $actual_status for argv: ${argv[*]}, expected $expected_status"
+
+	if [[ "$expected_status" -eq 0 ]]; then
+		[[ ! -s "$stderr_path" ]] || fail \
+			"$shim_label emitted stderr for supported argv: ${argv[*]}"
+	else
+		expected_stderr="unsupported fixture Python argv: ${argv[*]}"
+		[[ "$(<"$stderr_path")" == "$expected_stderr" ]] || fail \
+			"$shim_label emitted unstable stderr for argv: ${argv[*]}"
+	fi
+}
+
+assert_fixture_python_shim_contract() {
+	local shim_label="$1"
+	local shim_path="$2"
+	local -a supported_locks=(-m scripts.check_dependency_locks)
+	local -a supported_tests=(-m pytest -q)
+	local -a supported_evaluation=(-m evaluation.run_mock_evaluation)
+	local -a supported_scan_tests=(
+		-m pytest -q
+		scripts/tests/test_publish_scan_evidence.py
+		scripts/tests/test_validate_scan_evidence.py
+	)
+	local -a dependency_extra=(-m scripts.check_dependency_locks.extra)
+	local -a bare_pytest=(-m pytest)
+	local -a extra_arg=(-m pytest -q extra)
+	local -a unknown_module=(-m scripts.unknown_module)
+	local -a non_fixture_publisher=(
+		"$fixture_root/path with spaces/publish_scan_evidence.py"
+		publish
+	)
+
+	assert_fixture_python_argv "$shim_label" "$shim_path" 0 "${supported_locks[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 0 "${supported_tests[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 0 "${supported_evaluation[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 0 "${supported_scan_tests[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 64 "${dependency_extra[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 64 "${bare_pytest[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 64 "${extra_arg[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 64 "${unknown_module[@]}"
+	assert_fixture_python_argv "$shim_label" "$shim_path" 64 "${non_fixture_publisher[@]}"
+}
+
+# Direct shim checks use a separate log so aggregate command assertions remain scoped.
+: >"$fixture_dispatch_log"
+assert_fixture_python_shim_contract project-venv "$venv_python"
+assert_fixture_python_shim_contract fallback-python3 "$fallback_shim_dir/python3"
+assert_fixture_python_shim_contract explicit-override "$override_python"
 
 mkdir -p "$fixture_scan_evidence_root" "$scan_capture_root" "$outer_evidence_dir"
 printf 'outer-evidence-sentinel\n' >"$outer_evidence_sentinel"
