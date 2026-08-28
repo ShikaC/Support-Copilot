@@ -864,6 +864,24 @@ assert_no_scan_publication_residue() {
 		"$scenario left scan publication residue: ${leaked#$evidence_dir/}"
 }
 
+if env | grep -q '^CI_GATE_COMMAND_LOG='; then
+	fail "ambient CI_GATE_COMMAND_LOG must remain unexported before fixture validation"
+fi
+
+validate_fixture_publisher() {
+	local artifact_dir="$1"
+	local stderr_path="$2"
+	local exit_code
+
+	if CI_GATE_COMMAND_LOG="$command_log" "$venv_python" "$fixture_publisher" validate \
+		"$artifact_dir" >/dev/null 2>"$stderr_path"; then
+		exit_code=0
+	else
+		exit_code=$?
+	fi
+	return "$exit_code"
+}
+
 # Simulate a caller-owned destination while every nested scan uses its fixture-local root.
 export CI_GATE_SCAN_EVIDENCE_DIR="$outer_evidence_dir"
 for mode in python java react release all; do
@@ -923,9 +941,15 @@ for label in python-production python-development java node; do
 done
 
 for label in python-production python-development java node; do
-	"$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
-		"$fixture_scan_evidence_root/all/$label" >/dev/null || \
+	accepted_validator_stderr="$fixture_root/accepted-$label-validator.stderr"
+	if validate_fixture_publisher "$fixture_scan_evidence_root/all/$label" "$accepted_validator_stderr"; then
+		[[ ! -s "$accepted_validator_stderr" ]] || \
+			fail "fixture publisher CLI emitted stderr for accepted $label evidence"
+		grep -Fqx "venv-python $fixture_publisher validate $fixture_scan_evidence_root/all/$label" \
+			"$command_log" || fail "fixture publisher CLI did not log canonical validate argv for $label evidence"
+	else
 		fail "fixture publisher CLI rejected accepted $label evidence"
+	fi
 done
 
 /usr/bin/python3 - "$fixture_scan_evidence_root/all" "$scan_capture_root/all" "$all_output" <<'PY'
@@ -1023,9 +1047,16 @@ cp -R "$fixture_scan_evidence_root/all/python-production" "$incomplete_evidence"
 printf 'tampered\n' >>"$tampered_evidence/inventory"
 rm "$incomplete_evidence/COMPLETE"
 for rejected_evidence in "$tampered_evidence" "$incomplete_evidence"; do
-	if "$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
-		"$rejected_evidence" >/dev/null 2>&1; then
+	rejected_validator_stderr="$fixture_root/$(basename "$rejected_evidence")-validator.stderr"
+	if validate_fixture_publisher "$rejected_evidence" "$rejected_validator_stderr"; then
 		fail "fixture publisher CLI accepted tampered or incomplete evidence"
+	fi
+	if [[ "$rejected_evidence" == "$tampered_evidence" ]]; then
+		grep -Fqx "scan evidence rejected at $rejected_evidence: inventory digest mismatch" \
+			"$rejected_validator_stderr" || fail "tampered evidence rejection error was not stable"
+	else
+		grep -Fq "scan evidence rejected at $rejected_evidence: cannot open COMPLETE:" \
+			"$rejected_validator_stderr" || fail "incomplete evidence rejection error was not stable"
 	fi
 done
 
@@ -1439,6 +1470,7 @@ assert_persisted_scan_evidence() {
 	local expected_report_accepted="$8"
 	local expected_stderr="$9"
 	local artifact_dir="$evidence_dir/python-production"
+	local validator_stderr
 	[[ -f "$artifact_dir/inventory" && -f "$artifact_dir/stderr" && \
 		-f "$artifact_dir/provenance.json" && \
 		-f "$artifact_dir/COMPLETE" ]] || \
@@ -1524,9 +1556,15 @@ if artifact_dir.stat().st_mode & 0o777 != 0o700:
 if complete_path.stat().st_mtime_ns < max(path.stat().st_mtime_ns for path in published_paths):
     raise SystemExit("COMPLETE marker was not created last")
 PY
-	"$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
-		"$artifact_dir" >/dev/null || \
+	validator_stderr="$fixture_root/$scenario-validator.stderr"
+	if validate_fixture_publisher "$artifact_dir" "$validator_stderr"; then
+		[[ ! -s "$validator_stderr" ]] || \
+			record_dependency_failure "$scenario fixture publisher CLI emitted stderr for accepted evidence"
+		grep -Fqx "venv-python $fixture_publisher validate $artifact_dir" "$command_log" || \
+			record_dependency_failure "$scenario fixture publisher CLI did not log canonical validate argv"
+	else
 		record_dependency_failure "$scenario fixture publisher CLI rejected accepted evidence"
+	fi
 	assert_no_scan_publication_residue "$scenario" "$evidence_dir"
 }
 
@@ -1736,9 +1774,16 @@ if complete != {
 }:
     raise SystemExit("contention COMPLETE mismatch")
 PY
-"$venv_python" "$fixture_repo/scripts/publish_scan_evidence.py" validate \
-	"$scan_contention_evidence/python-production" >/dev/null || \
+contention_validator_stderr="$fixture_root/scan-contention-validator.stderr"
+if validate_fixture_publisher "$scan_contention_evidence/python-production" "$contention_validator_stderr"; then
+	[[ ! -s "$contention_validator_stderr" ]] || \
+		record_dependency_failure "scan contention fixture publisher CLI emitted stderr for winner evidence"
+	grep -Fqx "venv-python $fixture_publisher validate $scan_contention_evidence/python-production" \
+		"$command_log" || record_dependency_failure \
+		"scan contention fixture publisher CLI did not log canonical validate argv"
+else
 	record_dependency_failure "scan contention fixture publisher CLI rejected winner evidence"
+fi
 assert_no_scan_publication_residue "scan contention" "$scan_contention_evidence"
 scan_contention_nested_dir="$(find "$scan_contention_evidence" -mindepth 2 -type d -print -quit)"
 [[ -z "$scan_contention_nested_dir" ]] || \
