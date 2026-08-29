@@ -25,7 +25,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 - 原始 Markdown 和自带文本层的 PDF 可以通过清单确定性切分为知识 JSON，并生成不含正文的 provenance。
 - `KNOWLEDGE_PROVENANCE_PATH` 可以让服务校验 corpus 哈希，防止索引正文和来源证明漂移。
 - live 调用失败后可以进入明确标识的 fallback。
-- live 外发边界会先脱敏常见邮箱、手机号、18 位身份证号和支付卡号，Responses 请求显式设置 `store=false`。
+- live 外发边界会先脱敏常见邮箱、手机号、18 位身份证号和支付卡号；Responses 与 Chat Completions 都使用 SDK 结构化 Pydantic 解析并显式设置 `store=false`。
 - live 超时遵循外部请求、Python 整体分析、Java 等待和验收客户端逐层增大的预算，并通过可取消异步调用阻止超时后的后续 AI 阶段。
 - fallback 会用受控 `fallbackReason` 区分证据不足、Embedding、结构化生成、整体处理超时和 Java 到 Python 的调用故障，并随 Java 分析历史保存。
 - 同一工单版本和分析策略的并发在途请求会在单 Java 实例内共享一次 Python 调用与一次持久化，完成后允许显式重试。
@@ -34,7 +34,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 
 当前已经达到层级 3 的单次真实 live 验证：
 
-- 2026-08-26 在干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 上执行 `./scripts/check-live-rag.sh --success`，正式 Embedding 和结构化生成调用均成功。
+- 2026-08-26 在干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 上执行 `./scripts/check-live-rag.sh --success`，当时的 Responses 协议下正式 Embedding 和结构化生成调用均成功。
 - 最终结果为 `mode=live`、`status=SUCCEEDED`，返回 3 条 `VECTOR` 检索证据和 1 条引用，并由 Java 保存为最新分析记录。
 - 本次记录使用脱敏合成工单；本地忽略的证据文件只保留配置类型、聚合运行值和可追溯标识，不包含密钥、授权头、工单正文或供应商原始响应。
 
@@ -46,7 +46,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 
 Task 10 已增加版本化合成 live 数据集、逐案例引用/检索/token/runner latency 记录、release/corpus/artifact/model/config/Git provenance 校验，以及独立人工 groundedness worksheet。机器只生成 `NOT_REVIEWED`；只有真实 reviewer 填写 factual-support label、decision note 和 reviewed_at 且 verifier 通过，报告才可标记 publishable。新正式 live 运行和人审状态以 Task 10 evidence 为准，本段不预先宣称成功。
 
-2026-08-27 实际运行状态：首次运行的 Git SHA 长度缺陷由 `be9ac60` 修复；`be9ac60` 上的数据集运行首次观察到 1 个 live success 和 3 个 `invalid_model_response` fallback，并暴露 no-evidence metric inflation，由 `3e59a07` 修复。修正这两个不同内部根因的尝试分类后，在 `b856019` 上执行的一次受限运行中，artifact 和单工单跨服务 live 验证成功，但 4-case 数据集再次得到相同的 1 live success / 3 `invalid_model_response` fallback，机器 gate 未通过，人工 review 为 0/4。修复后的无证据 case 已正确计为 retrieval/citation failure。该 provider structured-output 签名已第二次出现，按停止规则不得继续调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model。Task 10 产品实现完成，但 publishable live evidence 和人工 groundedness evidence 均未完成。
+2026-08-27 实际运行状态：`be9ac60` 上的 Responses 数据集运行观察到 1 个 live success 和 3 个 `invalid_model_response` fallback；`b856019` 上的第二次 Responses 受限运行仍是相同的 1 + 3 签名，机器 gate 失败，人工 review 为 0/4。两次都保留为明确失败的历史 dataset evidence。当前 Chat Completions relay 只完成一次 synthetic direct-provider 探针：1 次 chat、无 Embedding、7.437 秒，得到 ACCOUNT / MEDIUM / NEUTRAL、confidence 0.94、citation `[1]` 和 436/245 input/output tokens。该探针不是 RAG、dataset、跨服务、publishable 或人工 groundedness 成功；干净提交上的完整 Chat Completions dataset 和人审仍待完成。
 
 准确表述应是：**真实模型和 Embedding API 的端到端 RAG 链路已完成一次脱敏验证；当前仍是单次 V1.5 验收，不代表成熟 RAG、生产稳定性或真实客服效果。**
 
@@ -133,6 +133,7 @@ Python health: mode=live、liveReady=true
 
 - 验证日期和 Git 提交 SHA。
 - 使用的聊天模型和 Embedding 模型。
+- 明确的聊天协议：`responses` 或 `chat_completions`；缺失或非法值失败关闭。
 - 是否使用官方端点或兼容 Base URL。
 - 脱敏后的输入工单编号和 `traceId`。
 - 检索到的知识片段 ID、来源和顺序。
@@ -155,6 +156,7 @@ Traceable live evaluation 还必须记录 dataset id/version/checksum、knowledg
 OPENAI_API_KEY
 OPENAI_EMBEDDING_API_KEY（可选；未配置时复用 OPENAI_API_KEY）
 OPENAI_CHAT_MODEL
+OPENAI_CHAT_PROTOCOL（可选；只接受 responses 或 chat_completions，默认 responses）
 OPENAI_EMBEDDING_MODEL
 ```
 
@@ -165,6 +167,6 @@ OPENAI_BASE_URL
 OPENAI_EMBEDDING_BASE_URL
 ```
 
-`OPENAI_BASE_URL` 控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求。后者未配置时回退到前者；两者都未配置时使用 SDK 的官方默认地址。
+`OPENAI_BASE_URL` 控制所选聊天协议的请求；`OPENAI_EMBEDDING_BASE_URL` 和可选的独立 Embedding key 控制 Embedding 请求，未配置时分别回退到聊天 Base URL 和聊天 key。两种聊天协议保持相同 ModelDraft 校验、脱敏和 fallback 语义，不会自动跨协议重试，因为第二次付费请求会增加风险并模糊 provenance。
 
 密钥只能通过环境变量或未提交的本地 `.env` 提供。没有可用凭据时可以继续完成代码、测试和文档，但真实 live 验收必须标记为阻塞，不能宣称已经完成。

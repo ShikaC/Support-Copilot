@@ -2,7 +2,7 @@
 
 ## 业务问题
 
-live 模式原来会把工单标题、正文、检索查询和知识片段原文直接交给外部 Embedding 与聊天模型服务。即使测试样例不是实际客户数据，这条链路也缺少可验证的数据最小化边界；同时 Responses 请求没有显式关闭服务端结果存储。
+live 模式原来会把工单标题、正文、检索查询和知识片段原文直接交给外部 Embedding 与聊天模型服务。即使测试样例不是实际客户数据，这条链路也缺少可验证的数据最小化边界；同时聊天请求没有显式关闭服务端结果存储。
 
 ## 改进方案
 
@@ -15,14 +15,14 @@ live 模式原来会把工单标题、正文、检索查询和知识片段原文
 
 工单 + 已采用证据
 -> 相同规则再次脱敏
--> Responses API（store=false）
+-> Responses 或 Chat Completions（store=false）
 ```
 
 邮箱、手机号和身份证号使用边界明确的格式识别；13 至 19 位支付卡候选必须通过 Luhn 校验才会替换，避免把普通长订单号直接当成支付卡。替换值只保留类型标记，不保留原值的局部字符。mock 模式仍在本地使用原始模拟数据，不经过外部请求边界。
 
 live 向量职责同时从 `KnowledgeRetriever` 拆到独立适配器。检索器只决定 mock/live 路由；适配器负责脱敏后的 Embedding 请求、内存索引和向量结果转换。
 
-根据 [OpenAI 官方数据控制说明](https://developers.openai.com/api/docs/guides/your-data#default-usage-policies-by-endpoint)，Responses API 省略 `store` 时可能保存应用状态，因此本项目显式发送 `store=false`。这不会自动获得 Zero Data Retention，也不能替代组织级保留策略和合规评估。
+当前实现对 `OPENAI_CHAT_PROTOCOL=responses|chat_completions` 两条路径都使用 SDK 结构化 Pydantic 解析并显式发送 `store=false`，随后执行同一 ModelDraft 校验、脱敏和 fallback。默认协议为 `responses`，不会自动跨协议重试，以免追加付费请求并模糊 provenance。`store=false` 不会自动获得 Zero Data Retention，也不能替代组织级保留策略和合规评估。
 
 ## 当前验证
 

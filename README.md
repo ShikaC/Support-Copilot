@@ -17,7 +17,7 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - 工单创建/实际变更、分析持久化和人工审核会在同一事务写入不可编辑的可信审计事件；事件只保存 JWT/演示身份、受控动作与目标、版本、`traceId` 和白名单元数据。
 - FastAPI 配置支持 `mock`、`live` 和 `auto`；分析结果会明确标识 `mock`、`live` 或 `fallback`。
 - Java 到 Python 的超时与业务降级。
-- OpenAI Responses API 结构化输出和进程内向量检索的 live 模式；2026-08-26 已在干净提交上完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
+- OpenAI Responses 或 Chat Completions 结构化输出和向量检索的 live 模式；2026-08-26 已在干净提交上通过当时的 Responses 路径完成一次真实 Embedding、VECTOR 检索、结构化生成和 Java 持久化验收。
 
 ## 技术架构
 
@@ -32,7 +32,7 @@ React + TypeScript + Ant Design + ECharts
                     v
       Python 3.11 + FastAPI + LangChain
                     |
-                    | Responses / Embeddings
+                    | Responses or Chat Completions / Embeddings
                     v
                  OpenAI API
 ```
@@ -346,8 +346,11 @@ Java 发布新 release 不会热加载 Python corpus 或 artifact。部署新 re
 可选配置：
 
 ```bash
-# Chat/Responses endpoint. Omit for the official OpenAI endpoint.
+# Chat endpoint. Omit for the official OpenAI endpoint.
 export OPENAI_BASE_URL='https://your-chat-gateway.example/v1'
+# Valid values: responses, chat_completions. Default: responses.
+# Select chat_completions only when the configured chat endpoint requires it.
+export OPENAI_CHAT_PROTOCOL=chat_completions
 # Embeddings endpoint. Omit to reuse OPENAI_BASE_URL.
 export OPENAI_EMBEDDING_BASE_URL='https://your-embedding-gateway.example/v1'
 # Optional: use a different credential when the embedding provider is separate.
@@ -367,7 +370,7 @@ export EMBEDDING_CHUNKING_VERSION=knowledge-corpus-v2
 export EMBEDDING_VECTOR_DIMENSION=1536
 ```
 
-超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。`AI_SERVICE_RETRY_MAX_ATTEMPTS` 表示总尝试数，Bean Validation 只接受 1 至 2；值 3 会在配置绑定时拒绝启动。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求只加载并验证 active 文档 matrix，再为当前 query 调用 Embedding provider 和聊天模型；不会重嵌入文档。`OPENAI_BASE_URL` 只控制聊天/Responses 请求；`OPENAI_EMBEDDING_BASE_URL` 控制 Embedding 请求，未设置时回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live matrix 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝倒置或余量不足的配置，不会调用外部 API。
+超时按外层晚于内层的顺序配置：单次正式 API 请求最长 20 秒且 OpenAI SDK 固定为零重试，Python 整体分析在 90 秒停止，Java 在一个可取消的 105 秒总预算内对 Python 429 和非 504 的 5xx 最多尝试 2 次，live 验收客户端最长等待 120 秒。`AI_SERVICE_RETRY_MAX_ATTEMPTS` 表示总尝试数，Bean Validation 只接受 1 至 2；值 3 会在配置绑定时拒绝启动。Python 的 504 表示其 90 秒处理预算已经耗尽，Java 不会立即重试。为兼容已有本地配置，`OPENAI_MAX_RETRIES=1` 仍可通过有界配置解析，但 provider 构造始终传入 0；建议迁移为 0。首次 live 请求只加载并验证 active 文档 matrix，再为当前 query 调用 Embedding provider 和聊天模型；不会重嵌入文档。`OPENAI_CHAT_PROTOCOL` 只接受 `responses` 或 `chat_completions`，默认 `responses`；两条路径都使用 SDK 的结构化 Pydantic 解析、相同 ModelDraft 校验与脱敏，并显式发送 `store=false`。系统不会在协议之间自动重试，因为第二次付费请求不安全，也会混淆报告 provenance。`OPENAI_BASE_URL` 控制所选聊天协议的端点；`OPENAI_EMBEDDING_BASE_URL` 独立控制 Embedding 请求，未设置时才回退到 `OPENAI_BASE_URL`。`OPENAI_EMBEDDING_API_KEY` 可为独立 Embedding 服务提供单独凭据，未设置时回退到 `OPENAI_API_KEY`。mock 检索会拒绝低于 `MOCK_RETRIEVAL_MIN_SCORE` 的弱词面匹配；live matrix 使用余弦相似度，并拒绝低于 `LIVE_RETRIEVAL_MIN_SCORE` 的结果。两个阈值都应在真实 live 评估后根据脱敏分数分布校准。`check-live-rag.sh --preflight` 会拒绝无效协议、倒置或余量不足的配置，显示非敏感 chat/embedding provider identity 与协议，但不会调用外部 API 或输出密钥。
 
 Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes`、`fallbacks`、`timeouts`、`latency`、`circuit.rejected` 和 `bulkhead.rejected`。tag 只使用受控 outcome、reason、provider mode 和 stage，不使用 ticket、trace 或 user；trace 只进入结构化脱敏日志。circuit 与 bulkhead 是单 Java 实例内状态，不代表分布式限流或生产 SLO。
 
@@ -383,7 +386,7 @@ Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes
 ./scripts/check-live-rag.sh --success
 ```
 
-`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，然后运行版本化合成 live 评估集。它在忽略的 `evaluation/reports/` 生成逐案例 JSON、Markdown 和人工审核 worksheet，记录 dataset/release/corpus/artifact/provider/model/prompt/redacted-config/Git provenance、runner 实测耗时、provider 暴露的 token 和引用映射。机器始终留下 `NOT_REVIEWED`，因此生成成功不等于可发布成功。
+`--success` 会实际调用正式 Embedding 和聊天模型 API，验证 `mode=live`、向量证据、引用、token、`traceId` 和 Java 分析历史，然后运行版本化合成 live 评估集。它在忽略的 `evaluation/reports/` 生成逐案例 JSON、Markdown 和人工审核 worksheet，记录 chat protocol、dataset/release/corpus/artifact/provider/model/prompt/redacted-config/Git provenance、runner 实测耗时、provider 暴露的 token 和引用映射。缺少或使用非法 chat protocol 的旧报告会失败关闭，不能冒充当前协议结果。机器始终留下 `NOT_REVIEWED`，因此生成成功不等于可发布成功。
 
 不要把 API Key 写入代码或提交到 Git。ChatGPT 产品订阅不等同于 OpenAI API Key。
 
@@ -392,7 +395,7 @@ Java Actuator 记录低基数 `support.copilot.ai.boundary.attempts`、`outcomes
 | 模式 | 行为 |
 | --- | --- |
 | `mock` | 使用本地可重复分类和检索，不调用 OpenAI |
-| `live` | 使用 OpenAI 结构化输出与 Embedding |
+| `live` | 使用显式选择的 Responses 或 Chat Completions 结构化输出与 Embedding |
 | `fallback` | 实时调用失败或证据不足，保留人工处理路径 |
 
 前端和分析响应都会显示实际模式，防止把演示结果误认为真实模型输出。
@@ -473,7 +476,9 @@ cd services/support-copilot-ai
 
 `factual_support` 只允许 `SUPPORTED/PARTIAL/UNSUPPORTED/NOT_REVIEWED`，机器不能填写前三项。没有明确可核查 pricing source 时 cost 保持 `null`，不得估算。Java 可将 `EVALUATION_REPORT_PATH` 指向忽略的 live 报告；质量页比例只表示该 dataset/run 的评估结果，不是生产准确率或 SLO。
 
-2026-08-27 的 Task 10 bounded live 运行先后暴露两个不同内部缺陷：首次运行的 Git SHA 长度约束由 `be9ac60` 修复，随后 `be9ac60` 上的 4-case 报告首次观察到 1 case live success、3 case `invalid_model_response` fallback，并暴露 no-evidence rate 误增，由 `3e59a07` 修复。修正尝试分类后，在 checkpoint `b8560190583fc2888f2428353ffcb43caac6cbc3` 上执行了一次新的受限运行；单工单跨服务 gate 成功，但数据集再次得到相同的 1 live success / 3 `invalid_model_response` fallback，机器门禁失败，人工标签仍为 0/4 `NOT_REVIEWED`。这是同一 provider structured-output 签名的第二次出现，按停止规则不得再次调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model 后才能开始新的 live 尝试。该报告不能作为 publishable live success 或质量数字。
+2026-08-27 的 Task 10 bounded live 运行先后暴露两个不同内部缺陷：首次运行的 Git SHA 长度约束由 `be9ac60` 修复，随后 `be9ac60` 上的 Responses 协议 4-case 报告首次观察到 1 case live success、3 case `invalid_model_response` fallback，并暴露 no-evidence rate 误增，由 `3e59a07` 修复。修正尝试分类后，在 checkpoint `b8560190583fc2888f2428353ffcb43caac6cbc3` 上执行的第二次 Responses 协议受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallback，机器门禁失败，人工标签仍为 0/4 `NOT_REVIEWED`。两次都是明确失败的历史 dataset evidence，不能因新增协议而重解释为成功。
+
+当前实现增加显式 `responses|chat_completions` 选择后，只执行过一次有界、合成输入的 Chat Completions relay 直连能力探针：恰好 1 次 chat 调用、0 次 Embedding，耗时 7.437 秒；结构化结果为 ACCOUNT / MEDIUM / NEUTRAL、confidence 0.94、citation `[1]`，token 为 input 436 / output 245。它只证明该 relay 能完成这一次 direct-provider structured chat capability call，不是完整 RAG、跨服务、4-case dataset、publishable 或人工 groundedness 成功。仍需在干净提交上重新运行完整 Chat Completions live dataset，并完成真实人工标签。
 
 ### 自动化 CI
 

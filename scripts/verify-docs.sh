@@ -189,7 +189,8 @@ done
 
 bootstrap_python="$(resolve_python_311)"
 unset AI_MODE OPENAI_API_KEY OPENAI_EMBEDDING_API_KEY OPENAI_BASE_URL \
-	OPENAI_EMBEDDING_BASE_URL OPENAI_CHAT_MODEL OPENAI_EMBEDDING_MODEL
+	OPENAI_EMBEDDING_BASE_URL OPENAI_CHAT_MODEL OPENAI_CHAT_PROTOCOL \
+	OPENAI_EMBEDDING_MODEL
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-docs.XXXXXX")"
 fixture_repo="$fixture_root/repo"
 trap cleanup EXIT INT TERM

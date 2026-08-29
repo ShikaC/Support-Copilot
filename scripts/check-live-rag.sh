@@ -104,6 +104,7 @@ print(
     json.dumps(
         {
             "chatModel": settings.openai_chat_model,
+            "chatProtocol": settings.openai_chat_protocol,
             "embeddingModel": settings.openai_embedding_model,
             "externalTimeoutSeconds": settings.openai_timeout_seconds,
             "externalMaxRetries": settings.openai_max_retries,
@@ -140,6 +141,18 @@ print(
     fail "live configuration or knowledge source is not ready"
     return 1
   fi
+  validate_config_json
+}
+
+validate_config_json() {
+  python3 -c '
+import json
+import sys
+
+config = json.loads(sys.stdin.read())
+if config.get("chatProtocol") not in {"responses", "chat_completions"}:
+    raise SystemExit("chatProtocol must be responses or chat_completions")
+' <<<"$CONFIG_JSON"
 }
 
 require_clean_commit() {
@@ -167,7 +180,8 @@ import sys
 
 config = json.loads(sys.stdin.read())
 print(
-    f"Live configuration: chatModel={config['"'"'chatModel'"'"']} "
+    f"Live configuration: chatProtocol={config['"'"'chatProtocol'"'"']} "
+    f"chatModel={config['"'"'chatModel'"'"']} "
     f"embeddingModel={config['"'"'embeddingModel'"'"']} "
     f"chatEndpoint={config['"'"'endpointType'"'"']} "
     f"embeddingEndpoint={config['"'"'embeddingEndpointType'"'"']} "
@@ -310,6 +324,8 @@ validated_at, git_commit, ticket_id, worktree_dirty = sys.argv[5:9]
 
 if summary["retrievalMethod"] != "VECTOR":
     raise SystemExit("refusing to write success evidence without verified VECTOR retrieval")
+if config.get("chatProtocol") not in {"responses", "chat_completions"}:
+    raise SystemExit("refusing to write evidence without a valid chat protocol")
 if (
     history["persisted"] is not True
     or history["mode"] != "live"
@@ -331,6 +347,7 @@ content = "\n".join(
         f"- Git commit: `{git_commit}`",
         f"- Worktree dirty: `{worktree_dirty}`",
         "- Task 10 tracked scope clean: `true`",
+        f"- Chat protocol: `{config['"'"'chatProtocol'"'"']}`",
         f"- Chat endpoint type: `{config['"'"'endpointType'"'"']}`",
         f"- Embedding endpoint type: `{config['"'"'embeddingEndpointType'"'"']}`",
         f"- Chat model: `{config['"'"'chatModel'"'"']}`",

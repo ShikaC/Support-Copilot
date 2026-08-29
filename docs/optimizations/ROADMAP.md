@@ -34,9 +34,9 @@ Support-Copilot 后续不应继续以“增加页面数量”作为主要目标�
 
 ### Task 10 traceable live evaluation（2026-08-27）
 
-Task 10 增加独立于 31-case deterministic mock 报告的版本化合成 live 数据集和严格报告格式。逐案例记录检索判定、retrieved/allowed/cited chunks、citation validity、response evidence indexes、runner latency、provider token availability、fallback 和默认 `NOT_REVIEWED`；provenance 绑定 dataset、release/corpus、active artifact manifest、provider/model、prompt、redacted config fingerprint 和 Git dirty truth。verifier 对 unknown release/artifact/chunk、forbidden/non-retrieved citation、invalid evidence index、stale Git、敏感模式和 usage/cost 失败关闭。人工 worksheet apply 只替换 review fields；完整 factual-support judgment 前 publishable gate 保持失败。一次运行只可称为该 dataset/run 的评估结果，不是生产准确率、SLO 或稳定性结论。
+Task 10 增加独立于 31-case deterministic mock 报告的版本化合成 live 数据集和严格报告格式。逐案例记录检索、引用、runner latency、token、fallback 和默认 `NOT_REVIEWED`；provenance 与 config fingerprint 绑定包括 `responses|chat_completions` 在内的协议事实，因此旧报告缺少协议或协议变化时失败关闭。人工 worksheet 完成前 publishable gate 保持失败；一次运行不是生产准确率、SLO 或稳定性结论。
 
-Task 10 live evidence 状态：首次运行的 Git SHA 长度缺陷由 `be9ac60` 修复；`be9ac60` 上的数据集运行首次观察到 1 live success、3 `invalid_model_response` fallbacks，并暴露 no-evidence metric inflation，由 `3e59a07` 修复。修正不同根因的尝试分类后，`b856019` 上的一次受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallbacks，0/4 human reviewed；修复后的无证据 case 不再误增 retrieval/citation rate。该 provider structured-output 签名已第二次出现，按停止规则不得继续调用；需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model。产品实现完成，publishable live/human evidence 仍阻塞。
+Task 10 live evidence 状态：`be9ac60` 与 `b856019` 都是 Responses 协议 dataset 失败，均为 1 live success + 3 `invalid_model_response` fallbacks，后者 0/4 human reviewed；它们不能改写为 Chat Completions 结果。历史干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 只保留为 Responses 单次端到端层级 3 证据。新增协议后的一次 Chat Completions relay 探针恰好调用 chat 一次、无 Embedding、耗时 7.437 秒，只证明 synthetic direct-provider capability，不是 RAG、dataset、publishable 或人审成功。完整干净提交 Chat Completions dataset 和人工 groundedness 仍阻塞。
 
 ### Task 13 非容器发布门禁（2026-08-29）
 
@@ -71,7 +71,7 @@ React + TypeScript + Ant Design + ECharts
                   |
                   | live 正式 API
                   v
-        OpenAI Responses / Embeddings
+ OpenAI Responses or Chat Completions / Embeddings
 ~~~
 
 当前服务职责：
@@ -91,7 +91,7 @@ React + TypeScript + Ant Design + ECharts
 - Python FastAPI 提供 /health 和 /analyze。
 - Python 支持 mock、live、auto 配置语义，并在分析结果中返回 mock、live 或 fallback。
 - mock 模式使用本地规则分类和本地知识检索。
-- live 模式包含 OpenAI Responses API 结构化输出和 Embedding 检索代码。
+- live 模式以 `OPENAI_CHAT_PROTOCOL=responses|chat_completions` 显式选择聊天协议，默认 Responses；两条路径都使用 SDK 结构化 Pydantic 解析、`store=false` 和相同 ModelDraft 校验/脱敏/fallback，Embedding endpoint/key 保持独立。
 - Java 保存工单和分析运行记录。
 - Java 记录分析来源工单版本，并对过期分析结果进行冲突保护。
 - Java 对 AI 服务调用失败提供本地 fallback。

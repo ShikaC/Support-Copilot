@@ -6,7 +6,7 @@
 
 ## 修改层与流程
 
-Python 新增版本化合成 live dataset、严格 JSON/Markdown report、runner、verifier 和 review worksheet。报告绑定 dataset、knowledge release/corpus、active embedding artifact、provider/model、prompt/config fingerprint、Git SHA/dirty truth；逐案例记录检索、引用、evidence mapping、runner latency、token/cost availability 和 fallback。机器固定写 `NOT_REVIEWED`，worksheet apply 只替换 review fields。
+Python 新增版本化合成 live dataset、严格 JSON/Markdown report、runner、verifier 和 review worksheet。报告绑定 dataset、knowledge release/corpus、active embedding artifact、provider/model、明确的 `responses|chat_completions`、prompt/config fingerprint、Git SHA/dirty truth；逐案例记录检索、引用、evidence mapping、runner latency、token/cost availability 和 fallback。缺少/非法协议的旧报告失败关闭，协议变化会改变 fingerprint。机器固定写 `NOT_REVIEWED`，worksheet apply 只替换 review fields。
 
 Java reader 通过 `report_kind` 区分旧 mock 和新 live 格式，把 measured summary 交给现有质量页。`publishable=false` 和 `human-review-incomplete` 显示为门禁未通过，React 合同无需变化。
 
@@ -24,4 +24,6 @@ cd ../support-copilot-api
 
 ## 实际运行结果
 
-首次运行因 Git SHA 长度约束失败，该内部缺陷由 `be9ac60` 修复。`be9ac60` 上构建并激活真实 1024-dimension artifact，单工单 cross-service live gate 成功；数据集运行首次观察到 1 live success、3 `invalid_model_response` fallbacks、0/4 human reviewed，并暴露 no-evidence success 误增。`3e59a07` 增加回归，要求无证据成功必须是明确的 `insufficient_evidence` fallback。修正两个不同内部根因的尝试分类后，`b856019` 上的一次受限运行再次生成 4-case ignored report：1 live success、3 相同的 `invalid_model_response` fallbacks、0/4 human reviewed，machine gate 为 `machine-gate-failed`；无证据 case 现已正确计为 retrieval/citation failure。相同 provider structured-output 签名第二次出现后已停止，后续需要用户更换或配置能稳定满足当前结构化输出 schema 的 chat endpoint/model；当前不能声称 publishable dataset success。
+`be9ac60` 与 `b856019` 的 4-case 运行都使用 Responses 协议，均得到 1 live success、3 `invalid_model_response` fallbacks；后者 0/4 human reviewed 且 machine gate 为 `machine-gate-failed`。两份报告继续作为明确失败的历史 evidence。干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 则仅证明当时 Responses 路径的一次端到端成功。
+
+新增显式协议后，一次 Chat Completions relay synthetic probe 恰好执行 1 次 chat、0 次 Embedding，耗时 7.437 秒，返回 ACCOUNT / MEDIUM / NEUTRAL、confidence 0.94、citation `[1]` 和 436/245 input/output tokens。它只证明 direct-provider structured chat capability，不是完整 RAG、dataset、跨服务、publishable 或人工 groundedness 成功。下一份可接受证据仍需干净提交上的完整 Chat Completions dataset 与真实人工 labels。

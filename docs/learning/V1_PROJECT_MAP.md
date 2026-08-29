@@ -26,7 +26,7 @@ AI 只提供建议，Java 保存业务事实，React 负责让客服操作和查
 | Java + Spring Boot | HTTP 接口、业务编排、数据库保存和错误处理 | `services/support-copilot-api/src/main/java/` |
 | JPA + H2/MySQL 8 + Flyway | `demo`/`test` 隔离 H2；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，实库待 Task 15 验证 | `services/support-copilot-api/src/main/` |
 | Python + FastAPI | AI 分析、知识检索和结构化结果生成 | `services/support-copilot-ai/app/` |
-| OpenAI API | Python 的 live 模式中的外部模型能力 | `services/support-copilot-ai/app/openai_provider.py` |
+| OpenAI API | Python live 模式显式选择 Responses 或 Chat Completions，并独立调用 Embeddings | `services/support-copilot-ai/app/openai_provider.py` |
 
 当前已加入 JWT Resource Server 角色门禁和 Java-to-Python 服务身份。`demo` 是唯一匿名业务 profile；`test` 使用合成 decoder 执行安全策略；`local`/`pilot` 要求 issuer、audience 和内部 token，缺少任一项时在 datasource 前失败；可选 JWK Set 只提供直接 key-set 位置，不会关闭 issuer/audience claim 校验。真实 OIDC+MySQL pilot、migration checksum、stale schema 和重启持久化证据均留待 Task 15；Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
 
@@ -164,7 +164,9 @@ Python 的概念流程：
     -> 返回结构化 AnalysisResult
 ```
 
-如果使用 live 模式，Python 可以调用外部模型。如果没有配置 API，或调用失败，则需要使用 mock 或 fallback，并在结果中明确标识模式。
+如果使用 live 模式，`OPENAI_CHAT_PROTOCOL` 只接受 `responses` 或 `chat_completions`，默认 `responses`。`OPENAI_BASE_URL` 控制聊天端点，Embedding Base URL/key 保持独立或按配置回退。两条聊天路径都使用 SDK 结构化 Pydantic 解析、`store=false`、相同校验/脱敏/fallback，并且不会自动跨协议发起第二次付费请求。如果没有配置 API 或调用失败，则使用 mock 或 fallback，并在结果中明确标识模式。
+
+历史 `59903a1e5fad74cf2b792263f735dafe36b8066c` 是 Responses 路径的一次端到端成功；`be9ac60` 与 `b856019` 是 Responses 数据集的 1 success + 3 fallback、0/4 人审失败记录。当前 7.437 秒的 Chat Completions relay 探针只有一次 chat、没有 Embedding，只证明 direct-provider capability；完整干净提交 dataset 与人工 groundedness 仍未完成。
 
 ### 4.6 Java 保存分析结果
 
