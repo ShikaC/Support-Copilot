@@ -62,6 +62,19 @@ class JwtClaimValidationIntegrationTests {
 	}
 
 	@Test
+	void signedTokenWithoutIssuerIsUnauthorized() throws Exception {
+		var token = SyntheticJwt.signedWithoutIssuer(
+			testJwtSecret,
+			"SUPPORT_AGENT",
+			"missing-issuer-subject"
+		);
+
+		mockMvc.perform(get("/api/tickets")
+				.header("Authorization", "Bearer " + token))
+			.andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void signedTokenWithWrongIssuerIsUnauthorized() throws Exception {
 		var token = SyntheticJwt.signed(
 			testJwtSecret,

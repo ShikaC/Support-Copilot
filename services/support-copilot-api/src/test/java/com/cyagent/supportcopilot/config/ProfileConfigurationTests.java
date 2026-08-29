@@ -34,6 +34,11 @@ class ProfileConfigurationTests {
 			.containsEntry("spring.h2.console.enabled", "false")
 			.containsEntry("support-copilot.demo-fixtures.enabled", "false")
 			.containsEntry("support-copilot.security.business-access", "jwt")
+			.containsEntry(
+				"spring.security.oauth2.resourceserver.jwt.issuer-uri",
+				"https://issuer.test/support-copilot"
+			)
+			.containsEntry("support-copilot.security.jwt-audience", "support-copilot-api")
 			.containsKeys(
 				"support-copilot.security.internal-service-token",
 				"support-copilot.security.test-jwt-secret"
