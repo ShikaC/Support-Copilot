@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from app.config import Settings
 from app.embedding_artifact import EmbeddingArtifactStore
+from app.embedding_artifact_models import EmbeddingArtifactManifest
 from app.embedding_artifact_identity import file_checksum, provider_identity
 from app.errors import FallbackReason
 from app.knowledge_source import KnowledgeCorpus, load_knowledge_corpus
@@ -147,16 +148,7 @@ def build_live_report(
     manifest_path = settings.embedding_artifact_root / artifact.artifact_id / "manifest.json"
     git_commit = _git(("rev-parse", "HEAD"))
     dirty = bool(_git(("status", "--porcelain")))
-    config = {
-        "chat_provider": provider_identity(settings.openai_base_url),
-        "chat_model": settings.openai_chat_model,
-        "embedding_provider": artifact.provider_identity,
-        "embedding_model": artifact.embedding_model,
-        "top_n": settings.retrieval_top_n,
-        "top_k": settings.retrieval_top_k,
-        "retrieval_min_score": settings.live_retrieval_min_score,
-    }
-    fingerprint = sha256(json.dumps(config, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    fingerprint = config_fingerprint(settings, artifact)
     reviewed = sum(case.human_review.factual_support != "NOT_REVIEWED" for case in cases)
     summary = _summary(cases, reviewed)
     return LiveEvaluationReport(
@@ -190,10 +182,29 @@ def build_live_report(
             ),
             chat_provider_identity=provider_identity(settings.openai_base_url),
             chat_model=settings.openai_chat_model or "unconfigured",
+            chat_protocol=settings.openai_chat_protocol,
         ),
         cases=cases,
         summary=summary,
     )
+
+
+def config_fingerprint(
+    settings: Settings,
+    artifact: EmbeddingArtifactManifest,
+) -> str:
+    config = {
+        "chat_provider": provider_identity(settings.openai_base_url),
+        "chat_model": settings.openai_chat_model,
+        "chat_protocol": settings.openai_chat_protocol,
+        "embedding_provider": artifact.provider_identity,
+        "embedding_model": artifact.embedding_model,
+        "top_n": settings.retrieval_top_n,
+        "top_k": settings.retrieval_top_k,
+        "retrieval_min_score": settings.live_retrieval_min_score,
+    }
+    payload = json.dumps(config, sort_keys=True, separators=(",", ":")).encode()
+    return sha256(payload).hexdigest()
 
 
 def _summary(cases: tuple[LiveCaseResult, ...], reviewed: int) -> LiveSummary:

@@ -2,12 +2,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from app.errors import FallbackReason
+from app.config import Settings
+from app.embedding_artifact_models import ArtifactDocumentRecord, EmbeddingArtifactManifest
 from evaluation.live_dataset import load_live_dataset
 from evaluation.live_models import LiveEvaluationReport, VerificationContext
+from evaluation.live_markdown import render_live_markdown
 from evaluation.live_pricing import apply_pricing
 from evaluation.live_review import apply_review_worksheet, create_review_worksheet
+from evaluation import live_runner
 from evaluation.live_runner import citations_valid, retrieval_succeeded
 from evaluation.live_verifier import verify_live_report
 
@@ -50,6 +55,7 @@ def _report_payload():
             },
             "chat_provider_identity": "compatible:example.invalid",
             "chat_model": "chat-model",
+            "chat_protocol": "responses",
         },
         "cases": [{
             "case_id": "live-sso-001",
@@ -146,6 +152,50 @@ def test_verifier_rejects_adversarial_reports(mutation, reason: str) -> None:
 def test_machine_report_requires_explicit_human_review_for_publishable_gate() -> None:
     assert _reasons(_report_payload()) == ("human-review-incomplete",)
     assert _reasons(_report_payload(), require_human=False) == ()
+
+
+def test_live_provenance_requires_chat_protocol_and_renders_it() -> None:
+    payload = _report_payload()
+    report = LiveEvaluationReport.model_validate(payload)
+
+    assert "`responses`" in render_live_markdown(report)
+
+    del payload["provenance"]["chat_protocol"]
+    with pytest.raises(ValidationError):
+        LiveEvaluationReport.model_validate(payload)
+
+
+def test_live_config_fingerprint_distinguishes_chat_protocol() -> None:
+    manifest = EmbeddingArtifactManifest(
+        schema_version=1,
+        artifact_id=ARTIFACT,
+        release_id="support-copilot-bundled-v1",
+        release_version=1,
+        corpus_checksum=SHA,
+        provider_identity="compatible:embedding.example.invalid",
+        embedding_model="embedding-model",
+        vector_dimension=3,
+        chunking_version="knowledge-corpus-v2",
+        row_count=1,
+        matrix_sha256=SHA,
+        metadata_sha256=SHA,
+        documents=(
+            ArtifactDocumentRecord(
+                document_id="identity-guide",
+                checksum=SHA,
+                chunk_ids=("kb-sso-login-001",),
+            ),
+        ),
+    )
+    responses = Settings(openai_chat_protocol="responses", _env_file=None)
+    chat_completions = Settings(
+        openai_chat_protocol="chat_completions",
+        _env_file=None,
+    )
+
+    fingerprint = getattr(live_runner, "config_fingerprint")
+
+    assert fingerprint(responses, manifest) != fingerprint(chat_completions, manifest)
 
 
 def test_review_workflow_preserves_machine_result(tmp_path: Path) -> None:

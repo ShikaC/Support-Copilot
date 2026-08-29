@@ -28,6 +28,23 @@ def test_default_live_timeouts_have_a_bounded_retry_budget() -> None:
     assert settings.ai_processing_timeout_seconds == 90
 
 
+def test_chat_protocol_defaults_to_responses() -> None:
+    assert Settings(_env_file=None).openai_chat_protocol == "responses"
+
+
+def test_chat_completions_protocol_parses_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_CHAT_PROTOCOL", "chat_completions")
+
+    assert Settings(_env_file=None).openai_chat_protocol == "chat_completions"
+
+
+def test_unknown_chat_protocol_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(openai_chat_protocol="automatic", _env_file=None)
+
+
 def test_rejects_unbounded_openai_retry_configuration() -> None:
     # Given: live requests are configured with more retries than the V1.5 budget allows.
     # When/Then: settings reject the unsafe retry count at the environment boundary.

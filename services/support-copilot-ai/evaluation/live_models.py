@@ -87,6 +87,7 @@ class ProviderProvenance(StrictModel):
     embedding_artifact: EmbeddingArtifactProvenance | None
     chat_provider_identity: str
     chat_model: str
+    chat_protocol: Literal["responses", "chat_completions"]
 
 
 class TokenUsage(StrictModel):

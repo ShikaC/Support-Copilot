@@ -23,6 +23,8 @@ def live_settings() -> Settings:
         openai_chat_model="test-chat-model",
         openai_embedding_model="test-embedding-model",
         openai_max_retries=0,
+        openai_chat_protocol="responses",
+        _env_file=None,
     )
 
 

@@ -1,4 +1,7 @@
+from typing import assert_never
+
 from openai import APITimeoutError, AsyncOpenAI, OpenAIError
+from pydantic import ValidationError
 
 from app.config import Settings
 from app.data_redaction import redact_sensitive_text
@@ -45,25 +48,52 @@ class OpenAIProvider:
             f"知识片段：\n{evidence_text or '没有检索到有效知识片段'}"
         )
         try:
-            response = await self._client.responses.parse(
-                model=self._settings.openai_chat_model,
-                instructions=instructions_for(request.options.prompt_version),
-                input=model_input,
-                store=False,
-                text_format=ModelDraft,
-            )
+            match self._settings.openai_chat_protocol:
+                case "responses":
+                    response = await self._client.responses.parse(
+                        model=self._settings.openai_chat_model,
+                        instructions=instructions_for(request.options.prompt_version),
+                        input=model_input,
+                        store=False,
+                        text_format=ModelDraft,
+                    )
+                    parsed = response.output_parsed
+                    usage = response.usage
+                    input_tokens = usage.input_tokens if usage else 0
+                    output_tokens = usage.output_tokens if usage else 0
+                case "chat_completions":
+                    completion = await self._client.chat.completions.parse(
+                        model=self._settings.openai_chat_model,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": instructions_for(request.options.prompt_version),
+                            },
+                            {"role": "user", "content": model_input},
+                        ],
+                        response_format=ModelDraft,
+                        store=False,
+                    )
+                    parsed = (
+                        completion.choices[0].message.parsed
+                        if completion.choices
+                        else None
+                    )
+                    usage = completion.usage
+                    input_tokens = usage.prompt_tokens if usage else 0
+                    output_tokens = usage.completion_tokens if usage else 0
+                case unreachable:
+                    assert_never(unreachable)
+
+            if parsed is None:
+                raise InvalidModelResponseError
+            draft = ModelDraft.model_validate(parsed)
         except APITimeoutError as exc:
             raise structured_generation_timeout_error(exc) from exc
         except OpenAIError as exc:
             # 只有 OpenAI SDK 明确报告的外部故障才允许进入工作流 fallback。
             raise StructuredGenerationApiError from exc
+        except ValidationError as exc:
+            raise InvalidModelResponseError from exc
 
-        if response.output_parsed is None:
-            raise InvalidModelResponseError
-
-        usage = response.usage
-        return (
-            response.output_parsed,
-            usage.input_tokens if usage else 0,
-            usage.output_tokens if usage else 0,
-        )
+        return draft, input_tokens, output_tokens

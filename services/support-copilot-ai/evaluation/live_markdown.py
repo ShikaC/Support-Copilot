@@ -13,7 +13,7 @@ def render_live_markdown(report: LiveEvaluationReport) -> str:
         f"- Git: `{report.run.git_commit}`; dirty=`{str(report.run.worktree_dirty).lower()}`",
         f"- Knowledge release: `{report.provenance.knowledge_release_id}` v`{report.provenance.knowledge_release_version}`",
         f"- Semantic corpus checksum: `{report.provenance.semantic_corpus_checksum}`",
-        f"- Chat: `{report.provenance.chat_provider_identity}` / `{report.provenance.chat_model}`",
+        f"- Chat: `{report.provenance.chat_provider_identity}` / `{report.provenance.chat_model}` / `{report.provenance.chat_protocol}`",
         f"- Prompt: `{report.run.prompt_version}`",
         f"- Publishable: `{str(report.summary.publishable).lower()}`",
         f"- Gate reasons: `{', '.join(report.summary.gate_reasons) or 'none'}`",
