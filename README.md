@@ -135,7 +135,7 @@ export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='synthetic-local-development-token
 
 `demo` 使用内存 H2、`create-drop`、H2 Console 和 8 条演示工单，只适合本地演示。H2 Console 位于 `http://localhost:8080/h2-console`。`test` 也使用随机命名的隔离 H2 和 `create-drop`，但不加载演示数据且不开放 H2 Console；Gradle 集成测试通过 `@ActiveProfiles("test")` 显式选择它。
 
-`local` 和 `pilot` 都配置为连接 MySQL 8、执行 Flyway migration 并让 Hibernate 使用 `validate`，不加载演示数据，也不开放 H2 Console。两者要求数据库配置、服务间 token，以及 JWT issuer 或 JWK Set 地址存在且非空：
+`local` 和 `pilot` 都配置为连接 MySQL 8、执行 Flyway migration 并让 Hibernate 使用 `validate`，不加载演示数据，也不开放 H2 Console。两者要求数据库配置、服务间 token、JWT issuer 和 JWT audience 都存在且非空：
 
 ```bash
 cd services/support-copilot-api
@@ -144,7 +144,9 @@ export SUPPORT_COPILOT_DB_USERNAME='your-database-user'
 export SUPPORT_COPILOT_DB_PASSWORD='your-database-password'
 export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='inject-a-non-browser-service-token'
 export SUPPORT_COPILOT_JWT_ISSUER_URI='https://your-issuer.example'
-# 也可以改用 SUPPORT_COPILOT_JWT_JWK_SET_URI；两者至少配置一个。
+export SUPPORT_COPILOT_JWT_AUDIENCE='support-copilot-api'
+# 可选：使用直接的 JWK Set 地址；它不会替代 issuer/audience claim 校验。
+# export SUPPORT_COPILOT_JWT_JWK_SET_URI='https://your-issuer.example/.well-known/jwks.json'
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
@@ -154,7 +156,9 @@ export SUPPORT_COPILOT_JWT_ISSUER_URI='https://your-issuer.example'
 ./gradlew bootRun --args='--spring.profiles.active=pilot'
 ```
 
-AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS`、`AI_SERVICE_RETRY_MAX_ATTEMPTS`、`AI_SERVICE_RETRY_WAIT_MS`、`AI_SERVICE_CIRCUIT_*`、`AI_SERVICE_BULKHEAD_*` 和 `EVALUATION_REPORT_PATH` 覆盖。可靠性参数在启动时校验边界和交叉约束，非法值拒绝启动。`local`/`pilot` 缺少或留空 JWT 地址或服务间 token 时会在 datasource 创建前失败，不会回退到开放访问。`demo` 是唯一允许匿名业务 API 的 profile；`test` 使用显式合成 HMAC decoder，但执行与 `local`/`pilot` 相同的受保护 endpoint policy。
+AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS`、`AI_SERVICE_RETRY_MAX_ATTEMPTS`、`AI_SERVICE_RETRY_WAIT_MS`、`AI_SERVICE_CIRCUIT_*`、`AI_SERVICE_BULKHEAD_*` 和 `EVALUATION_REPORT_PATH` 覆盖。可靠性参数在启动时校验边界和交叉约束，非法值拒绝启动。`local`/`pilot` 缺少或留空 `SUPPORT_COPILOT_JWT_ISSUER_URI`、`SUPPORT_COPILOT_JWT_AUDIENCE` 或服务间 token 时会在 datasource 创建前失败，不会回退到开放访问。`SUPPORT_COPILOT_JWT_JWK_SET_URI` 只是可选的直接 key-set 位置，永远不会关闭 issuer/audience claim 校验。`demo` 是唯一允许匿名业务 API 的 profile；`test` 使用显式合成 HMAC decoder，但执行与 `local`/`pilot` 相同的受保护 endpoint policy。
+
+上述 JWT 行为已用合成 JWT 和本地配置场景验证；这不是对真实 OIDC provider 的集成验证，也不代表生产身份系统已经接入。
 
 以上 `local`/`pilot` 命令是配置契约，不是实库通过声明。MySQL schema、Flyway version/checksum、Hibernate 实库校验、LOB/time/`@Version` 映射、空库行为、stale schema 拒绝和 Java 重启持久化均未在本轮执行；它们统一由 Task 15 的 MySQL 8 运行时验收负责。
 

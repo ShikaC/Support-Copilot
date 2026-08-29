@@ -15,7 +15,7 @@ public final class RuntimeProfileApplicationContextInitializer
 		"Application startup requires exactly one active profile from: demo, test, local, pilot.";
 	private static final String INTERNAL_TOKEN = "SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN";
 	private static final String JWT_ISSUER = "SUPPORT_COPILOT_JWT_ISSUER_URI";
-	private static final String JWT_JWK_SET = "SUPPORT_COPILOT_JWT_JWK_SET_URI";
+	private static final String JWT_AUDIENCE = "SUPPORT_COPILOT_JWT_AUDIENCE";
 
 	@Override
 	public void initialize(ConfigurableApplicationContext applicationContext) {
@@ -28,13 +28,8 @@ public final class RuntimeProfileApplicationContextInitializer
 		var profile = activeProfiles.getFirst();
 		if (profile.equals("local") || profile.equals("pilot")) {
 			requireNonBlank(applicationContext, INTERNAL_TOKEN);
-			var issuerUri = applicationContext.getEnvironment().getProperty(JWT_ISSUER);
-			var jwkSetUri = applicationContext.getEnvironment().getProperty(JWT_JWK_SET);
-			if (isBlank(issuerUri) && isBlank(jwkSetUri)) {
-				throw new IllegalStateException(
-					JWT_ISSUER + " or " + JWT_JWK_SET + " must be configured with a non-blank value."
-				);
-			}
+			requireNonBlank(applicationContext, JWT_ISSUER);
+			requireNonBlank(applicationContext, JWT_AUDIENCE);
 		}
 	}
 

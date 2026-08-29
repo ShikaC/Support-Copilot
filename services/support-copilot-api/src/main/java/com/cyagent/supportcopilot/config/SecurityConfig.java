@@ -17,10 +17,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -87,28 +90,41 @@ public class SecurityConfig {
 	@Bean
 	@Profile("test")
 	JwtDecoder testJwtDecoder(
-		@Value("${support-copilot.security.test-jwt-secret}") String testJwtSecret
+		@Value("${support-copilot.security.test-jwt-secret}") String testJwtSecret,
+		@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
+		@Value("${support-copilot.security.jwt-audience}") String audience
 	) {
 		var key = new SecretKeySpec(testJwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-		return NimbusJwtDecoder.withSecretKey(key)
+		var decoder = NimbusJwtDecoder.withSecretKey(key)
 			.macAlgorithm(MacAlgorithm.HS256)
 			.build();
+		decoder.setJwtValidator(trustedJwtValidator(issuerUri, audience));
+		return decoder;
 	}
 
 	@Bean
 	@Profile({"local", "pilot"})
 	JwtDecoder externalJwtDecoder(
-		@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri,
-		@Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") String jwkSetUri
+		@Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
+		@Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") String jwkSetUri,
+		@Value("${support-copilot.security.jwt-audience}") String audience
 	) {
-		if (!jwkSetUri.isBlank()) {
-			var decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-			decoder.setJwtValidator(issuerUri.isBlank()
-				? JwtValidators.createDefault()
-				: JwtValidators.createDefaultWithIssuer(issuerUri));
-			return decoder;
-		}
-		return JwtDecoders.fromIssuerLocation(issuerUri);
+		var decoder = jwkSetUri.isBlank()
+			? NimbusJwtDecoder.withIssuerLocation(issuerUri).build()
+			: NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+		decoder.setJwtValidator(trustedJwtValidator(issuerUri, audience));
+		return decoder;
+	}
+
+	private OAuth2TokenValidator<Jwt> trustedJwtValidator(String issuerUri, String audience) {
+		var audienceValidator = new JwtClaimValidator<List<String>>(
+			JwtClaimNames.AUD,
+			audiences -> audiences != null && audiences.contains(audience)
+		);
+		return new DelegatingOAuth2TokenValidator<>(
+			JwtValidators.createDefaultWithIssuer(issuerUri),
+			audienceValidator
+		);
 	}
 
 	private JwtAuthenticationConverter jwtAuthenticationConverter() {

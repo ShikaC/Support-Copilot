@@ -84,6 +84,10 @@ class ProfileConfigurationTests {
 			.containsEntry(
 				"spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
 				"${SUPPORT_COPILOT_JWT_JWK_SET_URI:}"
+			)
+			.containsEntry(
+				"support-copilot.security.jwt-audience",
+				"${SUPPORT_COPILOT_JWT_AUDIENCE}"
 			);
 	}
 

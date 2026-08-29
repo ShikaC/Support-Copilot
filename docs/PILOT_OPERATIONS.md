@@ -115,6 +115,20 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 `SUPPORT_AGENT` 可使用工单、知识查询和指标；`SUPPORT_REVIEWER`/`SUPPORT_ADMIN` 才能
 审核、查询审计和变更知识 release；其他 actuator 只允许 admin。401/403 不回显 token。
 
+### JWT 配置
+
+`local`/`pilot` 启动前都要求以下变量存在且非空：
+
+```bash
+export SUPPORT_COPILOT_JWT_ISSUER_URI='https://your-issuer.example'
+export SUPPORT_COPILOT_JWT_AUDIENCE='support-copilot-api'
+```
+
+`SUPPORT_COPILOT_JWT_JWK_SET_URI` 是可选的直接 key-set 位置。配置它只改变密钥的获取位置，
+不会替代或关闭 issuer 和 audience claim 校验。缺少或留空 issuer、audience 或内部服务 token
+时，`local`/`pilot` 会在 datasource 创建前失败，不会回退到匿名访问或 H2。以上行为已在本地
+配置和合成 JWT 场景验证，不是对真实 OIDC provider、登录或 token refresh 的集成验证。
+
 知识访问范围只来自 JWT `support_scopes` 白名单，再与 active release 范围求交集。工单
 正文、query 参数或浏览器 header 都不能扩大权限。原始 Markdown/文本 PDF 在仓库外经
 授权清单构建 corpus/provenance；扫描件 OCR、上传 UI、增量索引和跨主机 artifact 协调

@@ -28,7 +28,7 @@ AI 只提供建议，Java 保存业务事实，React 负责让客服操作和查
 | Python + FastAPI | AI 分析、知识检索和结构化结果生成 | `services/support-copilot-ai/app/` |
 | OpenAI API | Python 的 live 模式中的外部模型能力 | `services/support-copilot-ai/app/openai_provider.py` |
 
-当前已加入 JWT Resource Server 角色门禁和 Java-to-Python 服务身份。`demo` 是唯一匿名业务 profile；`test` 使用合成 decoder 执行安全策略；`local`/`pilot` 缺少 JWT 地址或内部 token 时在 datasource 前失败。真实 OIDC+MySQL pilot、migration checksum、stale schema 和重启持久化证据均留待 Task 15；Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
+当前已加入 JWT Resource Server 角色门禁和 Java-to-Python 服务身份。`demo` 是唯一匿名业务 profile；`test` 使用合成 decoder 执行安全策略；`local`/`pilot` 要求 issuer、audience 和内部 token，缺少任一项时在 datasource 前失败；可选 JWK Set 只提供直接 key-set 位置，不会关闭 issuer/audience claim 校验。真实 OIDC+MySQL pilot、migration checksum、stale schema 和重启持久化证据均留待 Task 15；Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
 
 ## 3. 服务边界
 
@@ -226,7 +226,7 @@ Java 返回 `AnalysisResponse` 后，React 会：
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/Ticket.java`
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketRepository.java`
 
-运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单、开放 H2 Console 并允许匿名业务 API；`test` 使用空的随机内存库和显式合成 JWT decoder，但 endpoint policy 与安全 profile 相同。`local`/`pilot` 要求非空 MySQL JDBC、内部服务 token，以及 issuer/JWK 配置；缺失/留空时拒绝启动，不回退 H2 或开放访问。真实 MySQL/OIDC 行为仍待 Task 15 验证。
+运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单、开放 H2 Console 并允许匿名业务 API；`test` 使用空的随机内存库和显式合成 JWT decoder，但 endpoint policy 与安全 profile 相同。`local`/`pilot` 要求非空 MySQL JDBC、内部服务 token、`SUPPORT_COPILOT_JWT_ISSUER_URI` 和 `SUPPORT_COPILOT_JWT_AUDIENCE`；`SUPPORT_COPILOT_JWT_JWK_SET_URI` 可选且只指定直接 key-set 位置，不会关闭 issuer/audience claim 校验。缺失/留空时拒绝启动，不回退 H2 或开放访问。真实 MySQL/OIDC 行为仍待 Task 15 验证。
 
 ### AnalysisRun
 

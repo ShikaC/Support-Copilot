@@ -8,7 +8,7 @@ Java 原先对全部请求 `permitAll`，审核 actor 固定为演示用户；�
 
 - `demo`：业务 API 保持匿名，审核只使用明确的 `UNAUTHENTICATED_DEMO` actor；非 health actuator 不开放。
 - `test`：使用显式合成 JWT decoder，但执行与 `local`/`pilot` 相同的 endpoint policy。
-- `local`/`pilot`：启动前要求非空 `SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN`，并要求 `SUPPORT_COPILOT_JWT_ISSUER_URI` 或 `SUPPORT_COPILOT_JWT_JWK_SET_URI` 至少一个非空；缺失时在 datasource 创建前失败。
+- `local`/`pilot`：启动前要求非空 `SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN`、`SUPPORT_COPILOT_JWT_ISSUER_URI` 和 `SUPPORT_COPILOT_JWT_AUDIENCE`；`SUPPORT_COPILOT_JWT_JWK_SET_URI` 可选，只指定直接 key-set 位置，不会关闭 issuer/audience claim 校验。缺失必需变量时在 datasource 创建前失败。
 - JWT roles：agent/reviewer/admin 可访问 tickets、knowledge search 和 metrics；reviews 只允许 reviewer/admin；非 health actuator 只允许 admin。
 - 审核 actor：安全 profile 只从 `JwtAuthenticationToken` subject 读取，不读取请求 header/body。
 - Java-to-Python：Java 每次 `/analyze` 都发送 `X-Internal-Service-Token` 和原 `X-Trace-Id`；Python 使用 `secrets.compare_digest`，在 workflow/provider 前拒绝缺失或错误 token。

@@ -23,6 +23,7 @@ class RuntimeProfileIntegrationTests {
 	private static final String INTERNAL_TOKEN = "SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN";
 	private static final String JWT_ISSUER = "SUPPORT_COPILOT_JWT_ISSUER_URI";
 	private static final String JWT_JWK_SET = "SUPPORT_COPILOT_JWT_JWK_SET_URI";
+	private static final String JWT_AUDIENCE = "SUPPORT_COPILOT_JWT_AUDIENCE";
 
 	@ParameterizedTest(name = "{0}: {1}")
 	@MethodSource("invalidSecureProfileSettings")
@@ -32,6 +33,7 @@ class RuntimeProfileIntegrationTests {
 		String internalToken,
 		String issuerUri,
 		String jwkSetUri,
+		String audience,
 		String expectedVariable
 	) {
 		var environment = new MockEnvironment();
@@ -39,6 +41,7 @@ class RuntimeProfileIntegrationTests {
 		setProperty(environment, INTERNAL_TOKEN, internalToken);
 		setProperty(environment, JWT_ISSUER, issuerUri);
 		setProperty(environment, JWT_JWK_SET, jwkSetUri);
+		setProperty(environment, JWT_AUDIENCE, audience);
 		try (var context = new GenericApplicationContext()) {
 			context.setEnvironment(environment);
 
@@ -77,10 +80,18 @@ class RuntimeProfileIntegrationTests {
 
 	private static Stream<Arguments> invalidSecureProfileSettings() {
 		return Stream.of(
-			Arguments.of("local", "missing internal token", null, null, "https://issuer.test/jwks", INTERNAL_TOKEN),
-			Arguments.of("pilot", "blank internal token", " ", null, "https://issuer.test/jwks", INTERNAL_TOKEN),
-			Arguments.of("local", "missing JWT location", "synthetic-runtime-token", null, null, JWT_ISSUER),
-			Arguments.of("pilot", "blank JWT locations", "synthetic-runtime-token", " ", " ", JWT_ISSUER)
+			Arguments.of("local", "missing internal token", null, "https://issuer.test", null,
+				"support-copilot-api", INTERNAL_TOKEN),
+			Arguments.of("pilot", "blank internal token", " ", "https://issuer.test", null,
+				"support-copilot-api", INTERNAL_TOKEN),
+			Arguments.of("local", "missing issuer with JWK configured", "synthetic-runtime-token", null,
+				"https://issuer.test/jwks", "support-copilot-api", JWT_ISSUER),
+			Arguments.of("pilot", "blank issuer with JWK configured", "synthetic-runtime-token", " ",
+				"https://issuer.test/jwks", "support-copilot-api", JWT_ISSUER),
+			Arguments.of("local", "missing audience", "synthetic-runtime-token", "https://issuer.test",
+				null, null, JWT_AUDIENCE),
+			Arguments.of("pilot", "blank audience", "synthetic-runtime-token", "https://issuer.test",
+				null, " ", JWT_AUDIENCE)
 		);
 	}
 
