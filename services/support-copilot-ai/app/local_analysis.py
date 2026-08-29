@@ -15,6 +15,10 @@ from app.models import (
 HIGH_RISK_CATEGORIES = {"BILLING", "PRIVACY", "SECURITY", "LEGAL"}
 
 
+def citation_label(hit: RetrievalHit) -> str:
+    return f"{hit.document_title} {hit.section} [chunkId:{hit.chunk_id}]"
+
+
 @dataclass(frozen=True, slots=True)
 class WorkflowObservation:
     retrieval_ms: int
@@ -105,7 +109,7 @@ class LocalAnalysisPolicy:
         evidence_missing: bool,
     ) -> SuggestedReply:
         citation_hits = self._citation_hits(draft.citation_indexes, hits)
-        citations = [f"{hit.document_title} {hit.section}" for hit in citation_hits]
+        citations = [citation_label(hit) for hit in citation_hits]
         citation_markers = "" if not citations else " " + "".join(
             f"[{index}]" for index in range(1, len(citations) + 1)
         )

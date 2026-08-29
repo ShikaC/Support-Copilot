@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
+from app.local_analysis import citation_label
 from app.models import AnalyzeResponse
 from evaluation.case_checks import (
     case_failures,
@@ -85,7 +86,7 @@ def _case_result(
 ) -> CaseEvaluationResult:
     retrieved_ids = tuple(hit.chunk_id for hit in response.retrieval.hits)
     retrieved_by_label = {
-        f"{hit.document_title} {hit.section}": hit for hit in response.retrieval.hits
+        citation_label(hit): hit for hit in response.retrieval.hits
     }
     cited_ids = tuple(
         retrieved_by_label[citation].chunk_id

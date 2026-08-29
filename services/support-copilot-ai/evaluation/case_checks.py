@@ -1,5 +1,6 @@
 from typing import assert_never
 
+from app.local_analysis import citation_label
 from app.models import AnalyzeResponse
 from evaluation.models import CaseFailure, EvaluationCase, ReplyConstraint
 
@@ -57,7 +58,7 @@ def citation_failure(
     if not case.evidence_required:
         return None
     retrieved_by_label = {
-        f"{hit.document_title} {hit.section}": hit for hit in response.retrieval.hits
+        citation_label(hit): hit for hit in response.retrieval.hits
     }
     cited_hits = [
         retrieved_by_label[citation]

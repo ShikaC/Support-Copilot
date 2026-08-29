@@ -12,6 +12,7 @@ from app.embedding_artifact import EmbeddingArtifactStore
 from app.embedding_artifact_identity import file_checksum, provider_identity
 from app.errors import FallbackReason
 from app.knowledge_source import KnowledgeCorpus, load_knowledge_corpus
+from app.local_analysis import citation_label
 from app.models import AnalyzeOptions, AnalyzeRequest, AnalyzeResponse, KnowledgeAccess, Priority, SupportScope, TicketInput
 from evaluation.live_dataset import file_sha256
 from evaluation.live_models import (
@@ -70,7 +71,7 @@ def _case_result(
     latency_ms: int,
 ) -> LiveCaseResult:
     retrieved = tuple(hit.chunk_id for hit in response.retrieval.hits)
-    labels = {f"{hit.document_title} {hit.section}": hit.chunk_id for hit in response.retrieval.hits}
+    labels = {citation_label(hit): hit.chunk_id for hit in response.retrieval.hits}
     cited = tuple(labels[label] for label in response.suggested_reply.citations if label in labels)
     indexes = tuple(index for index, chunk_id in enumerate(retrieved, start=1) if chunk_id in cited)
     usage_available = response.usage.input_tokens > 0 or response.usage.output_tokens > 0

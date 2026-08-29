@@ -9,6 +9,7 @@ from app.models import AnalyzeOptions
 from app.workflow import AnalysisWorkflow
 from evaluation.case_checks import (
     case_failures,
+    citation_failure,
     classification_failure,
     classification_is_correct,
     collect_failures,
@@ -195,3 +196,41 @@ async def test_case_failures_rejects_a_citation_not_mapped_to_retrieved_evidence
         expected="retrieved_evidence_cited_and_mapped",
         actual="invalid_or_unrelated_citation",
     )
+
+
+@pytest.mark.asyncio
+async def test_citation_validation_maps_duplicate_visible_labels_to_selected_chunk() -> None:
+    # Given: two retrieved chunks share a visible title and section but have different IDs.
+    case = load_evaluation_cases(DATASET_PATH)[0].model_copy(
+        update={"expected_evidence_ids": frozenset({"account-sso-002"})}
+    )
+    settings = Settings(ai_mode="mock")
+    workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
+    response = await workflow.run(case.to_request(OPTIONS))
+    template = response.retrieval.hits[0]
+    selected = template.model_copy(
+        update={
+            "chunk_id": "account-sso-002",
+            "document_title": "Account access runbook",
+            "section": "SSO login",
+        }
+    )
+    other = selected.model_copy(update={"chunk_id": "account-sso-001"})
+    collision_response = response.model_copy(
+        update={
+            "retrieval": response.retrieval.model_copy(update={"hits": [other, selected]}),
+            "suggested_reply": response.suggested_reply.model_copy(
+                update={
+                    "citations": [
+                        "Account access runbook SSO login [chunkId:account-sso-002]"
+                    ]
+                }
+            ),
+        }
+    )
+
+    # When: the evaluation validates the response citation.
+    failure = citation_failure(case, collision_response)
+
+    # Then: the citation resolves only to the explicitly selected chunk ID.
+    assert failure is None
