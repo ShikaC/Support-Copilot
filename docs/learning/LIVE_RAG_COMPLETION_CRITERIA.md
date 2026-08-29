@@ -34,7 +34,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 
 当前已经达到层级 3 的单次真实 live 验证：
 
-- 2026-08-26 在干净提交 `59903a125e30a25b29e4156b28023e53fb21ea52` 上执行 `./scripts/check-live-rag.sh --success`，正式 Embedding 和结构化生成调用均成功。
+- 2026-08-26 在干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 上执行 `./scripts/check-live-rag.sh --success`，正式 Embedding 和结构化生成调用均成功。
 - 最终结果为 `mode=live`、`status=SUCCEEDED`，返回 3 条 `VECTOR` 检索证据和 1 条引用，并由 Java 保存为最新分析记录。
 - 本次记录使用脱敏合成工单；本地忽略的证据文件只保留配置类型、聚合运行值和可追溯标识，不包含密钥、授权头、工单正文或供应商原始响应。
 

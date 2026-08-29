@@ -163,7 +163,7 @@ cd services/support-copilot-ai
 
 第 59 轮将固定 mock 评估报告接入 Java `/api/metrics` 和 React 质量页。Java 只读取报告中的稳定字段；报告缺失、损坏或字段不兼容时保留其他指标并返回 `evaluation=null`。页面展示数据集、样本数、模型、Prompt 版本、Top N/K、Hit@K、MRR、引用覆盖率、无证据安全率、P95 和门禁状态，不再使用报告中不存在的 `groundedness` 或 `citationAccuracy` 字段。质量报告仍是文件来源，不是持久化评估运行表；该轮完成时真实 live RAG 和正式 Embedding 尚未验证。
 
-Task 1 基线在 2026-08-26 的干净提交 `59903a125e30a25b29e4156b28023e53fb21ea52` 上完成一次真实 live 验收：正式 Embedding、VECTOR 检索、结构化生成、引用和 Java 持久化均通过。该记录只证明一条脱敏合成工单链路，不能外推为质量、稳定性、生产延迟或真实客服效果。
+Task 1 基线在 2026-08-26 的干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 上完成一次真实 live 验收：正式 Embedding、VECTOR 检索、结构化生成、引用和 Java 持久化均通过。该记录只证明一条脱敏合成工单链路，不能外推为质量、稳定性、生产延迟或真实客服效果。
 
 Task 2 已将工单 PATCH 收紧为带 `expectedVersion` 的乐观并发写入，统一冲突代码为 `VERSION_CONFLICT`，并集中定义手工状态转换与 channel、customer tier、priority、category、status 值域。React 的真实工单负责人操作会发送当前版本，冲突后重新读取受影响工单；无版本 Demo 工单继续只在本地修改。`INVOICE` 由当前本地 AI 分类器和固定评估集产生；`SECURITY`、`LEGAL` 由高风险策略消费并允许结构化 live 结果进入持久化边界。所有新 AI 结果仍必须通过受控分类校验。
 
