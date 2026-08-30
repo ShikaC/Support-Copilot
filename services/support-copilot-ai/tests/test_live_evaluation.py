@@ -5,14 +5,15 @@ import pytest
 from pydantic import ValidationError
 
 from app.errors import FallbackReason
-from app.config import Settings
-from app.embedding_artifact_models import ArtifactDocumentRecord, EmbeddingArtifactManifest
 from evaluation.live_dataset import load_live_dataset
-from evaluation.live_models import LiveEvaluationReport, VerificationContext
+from evaluation.live_models import (
+    LiveConfiguration,
+    LiveEvaluationReport,
+    VerificationContext,
+)
 from evaluation.live_markdown import render_live_markdown
 from evaluation.live_pricing import apply_pricing
 from evaluation.live_review import apply_review_worksheet, create_review_worksheet
-from evaluation import live_runner
 from evaluation.live_runner import citations_valid, retrieval_succeeded
 from evaluation.live_verifier import verify_live_report
 
@@ -108,6 +109,19 @@ def _context() -> VerificationContext:
         git_commit=GIT_SHA,
         worktree_dirty=False,
         known_chunk_ids=frozenset({"kb-sso-login-001"}),
+        configuration=LiveConfiguration(
+            prompt_version="ticket-analysis-v1",
+            top_n=10,
+            top_k=3,
+            config_fingerprint=SHA,
+            chat_provider_identity="compatible:example.invalid",
+            chat_model="chat-model",
+            chat_protocol="responses",
+            embedding_provider_identity="compatible:example.invalid",
+            embedding_model="embedding-model",
+            embedding_dimension=3,
+            embedding_chunking_version="knowledge-corpus-v2",
+        ),
     )
 
 
@@ -154,6 +168,33 @@ def test_machine_report_requires_explicit_human_review_for_publishable_gate() ->
     assert _reasons(_report_payload(), require_human=False) == ()
 
 
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda p: p["provenance"].update({"chat_protocol": "chat_completions"}), "chat-protocol-mismatch"),
+        (lambda p: p["provenance"].update({"chat_model": "other-chat-model"}), "chat-model-mismatch"),
+        (lambda p: p["provenance"].update({"chat_provider_identity": "openai-default"}), "chat-provider-identity-mismatch"),
+        (lambda p: p["run"].update({"config_fingerprint": "d" * 64}), "config-fingerprint-mismatch"),
+        (lambda p: p["provenance"]["embedding_artifact"].update({"provider_identity": "openai-default"}), "embedding-provider-identity-mismatch"),
+        (lambda p: p["provenance"]["embedding_artifact"].update({"model": "other-embedding-model"}), "embedding-model-mismatch"),
+        (lambda p: p["provenance"]["embedding_artifact"].update({"dimension": 4}), "embedding-dimension-mismatch"),
+        (lambda p: p["provenance"]["embedding_artifact"].update({"chunking_version": "knowledge-corpus-v3"}), "embedding-chunking-version-mismatch"),
+        (lambda p: p["run"].update({"prompt_version": "ticket-analysis-v2"}), "prompt-version-mismatch"),
+        (lambda p: p["run"].update({"top_n": 11}), "top-n-mismatch"),
+        (lambda p: p["run"].update({"top_k": 2}), "top-k-mismatch"),
+        (lambda p: p["summary"].update({"average_latency_ms": 99.0}), "summary-mismatch"),
+    ],
+)
+def test_verifier_rejects_report_fields_that_do_not_match_current_context(
+    mutation,
+    reason: str,
+) -> None:
+    payload = _report_payload()
+    mutation(payload)
+
+    assert reason in _reasons(payload, require_human=False)
+
+
 def test_live_provenance_requires_chat_protocol_and_renders_it() -> None:
     payload = _report_payload()
     report = LiveEvaluationReport.model_validate(payload)
@@ -165,37 +206,33 @@ def test_live_provenance_requires_chat_protocol_and_renders_it() -> None:
         LiveEvaluationReport.model_validate(payload)
 
 
-def test_live_config_fingerprint_distinguishes_chat_protocol() -> None:
-    manifest = EmbeddingArtifactManifest(
-        schema_version=1,
-        artifact_id=ARTIFACT,
-        release_id="support-copilot-bundled-v1",
-        release_version=1,
-        corpus_checksum=SHA,
-        provider_identity="compatible:embedding.example.invalid",
-        embedding_model="embedding-model",
-        vector_dimension=3,
-        chunking_version="knowledge-corpus-v2",
-        row_count=1,
-        matrix_sha256=SHA,
-        metadata_sha256=SHA,
-        documents=(
-            ArtifactDocumentRecord(
-                document_id="identity-guide",
-                checksum=SHA,
-                chunk_ids=("kb-sso-login-001",),
-            ),
-        ),
+def test_machine_gate_failure_does_not_skip_provenance_verification() -> None:
+    payload = _report_payload()
+    payload["cases"][0].update(
+        {
+            "status": "FALLBACK",
+            "mode": "fallback",
+            "fallback_reason": "invalid_model_response",
+            "retrieval_success": False,
+            "citation_valid": False,
+        }
     )
-    responses = Settings(openai_chat_protocol="responses", _env_file=None)
-    chat_completions = Settings(
-        openai_chat_protocol="chat_completions",
-        _env_file=None,
+    payload["summary"].update(
+        {
+            "succeeded_cases": 0,
+            "retrieval_success_count": 0,
+            "retrieval_success_rate": 0.0,
+            "citation_valid_count": 0,
+            "citation_valid_rate": 0.0,
+            "fallback_count": 1,
+            "gate_reasons": ["machine-gate-failed"],
+        }
     )
+    assert _reasons(payload, require_human=False) == ()
 
-    fingerprint = getattr(live_runner, "config_fingerprint")
+    payload["provenance"].update({"chat_model": "other-chat-model"})
 
-    assert fingerprint(responses, manifest) != fingerprint(chat_completions, manifest)
+    assert "chat-model-mismatch" in _reasons(payload, require_human=False)
 
 
 def test_review_workflow_preserves_machine_result(tmp_path: Path) -> None:

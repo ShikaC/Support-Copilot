@@ -1,36 +1,39 @@
 from datetime import UTC, datetime
 from pathlib import Path
+import sys
 from typing import Annotated
 
 import anyio
 import typer
 
+SERVICE_DIR = Path(__file__).resolve().parents[1]
+if str(SERVICE_DIR) not in sys.path:
+    sys.path.insert(0, str(SERVICE_DIR))
+
 from app.analysis_runner import AnalysisRunner
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
-from app.knowledge_source import load_knowledge_corpus
 from app.workflow import AnalysisWorkflow
-from evaluation.live_dataset import load_live_dataset
 from evaluation.live_markdown import render_live_markdown
+from evaluation.live_provenance import load_verified_live_inputs
 from evaluation.live_review import create_review_worksheet
 from evaluation.live_pricing import apply_pricing
 from evaluation.live_runner import build_live_report, run_live_cases
 
-SERVICE_DIR = Path(__file__).parents[1]
+REPO_ROOT = SERVICE_DIR.parents[1]
 DEFAULT_DATASET = SERVICE_DIR / "evaluation" / "data" / "live-v1.json"
 DEFAULT_REPORT_DIR = SERVICE_DIR / "evaluation" / "reports"
 
 
 async def run(dataset_path: Path, report_dir: Path, pricing_path: Path | None) -> int:
     settings = Settings(ai_mode="live")
-    dataset = load_live_dataset(dataset_path)
-    corpus = load_knowledge_corpus(settings.knowledge_path, settings.knowledge_provenance_path)
+    inputs = load_verified_live_inputs(dataset_path, settings)
     retriever = KnowledgeRetriever(settings)
     workflow = AnalysisWorkflow(settings, retriever)
     runner = AnalysisRunner(settings, workflow)
-    cases = await run_live_cases(dataset, runner.run, corpus)
+    cases = await run_live_cases(inputs, runner.run)
     cases = apply_pricing(cases, pricing_path, settings.openai_chat_model or "unconfigured")
-    report = build_live_report(dataset, dataset_path, settings, corpus, cases)
+    report = build_live_report(inputs, REPO_ROOT, cases)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     report_dir.mkdir(parents=True, exist_ok=True)
     json_path = report_dir / f"live-evaluation-{stamp}.json"

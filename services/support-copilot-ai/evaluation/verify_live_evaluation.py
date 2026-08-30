@@ -1,35 +1,32 @@
 from pathlib import Path
-import subprocess
+import sys
 from typing import Annotated
 
 import typer
 
+SERVICE_DIR = Path(__file__).resolve().parents[1]
+if str(SERVICE_DIR) not in sys.path:
+    sys.path.insert(0, str(SERVICE_DIR))
+
 from app.config import Settings
-from app.embedding_artifact import EmbeddingArtifactStore
-from app.embedding_artifact_identity import file_checksum
-from app.knowledge_source import load_knowledge_corpus
-from evaluation.live_dataset import file_sha256, load_live_dataset
 from evaluation.live_models import LiveEvaluationReport, VerificationContext
+from evaluation.live_provenance import (
+    build_verification_context,
+    load_verified_live_inputs,
+)
 from evaluation.live_verifier import verify_live_report
 
+REPO_ROOT = SERVICE_DIR.parents[1]
 
-def current_context(dataset_path: Path, settings: Settings) -> VerificationContext:
-    dataset = load_live_dataset(dataset_path)
-    corpus = load_knowledge_corpus(settings.knowledge_path, settings.knowledge_provenance_path)
-    artifact = EmbeddingArtifactStore(settings, corpus).load_active().manifest
-    manifest_path = settings.embedding_artifact_root / artifact.artifact_id / "manifest.json"
-    return VerificationContext(
-        dataset_id=dataset.dataset_id,
-        dataset_version=dataset.version,
-        dataset_checksum=file_sha256(dataset_path),
-        release_id=corpus.release_id,
-        release_version=corpus.release_version,
-        corpus_checksum=corpus.corpus_checksum,
-        artifact_id=artifact.artifact_id,
-        artifact_manifest_sha256=file_checksum(manifest_path),
-        git_commit=_git(("rev-parse", "HEAD")),
-        worktree_dirty=bool(_git(("status", "--porcelain"))),
-        known_chunk_ids=frozenset(chunk.chunk_id for chunk in corpus.chunks),
+
+def current_context(
+    dataset_path: Path,
+    settings: Settings,
+    repo_root: Path,
+) -> VerificationContext:
+    return build_verification_context(
+        load_verified_live_inputs(dataset_path, settings),
+        repo_root,
     )
 
 
@@ -41,19 +38,13 @@ def main(
     report = LiveEvaluationReport.model_validate_json(report_path.read_text(encoding="utf-8"))
     reasons = verify_live_report(
         report,
-        current_context(dataset_path, Settings()),
+        current_context(dataset_path, Settings(), REPO_ROOT),
         require_human=require_human,
     )
     if reasons:
         typer.echo(f"live-evaluation-invalid={','.join(reasons)}", err=True)
         raise typer.Exit(code=1)
     typer.echo("live-evaluation-valid=true")
-
-
-def _git(arguments: tuple[str, ...]) -> str:
-    result = subprocess.run(("git", *arguments), check=True, capture_output=True, text=True)
-    return result.stdout.strip()
-
 
 if __name__ == "__main__":
     typer.run(main)

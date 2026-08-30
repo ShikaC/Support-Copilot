@@ -4,6 +4,8 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from app.models import PromptVersion
+
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 GitCommit = Annotated[str, Field(pattern=r"^[a-f0-9]{40,64}$")]
 FactualSupport = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "NOT_REVIEWED"]
@@ -160,8 +162,22 @@ class LiveEvaluationReport(StrictModel):
     report_kind: Literal["live-evaluation"]
     run: RunProvenance
     provenance: ProviderProvenance
-    cases: tuple[LiveCaseResult, ...]
+    cases: tuple[LiveCaseResult, ...] = Field(min_length=1)
     summary: LiveSummary
+
+
+class LiveConfiguration(StrictModel):
+    prompt_version: PromptVersion
+    top_n: int = Field(gt=0)
+    top_k: int = Field(gt=0)
+    config_fingerprint: Sha256
+    chat_provider_identity: str
+    chat_model: str
+    chat_protocol: Literal["responses", "chat_completions"]
+    embedding_provider_identity: str
+    embedding_model: str
+    embedding_dimension: int = Field(gt=0)
+    embedding_chunking_version: str
 
 
 class VerificationContext(StrictModel):
@@ -176,6 +192,7 @@ class VerificationContext(StrictModel):
     git_commit: GitCommit
     worktree_dirty: bool
     known_chunk_ids: frozenset[str]
+    configuration: LiveConfiguration
 
 
 class ReviewEntry(StrictModel):

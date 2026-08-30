@@ -1,49 +1,45 @@
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from hashlib import sha256
-import json
 from pathlib import Path
-import subprocess
 from time import perf_counter_ns
 from uuid import uuid4
 
-from app.config import Settings
-from app.embedding_artifact import EmbeddingArtifactStore
-from app.embedding_artifact_models import EmbeddingArtifactManifest
-from app.embedding_artifact_identity import file_checksum, provider_identity
 from app.errors import FallbackReason
-from app.knowledge_source import KnowledgeCorpus, load_knowledge_corpus
 from app.local_analysis import citation_label
 from app.models import AnalyzeOptions, AnalyzeRequest, AnalyzeResponse, KnowledgeAccess, Priority, SupportScope, TicketInput
-from evaluation.live_dataset import file_sha256
 from evaluation.live_models import (
     EmbeddingArtifactProvenance,
     HumanReview,
     LiveCaseResult,
-    LiveDataset,
     LiveEvaluationReport,
-    LiveSummary,
     ProviderProvenance,
     ResponseEvidence,
     RunProvenance,
     TokenUsage,
 )
+from evaluation.live_provenance import VerifiedLiveInputs, read_git_state
+from evaluation.live_summary import summarize_live_cases
 
 
 async def run_live_cases(
-    dataset: LiveDataset,
+    inputs: VerifiedLiveInputs,
     analyze: Callable[[AnalyzeRequest], Awaitable[AnalyzeResponse]],
-    corpus: KnowledgeCorpus,
 ) -> tuple[LiveCaseResult, ...]:
     results: list[LiveCaseResult] = []
+    corpus = inputs.corpus
     access = KnowledgeAccess(
         releaseId=corpus.release_id,
         releaseVersion=corpus.release_version,
         corpusChecksum=corpus.corpus_checksum,
         allowedScopes=tuple(SupportScope),
     )
-    options = AnalyzeOptions(topN=10, topK=3)
-    for case in dataset.cases:
+    configuration = inputs.configuration
+    options = AnalyzeOptions(
+        topN=configuration.top_n,
+        topK=configuration.top_k,
+        promptVersion=configuration.prompt_version,
+    )
+    for case in inputs.dataset.cases:
         request = AnalyzeRequest(
             traceId=f"live-eval-{case.id}",
             knowledgeAccess=access,
@@ -137,20 +133,15 @@ def citations_valid(
 
 
 def build_live_report(
-    dataset: LiveDataset,
-    dataset_path: Path,
-    settings: Settings,
-    corpus: KnowledgeCorpus,
+    inputs: VerifiedLiveInputs,
+    repo_root: Path,
     cases: tuple[LiveCaseResult, ...],
 ) -> LiveEvaluationReport:
-    store = EmbeddingArtifactStore(settings, corpus)
-    artifact = store.load_active().manifest
-    manifest_path = settings.embedding_artifact_root / artifact.artifact_id / "manifest.json"
-    git_commit = _git(("rev-parse", "HEAD"))
-    dirty = bool(_git(("status", "--porcelain")))
-    fingerprint = config_fingerprint(settings, artifact)
-    reviewed = sum(case.human_review.factual_support != "NOT_REVIEWED" for case in cases)
-    summary = _summary(cases, reviewed)
+    dataset = inputs.dataset
+    corpus = inputs.corpus
+    artifact = inputs.artifact
+    configuration = inputs.configuration
+    git = read_git_state(repo_root)
     return LiveEvaluationReport(
         schema_version=1,
         report_kind="live-evaluation",
@@ -160,13 +151,13 @@ def build_live_report(
             mode="live",
             dataset_id=dataset.dataset_id,
             dataset_version=dataset.version,
-            dataset_checksum=file_sha256(dataset_path),
-            git_commit=git_commit,
-            worktree_dirty=dirty,
-            prompt_version="ticket-analysis-v1",
-            top_n=10,
-            top_k=3,
-            config_fingerprint=fingerprint,
+            dataset_checksum=inputs.dataset_checksum,
+            git_commit=git.commit,
+            worktree_dirty=git.dirty,
+            prompt_version=configuration.prompt_version,
+            top_n=configuration.top_n,
+            top_k=configuration.top_k,
+            config_fingerprint=configuration.config_fingerprint,
         ),
         provenance=ProviderProvenance(
             knowledge_release_id=corpus.release_id,
@@ -174,77 +165,16 @@ def build_live_report(
             semantic_corpus_checksum=corpus.corpus_checksum,
             embedding_artifact=EmbeddingArtifactProvenance(
                 artifact_id=artifact.artifact_id,
-                manifest_sha256=file_checksum(manifest_path),
+                manifest_sha256=inputs.artifact_manifest_sha256,
                 provider_identity=artifact.provider_identity,
                 model=artifact.embedding_model,
                 dimension=artifact.vector_dimension,
                 chunking_version=artifact.chunking_version,
             ),
-            chat_provider_identity=provider_identity(settings.openai_base_url),
-            chat_model=settings.openai_chat_model or "unconfigured",
-            chat_protocol=settings.openai_chat_protocol,
+            chat_provider_identity=configuration.chat_provider_identity,
+            chat_model=configuration.chat_model,
+            chat_protocol=configuration.chat_protocol,
         ),
         cases=cases,
-        summary=summary,
+        summary=summarize_live_cases(cases),
     )
-
-
-def config_fingerprint(
-    settings: Settings,
-    artifact: EmbeddingArtifactManifest,
-) -> str:
-    config = {
-        "chat_provider": provider_identity(settings.openai_base_url),
-        "chat_model": settings.openai_chat_model,
-        "chat_protocol": settings.openai_chat_protocol,
-        "embedding_provider": artifact.provider_identity,
-        "embedding_model": artifact.embedding_model,
-        "top_n": settings.retrieval_top_n,
-        "top_k": settings.retrieval_top_k,
-        "retrieval_min_score": settings.live_retrieval_min_score,
-    }
-    payload = json.dumps(config, sort_keys=True, separators=(",", ":")).encode()
-    return sha256(payload).hexdigest()
-
-
-def _summary(cases: tuple[LiveCaseResult, ...], reviewed: int) -> LiveSummary:
-    total = len(cases)
-    retrieval = sum(case.retrieval_success for case in cases)
-    reciprocal_ranks = tuple(0.0 if case.first_relevant_rank is None else 1 / case.first_relevant_rank for case in cases)
-    citations = sum(case.citation_valid for case in cases)
-    no_evidence_cases = tuple(case for case in cases if not case.allowed_chunk_ids)
-    no_evidence_safe = sum(case.mode == "fallback" and not case.cited_chunk_ids for case in no_evidence_cases)
-    fallback = sum(case.mode == "fallback" for case in cases)
-    latencies = sorted(case.latency_ms for case in cases)
-    machine_pass = all(
-        case.retrieval_success
-        and case.citation_valid
-        and (
-            (case.status == "SUCCEEDED" and case.mode == "live")
-            or (not case.allowed_chunk_ids and case.mode == "fallback")
-        )
-        for case in cases
-    )
-    reasons = () if machine_pass and reviewed == total else (("machine-gate-failed",) if not machine_pass else ("human-review-incomplete",))
-    return LiveSummary(
-        label="evaluation_results_for_this_dataset_run",
-        total_cases=total,
-        succeeded_cases=sum(case.status == "SUCCEEDED" for case in cases),
-        retrieval_success_count=retrieval,
-        retrieval_success_rate=retrieval / total,
-        mean_reciprocal_rank=sum(reciprocal_ranks) / total,
-        citation_valid_count=citations,
-        citation_valid_rate=citations / total,
-        no_evidence_safety_rate=no_evidence_safe / len(no_evidence_cases) if no_evidence_cases else 1.0,
-        fallback_count=fallback,
-        average_latency_ms=sum(latencies) / total,
-        p95_latency_ms=latencies[min(total - 1, round((total - 1) * 0.95))],
-        human_reviewed_count=reviewed,
-        publishable=machine_pass and reviewed == total,
-        gate_reasons=reasons,
-    )
-
-
-def _git(arguments: tuple[str, ...]) -> str:
-    result = subprocess.run(("git", *arguments), check=True, capture_output=True, text=True)
-    return result.stdout.strip()

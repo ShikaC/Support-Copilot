@@ -5,6 +5,7 @@ from typing import Annotated
 import typer
 
 from evaluation.live_models import HumanReview, LiveEvaluationReport, ReviewEntry, ReviewWorksheet
+from evaluation.live_summary import summarize_live_cases
 
 app = typer.Typer(add_completion=False)
 
@@ -46,18 +47,9 @@ def apply_review_worksheet(
         })
         for case in report.cases
     )
-    reviewed_count = sum(case.human_review.factual_support != "NOT_REVIEWED" for case in cases)
-    complete = reviewed_count == len(cases) and all(
-        case.human_review.reviewer and case.human_review.decision_note and case.human_review.reviewed_at
-        for case in cases
+    return report.model_copy(
+        update={"cases": cases, "summary": summarize_live_cases(cases)}
     )
-    prior_reasons = tuple(reason for reason in report.summary.gate_reasons if reason != "human-review-incomplete")
-    summary = report.summary.model_copy(update={
-        "human_reviewed_count": reviewed_count,
-        "publishable": bool(complete and not prior_reasons),
-        "gate_reasons": prior_reasons if complete else (*prior_reasons, "human-review-incomplete"),
-    })
-    return report.model_copy(update={"cases": cases, "summary": summary})
 
 
 @app.command()

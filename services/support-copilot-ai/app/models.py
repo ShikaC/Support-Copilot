@@ -9,6 +9,7 @@ from pydantic_core import PydanticCustomError
 from app.errors import FallbackReason
 
 PromptVersion = Literal["ticket-analysis-v1"]
+CURRENT_PROMPT_VERSION: Final[PromptVersion] = "ticket-analysis-v1"
 TRACE_ID_PATTERN: Final = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
 
 
@@ -80,7 +81,7 @@ class TicketInput(ApiModel):
 class AnalyzeOptions(ApiModel):
     top_n: int = Field(default=10, ge=1, le=30)
     top_k: int = Field(default=3, ge=1, le=10)
-    prompt_version: PromptVersion = "ticket-analysis-v1"
+    prompt_version: PromptVersion = CURRENT_PROMPT_VERSION
 
     @model_validator(mode="after")
     def validate_retrieval_window(self) -> "AnalyzeOptions":

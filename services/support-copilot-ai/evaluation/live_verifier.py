@@ -4,6 +4,7 @@ from math import isfinite
 from typing import Final
 
 from evaluation.live_models import LiveEvaluationReport, VerificationContext
+from evaluation.live_summary import summarize_live_cases
 
 SENSITIVE_PATTERNS: Final = (
     re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}"),
@@ -42,6 +43,32 @@ def verify_live_report(
         reasons.append("git-commit-mismatch")
     if run.worktree_dirty != context.worktree_dirty:
         reasons.append("git-dirty-state-mismatch")
+    expected = context.configuration
+    if run.prompt_version != expected.prompt_version:
+        reasons.append("prompt-version-mismatch")
+    if run.top_n != expected.top_n:
+        reasons.append("top-n-mismatch")
+    if run.top_k != expected.top_k:
+        reasons.append("top-k-mismatch")
+    if run.config_fingerprint != expected.config_fingerprint:
+        reasons.append("config-fingerprint-mismatch")
+    if provenance.chat_provider_identity != expected.chat_provider_identity:
+        reasons.append("chat-provider-identity-mismatch")
+    if provenance.chat_model != expected.chat_model:
+        reasons.append("chat-model-mismatch")
+    if provenance.chat_protocol != expected.chat_protocol:
+        reasons.append("chat-protocol-mismatch")
+    if artifact is not None:
+        if artifact.provider_identity != expected.embedding_provider_identity:
+            reasons.append("embedding-provider-identity-mismatch")
+        if artifact.model != expected.embedding_model:
+            reasons.append("embedding-model-mismatch")
+        if artifact.dimension != expected.embedding_dimension:
+            reasons.append("embedding-dimension-mismatch")
+        if artifact.chunking_version != expected.embedding_chunking_version:
+            reasons.append("embedding-chunking-version-mismatch")
+    if report.summary != summarize_live_cases(report.cases):
+        reasons.append("summary-mismatch")
     for case in report.cases:
         retrieved = set(case.retrieved_chunk_ids)
         allowed = set(case.allowed_chunk_ids)
