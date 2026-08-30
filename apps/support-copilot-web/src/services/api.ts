@@ -238,7 +238,7 @@ const defaultClient = createApiClient({
 })
 
 export const fetchTickets = (signal?: AbortSignal) => defaultClient.fetchTickets({ signal })
-export const fetchTicket = (ticketId: string) => defaultClient.fetchTicket(ticketId)
+export const fetchTicket = (ticketId: string, signal?: AbortSignal) => defaultClient.fetchTicket(ticketId, { signal })
 export const fetchMetrics = (signal?: AbortSignal) => defaultClient.fetchMetrics({ signal })
 export const analyzeTicket = (ticketId: string) => defaultClient.analyzeTicket(ticketId)
 export const updateTicket = (ticketId: string, update: TicketUpdate, version: number) => defaultClient.updateTicket(ticketId, update, version)

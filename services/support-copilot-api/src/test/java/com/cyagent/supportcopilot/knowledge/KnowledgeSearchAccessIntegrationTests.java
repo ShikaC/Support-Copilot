@@ -27,6 +27,8 @@ import com.cyagent.supportcopilot.common.SyntheticJwt;
 @ActiveProfiles("test")
 class KnowledgeSearchAccessIntegrationTests {
 
+	private static final String BASELINE_CHECKSUM = "b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874";
+
 	@Autowired
 	private MockMvc mockMvc;
 
@@ -42,7 +44,9 @@ class KnowledgeSearchAccessIntegrationTests {
 	@AfterEach
 	void restoreBaselineActiveRelease() {
 		jdbcTemplate.update(
-			"update knowledge_releases set allowed_scopes_json = ? where release_id = ?",
+			"update knowledge_releases set release_version = ?, corpus_checksum = ?, allowed_scopes_json = ? where release_id = ?",
+			1,
+			BASELINE_CHECKSUM,
 			"[\"GENERAL\",\"BILLING\",\"ACCOUNT\",\"PRIVACY\",\"TECHNICAL\"]",
 			"support-copilot-bundled-v1"
 		);
@@ -54,7 +58,7 @@ class KnowledgeSearchAccessIntegrationTests {
 	@Test
 	void missingTrustedScopesReturnNoKnowledgeDespiteBrowserScopeAndForbiddenIdHints() throws Exception {
 		mockMvc.perform(get("/api/knowledge/search")
-				.queryParam("query", "chunk-account-01 sso PRIVACY")
+				.queryParam("query", "chunk-account-sso-01 SSO PRIVACY")
 				.queryParam("topK", "10")
 				.queryParam("support_scopes", "ACCOUNT,PRIVACY")
 				.header("X-Support-Scopes", "ACCOUNT,PRIVACY")
@@ -69,19 +73,18 @@ class KnowledgeSearchAccessIntegrationTests {
 
 	@ParameterizedTest
 	@CsvSource({
-		"GENERAL,chunk-payment-04",
 		"BILLING,chunk-billing-07",
-		"ACCOUNT,chunk-account-01",
-		"PRIVACY,chunk-privacy-03",
+		"ACCOUNT,chunk-account-sso-01",
+		"PRIVACY,chunk-privacy-05",
 		"TECHNICAL,chunk-sync-2047"
 	})
-	void trustedScopeCanOnlySearchItsCatalogEntriesDespiteCollidingBrowserHints(
+	void trustedScopeCanOnlySearchItsCanonicalCorpusEntriesDespiteCollidingBrowserHints(
 		String trustedScope,
 		String expectedChunkId
 	) throws Exception {
 		mockMvc.perform(get("/api/knowledge/search")
-				.queryParam("query", "chunk-billing-07 chunk-payment-04 chunk-account-01 chunk-privacy-03 chunk-sync-2047")
-				.queryParam("topK", "10")
+				.queryParam("query", expectedChunkId)
+				.queryParam("topK", "1")
 				.queryParam("support_scopes", "GENERAL,BILLING,ACCOUNT,PRIVACY,TECHNICAL")
 				.header("X-Support-Scopes", "GENERAL,BILLING,ACCOUNT,PRIVACY,TECHNICAL")
 				.header("Authorization", "Bearer " + scopedAgentToken(trustedScope)))
@@ -89,6 +92,15 @@ class KnowledgeSearchAccessIntegrationTests {
 			.andExpect(jsonPath("$").isArray())
 			.andExpect(jsonPath("$.length()").value(1))
 			.andExpect(jsonPath("$[0].chunkId").value(expectedChunkId));
+	}
+
+	@Test
+	void generalScopeDoesNotInventEntriesMissingFromTheCanonicalCorpus() throws Exception {
+		mockMvc.perform(get("/api/knowledge/search")
+				.queryParam("query", "chunk-payment-04")
+				.header("Authorization", "Bearer " + scopedAgentToken("GENERAL")))
+			.andExpect(status().isOk())
+			.andExpect(content().json("[]"));
 	}
 
 	@Test
@@ -107,8 +119,26 @@ class KnowledgeSearchAccessIntegrationTests {
 	}
 
 	@Test
+	void activeReleaseChecksumDriftFailsClosedBeforeReturningCanonicalHits() throws Exception {
+		jdbcTemplate.update(
+			"update knowledge_releases set corpus_checksum = ? where release_id = ?",
+			"a".repeat(64),
+			"support-copilot-bundled-v1"
+		);
+
+		mockMvc.perform(get("/api/knowledge/search")
+				.queryParam("query", "chunk-billing-07")
+				.header("Authorization", "Bearer " + scopedAgentToken("BILLING")))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("KNOWLEDGE_RELEASE_MISMATCH"))
+			.andExpect(content().string(org.hamcrest.Matchers.not(
+				org.hamcrest.Matchers.containsString("chunk-billing-07")
+			)));
+	}
+
+	@Test
 	void unauthenticatedKnowledgeSearchReturnsUnauthorized() throws Exception {
-		mockMvc.perform(get("/api/knowledge/search").queryParam("query", "chunk-account-01"))
+		mockMvc.perform(get("/api/knowledge/search").queryParam("query", "chunk-account-sso-01"))
 			.andExpect(status().isUnauthorized());
 	}
 
@@ -118,12 +148,12 @@ class KnowledgeSearchAccessIntegrationTests {
 		activeReleaseRepository.flush();
 
 		mockMvc.perform(get("/api/knowledge/search")
-				.queryParam("query", "chunk-account-01")
+				.queryParam("query", "chunk-account-sso-01")
 				.header("Authorization", "Bearer " + scopedAgentToken("ACCOUNT")))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("KNOWLEDGE_RELEASE_INACTIVE"))
 			.andExpect(content().string(org.hamcrest.Matchers.not(
-				org.hamcrest.Matchers.containsString("chunk-account-01")
+				org.hamcrest.Matchers.containsString("chunk-account-sso-01")
 			)));
 	}
 

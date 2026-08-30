@@ -51,7 +51,19 @@ it('keeps ticket analyses independent and ignores a late response after switchin
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     if (path === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload, secondTicket()])))
     if (path === '/api/metrics') return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload)))
+    if (path === '/api/tickets/ticket-10042' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify({
+      ...ticketResponsePayload,
+      version: 1,
+      status: 'NEEDS_ESCALATION',
+      latestAnalysis: late,
+    })))
     if (path === '/api/tickets/ticket-10042/analyze') return firstResponse
+    if (path === '/api/tickets/ticket-20001' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify({
+      ...secondTicket(),
+      version: 2,
+      status: 'NEEDS_ESCALATION',
+      latestAnalysis: fallback,
+    })))
     if (path === '/api/tickets/ticket-20001/analyze') return Promise.resolve(new Response(JSON.stringify(fallback)))
     return Promise.reject(new TypeError(`Unexpected request: ${path}`))
   })
@@ -76,6 +88,7 @@ it('keeps ticket analyses independent and ignores a late response after switchin
 it('leaves analysis controls usable after a transient failure and succeeds on retry', async () => {
   vi.stubGlobal('ResizeObserver', TestResizeObserver)
   let analysisAttempts = 0
+  const retryAnalysis = analysisResponsePayload('analysis-retry-success')
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     if (path === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload])))
@@ -84,8 +97,14 @@ it('leaves analysis controls usable after a transient failure and succeeds on re
       analysisAttempts += 1
       return analysisAttempts === 1
         ? Promise.reject(new TypeError('transient'))
-        : Promise.resolve(new Response(JSON.stringify(analysisResponsePayload('analysis-retry-success'))))
+        : Promise.resolve(new Response(JSON.stringify(retryAnalysis)))
     }
+    if (path === '/api/tickets/ticket-10042' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify({
+      ...ticketResponsePayload,
+      version: 1,
+      status: 'NEEDS_ESCALATION',
+      latestAnalysis: retryAnalysis,
+    })))
     return Promise.reject(new TypeError(`Unexpected request: ${path}`))
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -102,4 +121,44 @@ it('leaves analysis controls usable after a transient failure and succeeds on re
     .map(([, init]) => new Headers(init?.headers).get('Idempotency-Key'))
   expect(keys[0]).toBeTruthy()
   expect(keys[1]).toBe(keys[0])
+})
+
+it('refreshes server-owned ticket fields and version after analysis', async () => {
+  vi.stubGlobal('ResizeObserver', TestResizeObserver)
+  const initialTicket = { ...ticketResponsePayload, category: 'UNCLASSIFIED', priority: 'MEDIUM', version: 4 }
+  const analysis = analysisResponsePayload('analysis-refreshes-ticket')
+  const updatedTicket = {
+    ...initialTicket,
+    category: 'BILLING',
+    priority: 'HIGH',
+    status: 'READY_FOR_REVIEW',
+    version: 5,
+    updatedAt: '2026-08-25T02:30:00Z',
+    latestAnalysis: analysis,
+  }
+  const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    if (path === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([initialTicket])))
+    if (path === '/api/metrics') return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload)))
+    if (path === '/api/tickets/ticket-10042/analyze') return Promise.resolve(new Response(JSON.stringify(analysis)))
+    if (path === '/api/tickets/ticket-10042' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify(updatedTicket)))
+    if (path === '/api/tickets/ticket-10042' && init?.method === 'PATCH') return Promise.resolve(new Response(JSON.stringify({
+      ...updatedTicket,
+      assigneeName: '演示管理员',
+      version: 6,
+    })))
+    return Promise.reject(new TypeError(`Unexpected request: ${path}:${init?.method ?? 'GET'}`))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  window.sessionStorage.setItem('support-copilot.access-token', 'synthetic-analysis-token')
+  render(<App authMode="secured" />)
+
+  fireEvent.click(await screen.findByRole('button', { name: '开始分析' }))
+  expect(await screen.findAllByText('账单支付')).toHaveLength(2)
+  fireEvent.click(await screen.findByRole('button', { name: '领取工单' }))
+
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', expect.objectContaining({
+    method: 'PATCH',
+    body: JSON.stringify({ assigneeName: '演示管理员', expectedVersion: 5 }),
+  })))
 })

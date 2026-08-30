@@ -88,13 +88,19 @@ export function useTicketWorkflow({ auth, client }: TicketWorkflowOptions) {
     try {
       const result = await client.analyzeTicket(requestTicket.id, { signal: controller.signal })
       if (controller.signal.aborted) return
-      setTickets((current) => current.map((ticket) => ticket.id === requestTicket.id ? {
-        ...ticket,
-        latestAnalysis: result,
-        latestReview: null,
-        status: result.decision.escalationRequired ? 'NEEDS_ESCALATION' : 'READY_FOR_REVIEW',
-        updatedAt: new Date().toISOString(),
-      } : ticket))
+      if (requestTicket.version !== undefined) {
+        const latest = await client.fetchTicket(requestTicket.id, { signal: controller.signal })
+        if (controller.signal.aborted) return
+        setTickets((current) => current.map((ticket) => ticket.id === requestTicket.id ? latest : ticket))
+      } else {
+        setTickets((current) => current.map((ticket) => ticket.id === requestTicket.id ? {
+          ...ticket,
+          latestAnalysis: result,
+          latestReview: null,
+          status: result.decision.escalationRequired ? 'NEEDS_ESCALATION' : 'READY_FOR_REVIEW',
+          updatedAt: new Date().toISOString(),
+        } : ticket))
+      }
       setApiState((current) => current === 'connected' ? current : 'partial')
       showToast('分析完成，分类、证据和回复建议已更新')
     } catch (error: unknown) {

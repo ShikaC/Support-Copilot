@@ -39,9 +39,10 @@ React typed client + Zod
   -> human review decision + append-only audit event
 ```
 
-Java 是工单、版本、审核、审计、幂等和知识 release 的业务事实源。Python 只负责 AI 分析
-和 file-backed corpus/artifact；React 不直接信任 2xx JSON，而是先过 Zod Schema。Java
-发布新知识 release 不会自动热加载 Python，部署者必须显式部署匹配 corpus/artifact。
+Java 是工单、版本、审核、审计、幂等和知识 release 的业务事实源。Java 知识目录与 Python
+检索必须读取同一份经过 checksum 校验的 corpus；Python 还负责 file-backed artifact 和 AI
+分析。React 不直接信任 2xx JSON，而是先过 Zod Schema。Java 发布新知识 release 不会自动
+部署或重建 Python artifact，部署者必须显式部署匹配的 corpus、artifact 和数据库 release。
 
 Runtime profiles: `demo`, `test`, `local`, `pilot`.
 

@@ -181,6 +181,8 @@ Task 8 已增加 `DRAFT/APPROVED/PUBLISHED/ARCHIVED` 知识 release、`expectedV
 
 Task 9 已将 live 文档向量改为版本化 file-backed artifact：`float32` matrix、无正文 ordered metadata、canonical hash manifest 和 active/previous pointer。构建在 provider 调用前以 release/corpus/provider/model/精确 dimension/chunking/有序 metadata-document contract 计算目标并完整验证已有 artifact；同一 store 的并发调用在进程内锁中二次检查，因此未变化目标不再文档 Embedding。缺失目标才在唯一临时同级目录完成 provider batch/dimension/finiteness、hash、schema 与 chunk-order 验证后原子发布，候选验证成功后才原子切换 pointer；既有目标损坏/不兼容返回稳定 typed reason，不调用 provider、覆盖/删除目标或切换 active pointer；显式 rollback 会重新验证 previous artifact。进程首次 live 检索惰性验证 active artifact，第二进程不再调用文档 Embedding，query 仍逐次调用；范围先筛选 row indices 再执行 cosine score，空范围不加载 artifact 或调用 provider。损坏/不兼容会让 index readiness 以稳定 reason 降级但不影响 liveness，也不会进入普通 AI fallback。证据只使用本地确定性 fake vectors；没有真实 provider artifact、共享文件系统锁、多主机协调、向量数据库、性能或生产容量结论。
 
+本轮第二、第三项修复（2026-08-30）已将 Java 知识检索从独立静态 catalog 切换为读取 Python 共用的 `app/data/knowledge.json`。Java 每次查询前校验 release、版本、规范化 checksum、字段、状态和 scope，并将数据库 active release 与 corpus 身份绑定；checksum 漂移、损坏文件、未知字段和没有已发布片段均 fail closed 为 `409 KNOWLEDGE_RELEASE_MISMATCH`。Java 返回的 `documentType` 只是兼容旧页面的展示派生字段，检索正文、标题、片段 ID、scope 和 checksum 均来自 canonical corpus。React 分析成功后对真实工单重新读取服务端完整实体，因而分类、优先级、状态、更新时间和并发版本不会停留在旧快照；Demo 工单仍保持本地演示路径。Java 知识测试、React 63 条通过的 Vitest、lint、TypeScript/build 和 Java 全量测试已通过；本轮没有修改 UI 视觉。该改动仍不等于 release/artifact 发布平台：Python 向量 artifact 仍由 Python 管理，发布流程必须同时部署匹配的 corpus 文件和数据库 release，MySQL/Testcontainers、分布式 artifact 锁和真实 live provider 验证仍属于后续范围。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

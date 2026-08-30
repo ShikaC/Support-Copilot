@@ -306,7 +306,7 @@ export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN='inject-a-non-browser-service-toke
 
 Java 以 `DRAFT -> APPROVED -> PUBLISHED -> ARCHIVED` 管理不可变的 release id、版本、语义 corpus checksum 和发布范围；转换要求当前 `expectedVersion`。发布和回滚会在同一数据库事务中切换唯一 active pointer、归档原发布并写一条受控审计事件，事务失败时指针、状态和审计一起回滚。
 
-仓库内基线契约为 `support-copilot-bundled-v1`、版本 `1`、checksum `b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874`。该 checksum 是对规范化 chunks JSON 独立计算的 SHA-256，不是整个 `knowledge.json` 文件的原始 SHA；release 元数据不参与计算，避免自引用。Java 每次分析把 active release 与可信范围交给 Python，Python 在打分、Embedding 和 Prompt 前同时校验 release identity/checksum 并过滤无权片段。契约不一致返回 `409 KNOWLEDGE_RELEASE_MISMATCH`，不能转换成 AI fallback。
+仓库内基线契约为 `support-copilot-bundled-v1`、版本 `1`、checksum `b25240587df1ebb903a8555284a0f35faaa35e2d837add0fc5dd49418ca8b874`。该 checksum 是对规范化 chunks JSON 独立计算的 SHA-256，不是整个 `knowledge.json` 文件的原始 SHA；release 元数据不参与计算，避免自引用。Java `/api/knowledge/search` 与 Python 检索使用同一份 corpus；Java 默认读取 `../support-copilot-ai/app/data/knowledge.json`，外部 corpus 必须同时通过 `SUPPORT_COPILOT_KNOWLEDGE_CORPUS_PATH` 和 Python 的 `KNOWLEDGE_PATH` 配置到同一份经过校验的文件。Java 每次查询和启动时都会校验 release identity/checksum，并按数据库 active release 与可信 scope 过滤；Java 每次分析再把相同的 active release 与可信范围交给 Python，Python 在打分、Embedding 和 Prompt 前再次校验并过滤无权片段。契约不一致返回 `409 KNOWLEDGE_RELEASE_MISMATCH`，不能转换成 AI fallback。
 
 Python live 检索使用版本化 file-backed Embedding artifact，不再在每次进程启动后重新嵌入文档。artifact 包含 `float32` matrix、按行排序的片段 ID/范围/checksum metadata 和 canonical manifest；不包含知识正文、API Key 或 provider 响应。identity 绑定 release id/version/corpus checksum、脱密后的 provider endpoint identity、Embedding model、精确维度、chunking version 和片段顺序，因此可在调用 provider 前确定目标；manifest 的 matrix/metadata SHA-256 仍单独校验实际文件内容。
 
