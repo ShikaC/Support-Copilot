@@ -476,9 +476,11 @@ cd services/support-copilot-ai
 
 `factual_support` 只允许 `SUPPORTED/PARTIAL/UNSUPPORTED/NOT_REVIEWED`，机器不能填写前三项。没有明确可核查 pricing source 时 cost 保持 `null`，不得估算。Java 可将 `EVALUATION_REPORT_PATH` 指向忽略的 live 报告；质量页比例只表示该 dataset/run 的评估结果，不是生产准确率或 SLO。
 
-2026-08-27 的 Task 10 bounded live 运行先后暴露两个不同内部缺陷：首次运行的 Git SHA 长度约束由 `be9ac60` 修复，随后 `be9ac60` 上的 Responses 协议 4-case 报告首次观察到 1 case live success、3 case `invalid_model_response` fallback，并暴露 no-evidence rate 误增，由 `3e59a07` 修复。修正尝试分类后，在 checkpoint `b8560190583fc2888f2428353ffcb43caac6cbc3` 上执行的第二次 Responses 协议受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallback，机器门禁失败，人工标签仍为 0/4 `NOT_REVIEWED`。两次都是明确失败的历史 dataset evidence，不能因新增协议而重解释为成功。
+2026-08-27 的 Task 10 bounded live 运行先后暴露两个不同内部缺陷：首次运行的 Git SHA 长度约束由 `be9ac60` 修复，随后 `be9ac60` 上的 Responses 协议 4-case 报告首次观察到 1 case live success、3 case `invalid_model_response` fallback，并暴露 no-evidence rate 误增，由 `3e59a07` 修复。修正尝试分类后，在 checkpoint `b8560190583fc2888f2428353ffcb43caac6cbc3` 上执行的第二次 Responses 协议受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallback；两次都是明确失败的历史 dataset evidence，不能因新增协议而重解释为成功。
 
-当前实现增加显式 `responses|chat_completions` 选择后，只执行过一次有界、合成输入的 Chat Completions relay 直连能力探针：恰好 1 次 chat 调用、0 次 Embedding，耗时 7.437 秒；结构化结果为 ACCOUNT / MEDIUM / NEUTRAL、confidence 0.94、citation `[1]`，token 为 input 436 / output 245。它只证明该 relay 能完成这一次 direct-provider structured chat capability call，不是完整 RAG、跨服务、4-case dataset、publishable 或人工 groundedness 成功。仍需在干净提交上重新运行完整 Chat Completions live dataset，并完成真实人工标签。
+### Task 10 attempt-3 正式证据边界（2026-08-30）
+
+在 `bfb7eee6adae0556399e56457eeed19a158c1d39`、Task 10 tracked scope clean 而仅既有 Task 15 dirty 的 `chat_completions` attempt-3 中，主 `React -> Java -> Python -> Java` 合成工单链路为 `live/SUCCEEDED`，`VECTOR` 检索返回 3 chunks、1 citation、587/343 tokens、12048 ms，且 Java history 保留 trace；同次 4-case machine dataset 为 1 success、3 个 `invalid_model_response` fallback，retrieval/citation 均为 3/4、average/p95 为 8533/11415 ms、human 为 0/4 `NOT_REVIEWED`、`publishable=false`、`machine-gate-failed`，因此不构成成功质量结论。正式 child exit code 未捕获；报告和代码只支持失败推断，包装层 exit 2，不能把 gate exit 1/2 写成观测事实。`f7ccdb0` 后内部可安全区分 no_choice/refusal/parsed_none/schema_validation，但历史脱敏报告不能反推三个 fallback 的具体子类，public `fallbackReason` 不变。`d0234e4` 后 verifier 才绑定当前 chat protocol/model/provider intent、config fingerprint、artifact provider/model/dimension/chunking、prompt/topN/topK、dataset/corpus/Git，并从 cases 重算 summary；CLI 任意 cwd 测试、195 Python tests、31/31 mock、0 external calls 均为本地验证事实。保留证据和 verifier 不能独立证明 provider URL、HTTP status 或调用次数，也不能证明供应商实际路由、token/latency 真实性或 dirty 文件具体内容。Task 10 仍为 blocked/partial：未授权新的 live rerun、未做人审，Docker 继续 deferred。
 
 ### 自动化 CI
 

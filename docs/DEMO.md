@@ -89,9 +89,7 @@ JWT，而不是浏览器自报字段。
 切换质量评估页，说明数字来自版本化 mock 报告，不是静态仪表盘数据。报告缺失或损坏时
 页面返回“暂无评估报告”，不会保留旧数字。
 
-说明仓库曾完成一次脱敏合成工单的真实 live 成功链路；后续 4-case live 评估因同一
-structured-output provider 错误第二次出现而停止，且人工标签为 0/4，所以不能声称已有
-可发布的 live 质量结论。
+说明历史 Responses 成功与 `bfb7eee6adae0556399e56457eeed19a158c1d39` 的 Chat Completions attempt-3 主链路成功均为脱敏合成工单证据；attempt-3 的同次 4-case 为 1 success、3 个 `invalid_model_response` fallback、0/4 人审、`publishable=false`，所以不能声称已有可发布的 live 质量结论。
 
 ### 6:30-8:00 故障与下一步
 

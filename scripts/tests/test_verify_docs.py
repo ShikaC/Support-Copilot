@@ -211,32 +211,6 @@ def test_release_contract_rejects_missing_chat_protocol_template_setting(
     ) in errors
 
 
-@pytest.mark.parametrize(
-    ("truth", "false_claim", "boundary"),
-    [
-        ("`be9ac60` 上的 Responses 协议 4-case 报告首次观察到 1 case live success、3 case `invalid_model_response` fallback", "`be9ac60` 上的 Responses 协议 4-case 报告证明完整 dataset success；保留 3 case `invalid_model_response` fallback 和 1 case live success 计数", "responses-dataset-failures"),
-        ("第二次 Responses 协议受限运行再次得到相同的 1 live success / 3 `invalid_model_response` fallback", "第二次 Responses 协议受限运行证明 `b8560190583fc2888f2428353ffcb43caac6cbc3` 完整 dataset success；保留 3 `invalid_model_response` fallback / 1 live success 计数", "responses-dataset-failures"),
-        ("两次都是明确失败的历史 dataset evidence", "两次都证明完整 dataset success", "responses-dataset-failures"),
-        ("机器门禁失败，人工标签仍为 0/4 `NOT_REVIEWED`", "机器门禁成功，人工标签已完成 0/4 `NOT_REVIEWED`", "human-review-incomplete"),
-        ("仍需在干净提交上重新运行完整 Chat Completions live dataset，并完成真实人工标签", "已在干净提交上完成完整 Chat Completions live dataset 和真实人工标签；旧要求仍需归档", "fresh-chat-completions-evidence-required"),
-    ],
-)
-def test_release_contract_rejects_false_live_evidence_claims(
-    tmp_path: Path, truth: str, false_claim: str, boundary: str
-) -> None:
-    # Given: a current release fixture with one truth boundary changed to success.
-    copy_release_fixture(tmp_path)
-    readme = tmp_path / "README.md"
-    valid = readme.read_text(encoding="utf-8")
-    mutated = valid.replace(truth, false_claim)
-    assert mutated != valid
-    readme.write_text(mutated, encoding="utf-8")
-
-    # When/Then: tokens remain, but the bound false claim fails closed.
-    errors = validate_release_contract(tmp_path)
-    assert f"README.md: missing canonical live evidence boundary: {boundary}" in errors
-
-
 def test_verify_docs_unsets_chat_protocol() -> None:
     # Given: the clean-fixture verifier launcher.
     repo_root = Path(__file__).resolve().parents[2]

@@ -36,7 +36,7 @@ Support-Copilot 后续不应继续以“增加页面数量”作为主要目标�
 
 Task 10 增加独立于 31-case deterministic mock 报告的版本化合成 live 数据集和严格报告格式。逐案例记录检索、引用、runner latency、token、fallback 和默认 `NOT_REVIEWED`；provenance 与 config fingerprint 绑定包括 `responses|chat_completions` 在内的协议事实，因此旧报告缺少协议或协议变化时失败关闭。人工 worksheet 完成前 publishable gate 保持失败；一次运行不是生产准确率、SLO 或稳定性结论。
 
-Task 10 live evidence 状态：`be9ac60` 与 `b856019` 都是 Responses 协议 dataset 失败，均为 1 live success + 3 `invalid_model_response` fallbacks，后者 0/4 human reviewed；它们不能改写为 Chat Completions 结果。历史干净提交 `59903a1e5fad74cf2b792263f735dafe36b8066c` 只保留为 Responses 单次端到端层级 3 证据。新增协议后的一次 Chat Completions relay 探针恰好调用 chat 一次、无 Embedding、耗时 7.437 秒，只证明 synthetic direct-provider capability，不是 RAG、dataset、publishable 或人审成功。完整干净提交 Chat Completions dataset 和人工 groundedness 仍阻塞。
+Task 10 live evidence 状态：`be9ac60` 与 `b856019` 都是 Responses 协议 dataset 失败，均为 1 live success + 3 `invalid_model_response` fallbacks，后者 0/4 human reviewed；它们不能改写为 Chat Completions 结果。`bfb7eee6adae0556399e56457eeed19a158c1d39` 的 Chat Completions attempt-3 主合成工单链路成功（`live/SUCCEEDED`、`VECTOR`、3 chunks、1 citation、587/343 tokens、12048 ms、trace 保留），但同次 4-case 是 1 success、3 个 `invalid_model_response` fallback、3/4 retrieval/citation、8533/11415 ms、0/4 `NOT_REVIEWED`、`publishable=false`、`machine-gate-failed`，所以 Task 10 仍 blocked/partial。`f7ccdb0` 只增加内部安全诊断子类而不反推历史 fallback，`d0234e4` 才把当前协议/模型/provider intent、config、artifact、prompt/topN/topK、dataset/corpus/Git 和从 cases 重算的 summary 绑定到 verifier；两者均不证明供应商实际路由或 token/latency 真值。未授权 rerun、未做人审，Docker 继续 deferred。
 
 ### Task 13 非容器发布门禁（2026-08-29）
 

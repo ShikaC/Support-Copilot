@@ -166,7 +166,7 @@ Python 的概念流程：
 
 如果使用 live 模式，`OPENAI_CHAT_PROTOCOL` 只接受 `responses` 或 `chat_completions`，默认 `responses`。`OPENAI_BASE_URL` 控制聊天端点，Embedding Base URL/key 保持独立或按配置回退。两条聊天路径都使用 SDK 结构化 Pydantic 解析、`store=false`、相同校验/脱敏/fallback，并且不会自动跨协议发起第二次付费请求。如果没有配置 API 或调用失败，则使用 mock 或 fallback，并在结果中明确标识模式。
 
-历史 `59903a1e5fad74cf2b792263f735dafe36b8066c` 是 Responses 路径的一次端到端成功；`be9ac60` 与 `b856019` 是 Responses 数据集的 1 success + 3 fallback、0/4 人审失败记录。当前 7.437 秒的 Chat Completions relay 探针只有一次 chat、没有 Embedding，只证明 direct-provider capability；完整干净提交 dataset 与人工 groundedness 仍未完成。
+历史 `59903a1e5fad74cf2b792263f735dafe36b8066c` 是 Responses 路径的一次端到端成功；`be9ac60` 与 `b856019` 是 1 success + 3 `invalid_model_response` fallback 的 Responses 数据集失败记录。`bfb7eee6adae0556399e56457eeed19a158c1d39` 的 Chat Completions attempt-3 主链路成功（`live/SUCCEEDED`、`VECTOR`、3 chunks、1 citation、587/343 tokens、12048 ms、trace 保留），但同次 4-case 为 1 success、3 个 `invalid_model_response` fallback、0/4 `NOT_REVIEWED`、publishable=false；Task 10 因此仍 blocked/partial，未授权 live rerun、未做人审，Docker deferred。
 
 ### 4.6 Java 保存分析结果
 

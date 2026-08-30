@@ -52,4 +52,4 @@ Python 整体超时或不可连接
 - React 已通过 Zod 在 HTTP 边界校验固定值域，并同时约束 `mode`、`status` 和 `fallbackReason` 的组合；完整规则见 [`frontend-runtime-schema-contract.md`](frontend-runtime-schema-contract.md)。
 - H2 是内存数据库，服务重启后分析历史会清空。
 - 当前字段支持定位和统计，不代表已经接入日志平台或指标后端。
-- 正式 API live 成功记录仍未完成，不能用本地故障演练替代。
+- 历史 Responses 和 Chat Completions attempt-3 都有脱敏 live 主链路成功记录；attempt-3 的同次 4-case 仍为 3 个 `invalid_model_response` fallback，且未通过机器门禁。`f7ccdb0` 后仅在内部安全区分 `no_choice`、`refusal`、`parsed_none` 和 `schema_validation`；历史脱敏报告不能倒推具体子类，公开 `fallbackReason=invalid_model_response` 不变。

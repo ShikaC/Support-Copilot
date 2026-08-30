@@ -2007,15 +2007,18 @@ React、TypeScript、Ant Design、ECharts、Java 21、Spring Boot、JPA、Python
 - live 路径已实现正式 chat/Embedding 双端点、外发脱敏、结构化输出、scope-first 检索和
   版本化 file-backed embedding artifact；2026-08-26 完成过一次脱敏合成工单成功验证。
 - Mock 评估已形成固定 31-case 报告并接入 Java/React；live 评估具备 provenance、严格
-  verifier 和人工 worksheet，但当前 4-case 发布门禁未通过且 0/4 完成人审。
+  verifier 和人工 worksheet。`bfb7eee6adae0556399e56457eeed19a158c1d39` 的 Chat
+  Completions attempt-3 主链路成功，但同次 4-case 为 1 success、3 个
+  `invalid_model_response` fallback、0/4 人审和 `publishable=false`。
 - 三条服务 CI 和一条只读非容器 release gate 已建立；本地聚合覆盖测试、构建、浏览器、
   工作流、依赖漏洞和 secrets，并明确延后 Task 15 容器项。
 - 已提供一键本地 smoke、跨服务成功/fallback/contract 检查、面试演示脚本和自动文档契约。
 
 ### 31.2 尚未完成
 
-- Task 10 的 4-case live 评估仍因 chat provider structured-output 错误而未通过，同一原因已
-  两次出现；人工 factual-support label 仍为 0/4，不能发布 live 质量结论。
+- Task 10 仍 blocked/partial：attempt-3 的 4-case machine gate 为 `machine-gate-failed`，
+  人工 factual-support label 仍为 0/4，不能发布 live 质量结论；没有授权新的 live rerun，
+  Docker 继续 deferred。
 - 真实 OIDC issuer/login/token refresh 与 `pilot` 组合尚未验证；当前只证明 Resource
   Server 策略、合成 JWT 和受限前端 token adapter。
 - MySQL 8 runtime、Testcontainers parity、Compose、备份恢复和部署回滚统一留待 Task 15。

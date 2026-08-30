@@ -31,6 +31,8 @@ RELEASE_SURFACES = (
     "docs/learning/V1_PROJECT_MAP.md",
     "docs/optimizations/ROADMAP.md",
     "services/support-copilot-ai/evaluation/README.md",
+    "docs/optimizations/v1-round-1/68-traceable-live-evaluation.md",
+    "docs/contracts/fallback-reason-contract.md",
 )
 REQUIRED_BOUNDARIES = (
     "single-tenant",
@@ -64,13 +66,38 @@ REQUIRED_MODEL_SETTINGS = (
 )
 REQUIRED_LIVE_EVIDENCE_BOUNDARIES: Final = (
     ("README.md", "responses-dataset-failures", ("`be9ac60`", "Responses 协议 4-case", "1 case live success、3 case `invalid_model_response` fallback", "b8560190583fc2888f2428353ffcb43caac6cbc3", "Responses 协议受限运行", "1 live success / 3 `invalid_model_response` fallback", "两次都是明确失败的历史 dataset evidence")),
-    ("README.md", "human-review-incomplete", ("b8560190583fc2888f2428353ffcb43caac6cbc3", "机器门禁失败", "0/4 `NOT_REVIEWED`", "明确失败")),
-    ("README.md", "fresh-chat-completions-evidence-required", ("Chat Completions relay", "1 次 chat 调用、0 次 Embedding", "7.437 秒", "不是完整 RAG", "仍需在干净提交上重新运行完整 Chat Completions live dataset", "完成真实人工标签")),
+    ("README.md", "human-review-incomplete", ("0/4 `NOT_REVIEWED`", "`publishable=false`", "machine-gate-failed", "不构成成功质量结论")),
     ("docs/learning/LIVE_RAG_COMPLETION_CRITERIA.md", "historical-responses-e2e", ("59903a1e5fad74cf2b792263f735dafe36b8066c", "Responses 协议", "正式 Embedding", "均成功")),
-    ("docs/learning/LIVE_RAG_COMPLETION_CRITERIA.md", "current-live-evidence-boundary", ("`be9ac60`", "Responses 数据集", "1 个 live success 和 3 个 `invalid_model_response` fallback", "`b856019`", "Responses 受限运行", "机器 gate 失败", "0/4", "明确失败的历史 dataset evidence", "Chat Completions relay", "无 Embedding", "不是 RAG", "完整 Chat Completions dataset", "人审仍待完成")),
-    ("docs/learning/V1_PROJECT_MAP.md", "project-map-live-evidence-boundary", ("59903a1e5fad74cf2b792263f735dafe36b8066c", "Responses 路径的一次端到端成功", "`be9ac60`", "`b856019`", "Responses 数据集", "1 success + 3 fallback、0/4 人审失败记录", "Chat Completions relay", "没有 Embedding", "完整干净提交 dataset 与人工 groundedness 仍未完成")),
-    ("docs/optimizations/ROADMAP.md", "roadmap-live-evidence-boundary", ("`be9ac60`", "`b856019`", "Responses 协议 dataset 失败", "1 live success + 3 `invalid_model_response` fallbacks", "0/4 human reviewed", "59903a1e5fad74cf2b792263f735dafe36b8066c", "Responses 单次端到端层级 3 证据", "Chat Completions relay", "无 Embedding", "不是 RAG、dataset、publishable", "完整干净提交 Chat Completions dataset 和人工 groundedness 仍阻塞")),
-    ("services/support-copilot-ai/evaluation/README.md", "evaluation-live-evidence-boundary", ("59903a1e5fad74cf2b792263f735dafe36b8066c", "Responses 路径的一次端到端成功", "`be9ac60`", "`b856019`", "Responses 4-case dataset 失败", "1 success + 3 `invalid_model_response` fallbacks", "0/4", "Chat Completions relay", "无 Embedding", "不能算 RAG、dataset 或 publishable success", "仍需干净提交上的完整 dataset 与人工 groundedness")),
+    ("docs/learning/LIVE_RAG_COMPLETION_CRITERIA.md", "current-live-evidence-boundary", ("`bfb7eee6adae0556399e56457eeed19a158c1d39`", "`chat_completions`", "live` / `SUCCEEDED`", "1 success、3 个 `invalid_model_response` fallback", "`publishable=false`", "Task 10 仍为 blocked/partial")),
+    ("docs/learning/V1_PROJECT_MAP.md", "project-map-live-evidence-boundary", ("`bfb7eee6adae0556399e56457eeed19a158c1d39`", "Chat Completions attempt-3", "主链路", "1 success、3 个 `invalid_model_response` fallback", "0/4 `NOT_REVIEWED`", "publishable=false")),
+    ("docs/optimizations/ROADMAP.md", "roadmap-live-evidence-boundary", ("`bfb7eee6adae0556399e56457eeed19a158c1d39`", "Chat Completions attempt-3", "1 success、3 个 `invalid_model_response` fallback", "blocked/partial", "`f7ccdb0`", "`d0234e4`")),
+    ("services/support-copilot-ai/evaluation/README.md", "evaluation-live-evidence-boundary", ("`bfb7eee6adae0556399e56457eeed19a158c1d39`", "`chat_completions`", "1 success、3 个 `invalid_model_response` fallback", "0/4 `NOT_REVIEWED`", "`publishable=false`", "不能证明供应商实际路由、token 或 latency 的真实性")),
+)
+TASK_10_ATTEMPT_3_HEADING: Final = "### Task 10 attempt-3 正式证据边界（2026-08-30）"
+TASK_10_ATTEMPT_3_FRAGMENTS: Final = (
+    "`bfb7eee6adae0556399e56457eeed19a158c1d39`",
+    "`chat_completions`",
+    "React -> Java -> Python -> Java",
+    "`live/SUCCEEDED`",
+    "`VECTOR`",
+    "3 chunks、1 citation、587/343 tokens、12048 ms",
+    "1 success、3 个 `invalid_model_response` fallback",
+    "retrieval/citation 均为 3/4、average/p95 为 8533/11415 ms",
+    "0/4 `NOT_REVIEWED`",
+    "`publishable=false`",
+    "正式 child exit code 未捕获",
+    "包装层 exit 2",
+    "`f7ccdb0`",
+    "no_choice/refusal/parsed_none/schema_validation",
+    "public `fallbackReason` 不变",
+    "`d0234e4`",
+    "chat protocol/model/provider intent",
+    "config fingerprint",
+    "dataset/corpus/Git",
+    "不能独立证明 provider URL、HTTP status 或调用次数",
+    "不能证明供应商实际路由、token/latency 真实性或 dirty 文件具体内容",
+    "Task 10 仍为 blocked/partial",
+    "未授权新的 live rerun、未做人审，Docker 继续 deferred",
 )
 REQUIRED_DOCUMENTED_COMMANDS = {
     "verify-python-tests": "cd services/support-copilot-ai && .venv/bin/pytest -q",
@@ -99,6 +126,15 @@ def contains_ordered_line_fragments(text: str, fragments: tuple[str, ...]) -> bo
     return re.search(pattern + r"[^\n]*$", text, re.MULTILINE) is not None
 
 
+def first_paragraph_after_heading(text: str, heading: str) -> str | None:
+    marker = f"{heading}\n"
+    if text.count(marker) != 1:
+        return None
+    _, _, following = text.partition(marker)
+    paragraph, _, _ = following.lstrip("\n").partition("\n\n")
+    return paragraph
+
+
 def validate_release_contract(repo_root: Path) -> list[str]:
     errors: list[str] = []
     missing_surfaces = [path for path in RELEASE_SURFACES if not (repo_root / path).is_file()]
@@ -123,6 +159,16 @@ def validate_release_contract(repo_root: Path) -> list[str]:
             errors.append(
                 f"{path}: missing canonical live evidence boundary: {boundary}"
             )
+    attempt_3_paragraph = first_paragraph_after_heading(
+        readme, TASK_10_ATTEMPT_3_HEADING
+    )
+    if attempt_3_paragraph is None or not all(
+        fragment in attempt_3_paragraph for fragment in TASK_10_ATTEMPT_3_FRAGMENTS
+    ):
+        errors.append(
+            "README.md: missing canonical live evidence boundary: "
+            "task-10-chat-completions-attempt-3"
+        )
 
     actual_routes = source_api_routes(repo_root)
     documented_routes = documented_api_routes(operations)

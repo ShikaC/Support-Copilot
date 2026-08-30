@@ -46,7 +46,7 @@ mock 模式继续保留，但只用于离线开发、自动化测试、CI 和没
 
 Task 10 已增加版本化合成 live 数据集、逐案例引用/检索/token/runner latency 记录、release/corpus/artifact/model/config/Git provenance 校验，以及独立人工 groundedness worksheet。机器只生成 `NOT_REVIEWED`；只有真实 reviewer 填写 factual-support label、decision note 和 reviewed_at 且 verifier 通过，报告才可标记 publishable。新正式 live 运行和人审状态以 Task 10 evidence 为准，本段不预先宣称成功。
 
-2026-08-27 实际运行状态：`be9ac60` 上的 Responses 数据集运行观察到 1 个 live success 和 3 个 `invalid_model_response` fallback；`b856019` 上的第二次 Responses 受限运行仍是相同的 1 + 3 签名，机器 gate 失败，人工 review 为 0/4。两次都保留为明确失败的历史 dataset evidence。当前 Chat Completions relay 只完成一次 synthetic direct-provider 探针：1 次 chat、无 Embedding、7.437 秒，得到 ACCOUNT / MEDIUM / NEUTRAL、confidence 0.94、citation `[1]` 和 436/245 input/output tokens。该探针不是 RAG、dataset、跨服务、publishable 或人工 groundedness 成功；干净提交上的完整 Chat Completions dataset 和人审仍待完成。
+2026-08-27 实际运行状态：`be9ac60` 上的 Responses 数据集运行观察到 1 个 live success 和 3 个 `invalid_model_response` fallback；`b856019` 上的第二次 Responses 受限运行仍是相同的 1 + 3 签名，机器 gate 失败，人工 review 为 0/4。两次都保留为明确失败的历史 dataset evidence。2026-08-30 的 `bfb7eee6adae0556399e56457eeed19a158c1d39` `chat_completions` attempt-3 主链路为 `live` / `SUCCEEDED`，有 `VECTOR`、3 chunks、1 citation、587/343 tokens、12048 ms 和保留 trace；同次 4-case 为 1 success、3 个 `invalid_model_response` fallback、3/4 retrieval、3/4 citation、8533/11415 ms、0/4 `NOT_REVIEWED`、`publishable=false`、`machine-gate-failed`，不构成质量成功。正式 child exit code 未捕获，只有包装层 exit 2；Task 10 仍为 blocked/partial，未授权 rerun、未做人审，Docker deferred。
 
 准确表述应是：**真实模型和 Embedding API 的端到端 RAG 链路已完成一次脱敏验证；当前仍是单次 V1.5 验收，不代表成熟 RAG、生产稳定性或真实客服效果。**
 
