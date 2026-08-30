@@ -183,6 +183,8 @@ Task 9 已将 live 文档向量改为版本化 file-backed artifact：`float32` 
 
 本轮第二、第三项修复（2026-08-30）已将 Java 知识检索从独立静态 catalog 切换为读取 Python 共用的 `app/data/knowledge.json`。Java 每次查询前校验 release、版本、规范化 checksum、字段、状态和 scope，并将数据库 active release 与 corpus 身份绑定；checksum 漂移、损坏文件、未知字段和没有已发布片段均 fail closed 为 `409 KNOWLEDGE_RELEASE_MISMATCH`。Java 返回的 `documentType` 只是兼容旧页面的展示派生字段，检索正文、标题、片段 ID、scope 和 checksum 均来自 canonical corpus。React 分析成功后对真实工单重新读取服务端完整实体，因而分类、优先级、状态、更新时间和并发版本不会停留在旧快照；Demo 工单仍保持本地演示路径。Java 知识测试、React 63 条通过的 Vitest、lint、TypeScript/build 和 Java 全量测试已通过；本轮没有修改 UI 视觉。该改动仍不等于 release/artifact 发布平台：Python 向量 artifact 仍由 Python 管理，发布流程必须同时部署匹配的 corpus 文件和数据库 release，MySQL/Testcontainers、分布式 artifact 锁和真实 live provider 验证仍属于后续范围。
 
+第 71 轮工单查询改造（2026-08-30）已将列表过滤和排序下推到数据库，使用 `createdAt DESC, id DESC` 的 keyset cursor，并通过 `X-Next-Cursor` 保持数组响应兼容；当前页的最新分析和审核改为批量读取。指标改用数据库聚合，新增 V5 工单值域 `CHECK` 约束与队列复合索引，工单号移除 JVM 内存自增序列。H2 集成、批量组装、聚合指标和迁移契约测试已通过。React 当前仍只加载首批并本地筛选，真实 MySQL/压测、多租户、OpenTelemetry、SLO、限流和队列仍未完成，不能把本轮描述为生产容量验证。
+
 ~~~text
 cd services/support-copilot-api
 ./gradlew test --no-daemon

@@ -323,6 +323,7 @@ usage                耗时和 token 信息
 - 工单和指标仍不是同一个后端快照，严格一致性需要统一初始化接口或明确统计时间范围。
 - Python/RAG 还需要更多真实案例和评估数据。
 - Java 指标接口只返回有持久化来源的运行态数据；固定 mock 评估报告现在可通过 `EVALUATION_REPORT_PATH` 接入质量页面，报告缺失或损坏时 `evaluation` 仍为空。
+- 工单队列使用数据库 keyset 分页：`GET /api/tickets` 固定按 `createdAt DESC, id DESC` 排序，支持 `status`、`priority`、`category`、`keyword`、`cursor` 和 `limit`；当前页仍返回数组，续页通过 `X-Next-Cursor` 响应头传递。列表响应通过批量分析/审核查询避免逐工单 N+1，指标使用数据库聚合而不是加载全表。
 
 因此，学习和面试时必须说清楚：哪些是已实现功能，哪些是下一阶段设计，不能把设计方案说成已经上线的能力。
 

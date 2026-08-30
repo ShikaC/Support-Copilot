@@ -3,14 +3,18 @@ package com.cyagent.supportcopilot.ticket;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.EntityNotFoundException;
 
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +38,9 @@ import com.cyagent.supportcopilot.ticket.TicketDtos.UpdateTicketRequest;
 @Service
 public class TicketService {
 
-	private static final AtomicInteger TICKET_SEQUENCE = new AtomicInteger(10100);
+	private static final String UNUSED_FILTER = "__unused__";
+	private static final int DEFAULT_PAGE_SIZE = 20;
+	private static final int MAX_PAGE_SIZE = 100;
 
 	private final TicketRepository ticketRepository;
 	private final AnalysisService analysisService;
@@ -53,14 +59,56 @@ public class TicketService {
 		this.auditEventRecorder = auditEventRecorder;
 	}
 
-	public List<TicketResponse> list(String status, String priority, String keyword) {
-		var normalizedKeyword = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
-		return ticketRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-			.filter(ticket -> status == null || status.isBlank() || ticket.getStatus().equals(status))
-			.filter(ticket -> priority == null || priority.isBlank() || ticket.getPriority().equals(priority))
-			.filter(ticket -> normalizedKeyword.isBlank() || searchable(ticket).contains(normalizedKeyword))
-			.map(this::toResponse)
-			.toList();
+	@Transactional(readOnly = true)
+	public TicketPage list(
+		String status,
+		String priority,
+		String category,
+		String keyword,
+		String cursor,
+		Integer requestedLimit
+	) {
+		var pageSize = pageSize(requestedLimit);
+		var statuses = enumFilter(status, value -> TicketDomain.parseStatus(value).name());
+		var priorities = enumFilter(priority, value -> TicketDomain.parsePriority(value).name());
+		var categories = enumFilter(category, value -> TicketDomain.parseCategory(value).name());
+		var normalizedKeyword = normalizeKeyword(keyword);
+		var pageRequest = PageRequest.of(0, pageSize + 1);
+		var decodedCursor = cursor == null || cursor.isBlank() ? null : TicketCursor.decode(cursor);
+		var tickets = decodedCursor == null
+			? ticketRepository.findFirstPage(
+				statuses,
+				filterEnabled(status),
+				priorities,
+				filterEnabled(priority),
+				categories,
+				filterEnabled(category),
+				normalizedKeyword,
+				pageRequest
+			)
+			: ticketRepository.findPageAfter(
+				statuses,
+				filterEnabled(status),
+				priorities,
+				filterEnabled(priority),
+				categories,
+				filterEnabled(category),
+				normalizedKeyword,
+				decodedCursor.createdAt(),
+				decodedCursor.id(),
+				pageRequest
+			);
+
+		var hasMore = tickets.size() > pageSize;
+		var pageTickets = hasMore ? tickets.subList(0, pageSize) : tickets;
+		var nextCursor = hasMore
+			? new TicketCursor(
+				pageTickets.get(pageTickets.size() - 1).getCreatedAt(),
+				pageTickets.get(pageTickets.size() - 1).getId()
+			).encode()
+			: null;
+
+		return new TicketPage(toResponses(pageTickets), nextCursor, pageSize);
 	}
 
 	public TicketResponse get(String id) {
@@ -72,7 +120,7 @@ public class TicketService {
 		var now = Instant.now();
 		var ticket = new Ticket();
 		ticket.setId("ticket-" + UUID.randomUUID());
-		ticket.setTicketNo("SC-" + TICKET_SEQUENCE.incrementAndGet());
+		ticket.setTicketNo(newTicketNumber());
 		ticket.setChannel(request.channel().name());
 		ticket.setCustomerName(request.customerName());
 		ticket.setCustomerCompany(request.customerCompany());
@@ -179,18 +227,81 @@ public class TicketService {
 			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + id));
 	}
 
-	private String searchable(Ticket ticket) {
-		return String.join(" ",
-			ticket.getTicketNo(),
-			ticket.getSubject(),
-			ticket.getCustomerName(),
-			ticket.getCustomerCompany()
-		).toLowerCase(Locale.ROOT);
+	private int pageSize(Integer requestedLimit) {
+		var size = requestedLimit == null ? DEFAULT_PAGE_SIZE : requestedLimit;
+		if (size < 1 || size > MAX_PAGE_SIZE) {
+			throw TicketQueryException.invalidPageSize();
+		}
+		return size;
+	}
+
+	private Set<String> enumFilter(String raw, Function<String, String> parser) {
+		if (!filterEnabled(raw)) {
+			return Set.of(UNUSED_FILTER);
+		}
+
+		try {
+			var values = Arrays.stream(raw.split(","))
+				.map(String::trim)
+				.filter(value -> !value.isBlank())
+				.map(value -> parser.apply(value.toUpperCase(Locale.ROOT)))
+				.collect(Collectors.toCollection(HashSet::new));
+			if (values.isEmpty()) {
+				throw TicketQueryException.invalidFilter();
+			}
+			return Set.copyOf(values);
+		} catch (TicketQueryException exception) {
+			throw exception;
+		} catch (IllegalArgumentException exception) {
+			throw TicketQueryException.invalidFilter();
+		}
+	}
+
+	private boolean filterEnabled(String raw) {
+		return raw != null && !raw.isBlank();
+	}
+
+	private String normalizeKeyword(String keyword) {
+		var normalized = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+		if (normalized.length() > 120) {
+			throw TicketQueryException.invalidFilter();
+		}
+		return normalized
+			.replace("!", "!!")
+			.replace("%", "!%")
+			.replace("_", "!_");
+	}
+
+	private String newTicketNumber() {
+		return "SC-" + UUID.randomUUID().toString().replace("-", "").substring(0, 29).toUpperCase(Locale.ROOT);
+	}
+
+	private List<TicketResponse> toResponses(List<Ticket> tickets) {
+		var latestByTicket = analysisService.latestForTickets(
+			tickets.stream().map(Ticket::getId).toList()
+		);
+		var latestAnalyses = latestByTicket.values().stream().map(AnalysisResponse::id).toList();
+		var latestReviews = analysisReviewService.latestForAnalyses(latestAnalyses);
+		return tickets.stream()
+			.map(ticket -> {
+				var latest = latestByTicket.get(ticket.getId());
+				var latestReview = latest == null ? null : latestReviews.get(latest.id());
+				return toResponse(ticket, latest, latestReview);
+			})
+			.toList();
 	}
 
 	private TicketResponse toResponse(Ticket ticket) {
 		var latest = analysisService.latest(ticket.getId()).orElse(null);
 		var latestReview = latest == null ? null : analysisReviewService.latest(latest.id()).orElse(null);
+		return toResponse(ticket, latest, latestReview);
+	}
+
+	private TicketResponse toResponse(
+		Ticket ticket,
+		AnalysisResponse latest,
+		AnalysisReviewResponse latestReview
+	) {
 		var events = events(ticket, latest, latestReview);
 
 		return new TicketResponse(
@@ -255,5 +366,11 @@ public class TicketService {
 			case EDITED -> review.reviewerLabel() + "已编辑并采纳回复建议";
 			case REJECTED -> review.reviewerLabel() + "已拒绝回复建议：" + review.reason();
 		};
+	}
+
+	public record TicketPage(List<TicketResponse> items, String nextCursor, int limit) {
+		public TicketPage {
+			items = List.copyOf(items);
+		}
 	}
 }

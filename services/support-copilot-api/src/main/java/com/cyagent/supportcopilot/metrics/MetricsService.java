@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction;
@@ -32,24 +32,27 @@ public class MetricsService {
 		this.evaluationReportReader = evaluationReportReader;
 	}
 
+	@Transactional(readOnly = true)
 	public MetricsResponse snapshot() {
-		var tickets = ticketRepository.findAll();
-		var open = tickets.stream().filter(ticket -> !List.of("RESOLVED", "CLOSED").contains(ticket.getStatus())).count();
-		var urgent = tickets.stream().filter(ticket -> "URGENT".equals(ticket.getPriority())).count();
-		var slaRisk = tickets.stream().filter(ticket -> List.of("URGENT", "HIGH").contains(ticket.getPriority())).count();
-		var categoryCounts = tickets.stream().collect(Collectors.groupingBy(Ticket::getCategory, Collectors.counting()));
-		var analysisRuns = analysisRunRepository.findAll();
-		var analysisSuccessRate = analysisRuns.isEmpty()
+		var open = ticketRepository.countByStatusNotIn(List.of("RESOLVED", "CLOSED"));
+		var urgent = ticketRepository.countByPriority("URGENT");
+		var slaRisk = urgent + ticketRepository.countByPriority("HIGH");
+		var categoryCounts = ticketRepository.countByCategory().stream()
+			.collect(Collectors.toMap(
+				TicketRepository.CategoryCountProjection::getCategory,
+				projection -> projection.getCount()
+			));
+		var totalAnalysisRuns = analysisRunRepository.count();
+		var analysisSuccessRate = totalAnalysisRuns == 0
 			? null
-			: analysisRuns.stream().filter(run -> "SUCCEEDED".equals(run.getStatus())).count()
-				/ (double) analysisRuns.size();
-		var reviews = analysisReviewRepository.findAll();
-		var suggestionAcceptanceRate = reviews.isEmpty()
+			: analysisRunRepository.countByStatus("SUCCEEDED") / (double) totalAnalysisRuns;
+		var totalReviews = analysisReviewRepository.count();
+		var suggestionAcceptanceRate = totalReviews == 0
 			? null
-			: reviews.stream()
-				.filter(review -> review.getAction() == AnalysisReviewAction.APPROVED
-					|| review.getAction() == AnalysisReviewAction.EDITED)
-				.count() / (double) reviews.size();
+			: analysisReviewRepository.countByActionIn(List.of(
+				AnalysisReviewAction.APPROVED,
+				AnalysisReviewAction.EDITED
+			)) / (double) totalReviews;
 
 		var evaluation = evaluationReportReader.read()
 			.map(this::toEvaluation)
@@ -94,7 +97,10 @@ public class MetricsService {
 			));
 		return displayCounts.entrySet().stream()
 			.map(entry -> new CategoryCount(entry.getKey(), entry.getValue()))
-			.sorted((left, right) -> Long.compare(right.count(), left.count()))
+			.sorted((left, right) -> {
+				var countComparison = Long.compare(right.count(), left.count());
+				return countComparison != 0 ? countComparison : left.category().compareTo(right.category());
+			})
 			.toList();
 	}
 

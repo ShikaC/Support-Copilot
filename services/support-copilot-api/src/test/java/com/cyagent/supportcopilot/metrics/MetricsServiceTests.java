@@ -2,6 +2,8 @@ package com.cyagent.supportcopilot.metrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -22,9 +24,7 @@ class MetricsServiceTests {
 
 	@Test
 	void doesNotInventAnalysisQualityMetricsWithoutRecordedRuns() {
-		when(ticketRepository.findAll()).thenReturn(List.of());
-		when(analysisRunRepository.findAll()).thenReturn(List.of());
-		when(analysisReviewRepository.findAll()).thenReturn(List.of());
+		stubEmptyAggregates();
 		when(evaluationReportReader.read()).thenReturn(Optional.empty());
 
 		var response = new MetricsService(
@@ -39,13 +39,14 @@ class MetricsServiceTests {
 		assertThat(response.analysisLatency()).isNull();
 		assertThat(response.suggestionAcceptanceRate()).isNull();
 		assertThat(response.evaluation()).isNull();
+		verify(ticketRepository, never()).findAll();
+		verify(analysisRunRepository, never()).findAll();
+		verify(analysisReviewRepository, never()).findAll();
 	}
 
 	@Test
 	void exposesOnlyTheMetricsRecordedByTheEvaluationReport() {
-		when(ticketRepository.findAll()).thenReturn(List.of());
-		when(analysisRunRepository.findAll()).thenReturn(List.of());
-		when(analysisReviewRepository.findAll()).thenReturn(List.of());
+		stubEmptyAggregates();
 		when(evaluationReportReader.read()).thenReturn(Optional.of(
 			new EvaluationReportReader.EvaluationSnapshot(
 				"tickets.jsonl",
@@ -82,5 +83,56 @@ class MetricsServiceTests {
 		assertThat(response.evaluation().p95DurationMs()).isEqualTo(1);
 		assertThat(response.evaluation().thresholdFailureCount()).isZero();
 		assertThat(response.evaluation().passed()).isTrue();
+	}
+
+	@Test
+	void calculatesOperationalRatesFromDatabaseAggregates() {
+		var billing = mock(TicketRepository.CategoryCountProjection.class);
+		var technical = mock(TicketRepository.CategoryCountProjection.class);
+		when(billing.getCategory()).thenReturn("BILLING");
+		when(billing.getCount()).thenReturn(4L);
+		when(technical.getCategory()).thenReturn("TECHNICAL");
+		when(technical.getCount()).thenReturn(2L);
+		when(ticketRepository.countByStatusNotIn(List.of("RESOLVED", "CLOSED"))).thenReturn(5L);
+		when(ticketRepository.countByPriority("URGENT")).thenReturn(1L);
+		when(ticketRepository.countByPriority("HIGH")).thenReturn(2L);
+		when(ticketRepository.countByCategory()).thenReturn(List.of(billing, technical));
+		when(analysisRunRepository.count()).thenReturn(4L);
+		when(analysisRunRepository.countByStatus("SUCCEEDED")).thenReturn(3L);
+		when(analysisReviewRepository.count()).thenReturn(4L);
+		when(analysisReviewRepository.countByActionIn(List.of(
+			com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction.APPROVED,
+			com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction.EDITED
+		))).thenReturn(3L);
+		when(evaluationReportReader.read()).thenReturn(Optional.empty());
+
+		var response = new MetricsService(
+			ticketRepository,
+			analysisRunRepository,
+			analysisReviewRepository,
+			evaluationReportReader
+		).snapshot();
+
+		assertThat(response.summary().openTickets()).isEqualTo(5L);
+		assertThat(response.summary().urgentTickets()).isEqualTo(1L);
+		assertThat(response.summary().slaRiskTickets()).isEqualTo(3L);
+		assertThat(response.summary().analysisSuccessRate()).isEqualTo(0.75);
+		assertThat(response.suggestionAcceptanceRate()).isEqualTo(0.75);
+		assertThat(response.categoryDistribution()).extracting(MetricsService.CategoryCount::category)
+			.containsExactly("账单支付", "技术问题");
+	}
+
+	private void stubEmptyAggregates() {
+		when(ticketRepository.countByStatusNotIn(List.of("RESOLVED", "CLOSED"))).thenReturn(0L);
+		when(ticketRepository.countByPriority("URGENT")).thenReturn(0L);
+		when(ticketRepository.countByPriority("HIGH")).thenReturn(0L);
+		when(ticketRepository.countByCategory()).thenReturn(List.of());
+		when(analysisRunRepository.count()).thenReturn(0L);
+		when(analysisRunRepository.countByStatus("SUCCEEDED")).thenReturn(0L);
+		when(analysisReviewRepository.countByActionIn(List.of(
+			com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction.APPROVED,
+			com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction.EDITED
+		))).thenReturn(0L);
+		when(analysisReviewRepository.count()).thenReturn(0L);
 	}
 }

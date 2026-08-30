@@ -173,7 +173,7 @@ curl http://localhost:8080/actuator/health/readiness
 工单接口：
 
 ```bash
-curl http://localhost:8080/api/tickets
+curl 'http://localhost:8080/api/tickets?limit=20'
 curl http://localhost:8080/api/metrics
 curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 ```
@@ -544,7 +544,7 @@ CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" ./scripts/verify-ci-gates.sh --mode re
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| GET | `/api/tickets` | 查询工单队列 |
+| GET | `/api/tickets` | 使用 keyset cursor 查询工单队列 |
 | GET | `/api/tickets/{id}` | 查询工单详情 |
 | POST | `/api/tickets` | 创建工单 |
 | PATCH | `/api/tickets/{id}` | 携带非负 `expectedVersion` 修改状态、分类、优先级或负责人 |
@@ -560,6 +560,13 @@ CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" ./scripts/verify-ci-gates.sh --mode re
 | POST | `/api/knowledge/releases/{id}/approve`、`publish`、`rollback` | 携带 `expectedVersion` 执行受角色保护的合法转换 |
 | GET | `/api/metrics` | 查询当前工单、已持久化运行态指标和可追溯 mock 评估报告；没有来源的数据返回空值 |
 | POST | `/analyze` | Java 调用的 AI 服务内部接口；要求 `X-Internal-Service-Token`，不属于浏览器 API |
+
+`GET /api/tickets` 返回当前页工单数组，默认 `limit=20`、最大 `limit=100`，固定按
+`createdAt DESC, id DESC` 排序。`status`、`priority`、`category` 支持逗号分隔的枚举，
+`keyword` 在数据库中匹配编号、标题、客户和公司；有下一页时从 `X-Next-Cursor` 响应头
+继续查询，并将它作为 `cursor` 参数传回。非法分页、游标和筛选分别返回
+`INVALID_TICKET_PAGE`、`INVALID_TICKET_CURSOR`、`INVALID_TICKET_FILTER`。当前 React
+工作台仍只加载首批并在客户端筛选，服务端续页能力已存在但尚未形成完整“加载更多”交互。
 
 ## 演示
 

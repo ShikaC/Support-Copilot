@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.cyagent.supportcopilot.analysis.AiServiceAuthenticationException;
 import com.cyagent.supportcopilot.analysis.AiServiceContractException;
@@ -25,6 +26,7 @@ import com.cyagent.supportcopilot.analysis.review.StaleAnalysisReviewException;
 import com.cyagent.supportcopilot.audit.AuditQueryException;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.ticket.TicketQueryException;
 import com.cyagent.supportcopilot.ticket.TicketStateConflictException;
 import com.cyagent.supportcopilot.idempotency.IdempotencyConflictException;
 import com.cyagent.supportcopilot.idempotency.IdempotencyInProgressException;
@@ -72,6 +74,24 @@ public class ApiExceptionHandler {
 	ResponseEntity<ApiError> handleAuditQuery(AuditQueryException exception, HttpServletRequest request) {
 		return ResponseEntity.badRequest()
 			.body(error("INVALID_AUDIT_QUERY", "审计查询参数不符合约束。", request));
+	}
+
+	@ExceptionHandler(TicketQueryException.class)
+	ResponseEntity<ApiError> handleTicketQuery(TicketQueryException exception, HttpServletRequest request) {
+		return ResponseEntity.badRequest()
+			.body(error(exception.code(), exception.getMessage(), request));
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	ResponseEntity<ApiError> handleArgumentTypeMismatch(
+		MethodArgumentTypeMismatchException exception,
+		HttpServletRequest request
+	) {
+		var code = "limit".equals(exception.getName()) ? "INVALID_TICKET_PAGE" : "INVALID_REQUEST";
+		var message = "limit".equals(exception.getName())
+			? "工单分页大小必须在 1 到 100 之间。"
+			: "请求参数不符合业务约束。";
+		return ResponseEntity.badRequest().body(error(code, message, request));
 	}
 
 	@ExceptionHandler(AiServiceAuthenticationException.class)

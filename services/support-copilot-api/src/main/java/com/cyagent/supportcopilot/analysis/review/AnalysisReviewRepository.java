@@ -1,5 +1,6 @@
 package com.cyagent.supportcopilot.analysis.review;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,6 +12,10 @@ public interface AnalysisReviewRepository extends JpaRepository<AnalysisReview, 
 	Optional<AnalysisReview> findFirstByAnalysisIdOrderByCreatedAtDesc(String analysisId);
 
 	List<AnalysisReview> findByAnalysisIdOrderByCreatedAtDesc(String analysisId);
+
+	List<AnalysisReview> findByAnalysisIdInOrderByCreatedAtDescIdDesc(Collection<String> analysisIds);
+
+	long countByActionIn(Collection<AnalysisReviewAction> actions);
 
 	@Transactional
 	void deleteAllByTicketId(String ticketId);

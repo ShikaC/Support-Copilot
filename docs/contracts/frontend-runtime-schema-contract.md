@@ -29,13 +29,17 @@ Schema 集中在 `apps/support-copilot-web/src/services/apiSchemas.ts`，类型�
 
 | React 调用 | 成功响应 Schema |
 | --- | --- |
-| `GET /api/tickets` | 工单数组；每个真实工单必须有非负整数 `version` |
+| `GET /api/tickets` | 当前页工单数组；每个真实工单必须有非负整数 `version`，续页游标在 `X-Next-Cursor` 响应头 |
 | `GET /api/metrics` | 指标结构；计数、延迟和比率保持数字类型与有效范围 |
 | `POST /api/tickets/{id}/analyze` | 完整分析结果及所有嵌套字段 |
 | `PATCH /api/tickets/{id}` | 单个完整工单 |
 | `POST /api/tickets/{id}/unassign` | 单个完整工单 |
 
 对象使用严格 Schema，未知字段不会被静默丢弃。新增后端字段需要同步更新前端契约和测试，避免滚动部署期间出现无法解释的兼容状态。
+
+工单分页元数据位于响应头，不进入数组 Schema：`X-Page-Limit` 表示当前页大小，存在更多
+结果时返回 `X-Next-Cursor`。当前 `fetchTickets` 保持返回数组的兼容 API；工作台尚未提供
+续页交互，因此首批之外的服务端结果不会自动进入页面。
 
 分析结果还必须满足：
 

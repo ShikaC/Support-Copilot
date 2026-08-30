@@ -4,7 +4,9 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,12 +46,21 @@ public class TicketController {
 	}
 
 	@GetMapping
-	List<TicketResponse> list(
+	ResponseEntity<List<TicketResponse>> list(
 		@RequestParam(required = false) String status,
 		@RequestParam(required = false) String priority,
-		@RequestParam(required = false) String keyword
+		@RequestParam(required = false) String category,
+		@RequestParam(required = false) String keyword,
+		@RequestParam(required = false) String cursor,
+		@RequestParam(defaultValue = "20") Integer limit
 	) {
-		return ticketService.list(status, priority, keyword);
+		var page = ticketService.list(status, priority, category, keyword, cursor, limit);
+		var headers = new HttpHeaders();
+		headers.add("X-Page-Limit", Integer.toString(page.limit()));
+		if (page.nextCursor() != null) {
+			headers.add("X-Next-Cursor", page.nextCursor());
+		}
+		return new ResponseEntity<>(page.items(), headers, HttpStatus.OK);
 	}
 
 	@GetMapping("/{id}")

@@ -86,6 +86,7 @@ V1 在调用 Python 后，需要同时保存分析记录并更新工单。第一
 68. [可追溯 live 评估与人工 groundedness 审核](./68-traceable-live-evaluation.md)
 69. [隔离认证前端工作流与严格 API 边界](./69-isolate-authenticated-react-workflows.md)
 70. [加固浏览器质量门禁的非浏览器基础](./70-harden-browser-quality-gates.md)
+71. [收紧工单查询边界与聚合指标访问](./71-ticket-query-and-aggregate-safety.md)
 
 ## 优化后的主流程
 

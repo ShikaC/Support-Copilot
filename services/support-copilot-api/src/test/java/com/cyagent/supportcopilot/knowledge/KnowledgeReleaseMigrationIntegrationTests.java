@@ -46,12 +46,12 @@ class KnowledgeReleaseMigrationIntegrationTests {
 	private JdbcTemplate jdbcTemplate;
 
 	@Test
-	void flywayV4MigratesH2AndBaselineActivationPassesHibernateValidation() {
+	void flywayV5MigratesH2AndBaselineActivationPassesHibernateValidation() {
 		assertThat(jdbcTemplate.queryForObject(
 			"select \"version\" from \"flyway_schema_history\" where \"success\" = true "
 				+ "order by \"installed_rank\" desc limit 1",
 			String.class
-		)).isEqualTo("4");
+		)).isEqualTo("5");
 		assertThat(jdbcTemplate.queryForObject(
 			"select release_id from knowledge_active_release where id = 'active'",
 			String.class

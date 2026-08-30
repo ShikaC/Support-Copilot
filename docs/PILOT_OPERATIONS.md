@@ -84,7 +84,7 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 | GET | `/api/knowledge/releases/{releaseId}` | 查询指定 release |
 | GET | `/api/knowledge/search` | 按可信 scope 检索知识 |
 | GET | `/api/metrics` | 查询工单与评估报告指标 |
-| GET | `/api/tickets` | 查询工单队列 |
+| GET | `/api/tickets` | 使用 keyset cursor 查询工单队列 |
 | GET | `/api/tickets/{id}` | 查询工单详情 |
 | GET | `/api/tickets/{id}/analyses` | 查询分析历史 |
 | GET | `/api/tickets/{ticketId}/analyses/{analysisId}/reviews` | 查询审核历史 |
@@ -102,6 +102,15 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 | POST | `/api/tickets/{id}/unassign` | 取消负责人 |
 | POST | `/api/tickets/{ticketId}/analyses/{analysisId}/reviews` | 采纳或编辑后采纳 |
 | POST | `/api/tickets/{ticketId}/analyses/{analysisId}/reviews/reject` | 拒绝建议 |
+
+`GET /api/tickets` 的响应体仍是当前页工单数组，以兼容现有 React Schema。使用
+`limit=1..100` 控制页大小；结果按 `createdAt DESC, id DESC` 固定排序，下一页从
+`X-Next-Cursor` 响应头读取，最后一页不返回该 header。`status`、`priority` 和 `category`
+支持逗号分隔值，非法分页或筛选参数返回 `400` 和稳定错误码
+`INVALID_TICKET_PAGE`、`INVALID_TICKET_CURSOR` 或 `INVALID_TICKET_FILTER`。
+
+当前工作台仍在客户端对已加载数组执行展示筛选，尚未把搜索控件接入服务端查询或“加载更多”
+交互；超过首批结果的生产级列表体验仍需单独完成。
 
 稳定错误 envelope 使用 `code`、`message`、`traceId` 和 `details`。面试关键错误包括：
 

@@ -1,6 +1,9 @@
 package com.cyagent.supportcopilot.analysis;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import tools.jackson.core.JacksonException;
@@ -143,6 +146,20 @@ public class AnalysisService {
 
 	public Optional<AnalysisResponse> latest(String ticketId) {
 		return analysisRunRepository.findFirstByTicketIdOrderByCreatedAtDesc(ticketId).map(this::deserialize);
+	}
+
+	public Map<String, AnalysisResponse> latestForTickets(Collection<String> ticketIds) {
+		if (ticketIds.isEmpty()) {
+			return Map.of();
+		}
+
+		var latestByTicket = new HashMap<String, AnalysisResponse>();
+		for (var run : analysisRunRepository.findByTicketIdInOrderByCreatedAtDescIdDesc(ticketIds)) {
+			if (!latestByTicket.containsKey(run.getTicketId())) {
+				latestByTicket.put(run.getTicketId(), deserialize(run));
+			}
+		}
+		return Map.copyOf(latestByTicket);
 	}
 
 	public List<AnalysisResponse> history(String ticketId) {

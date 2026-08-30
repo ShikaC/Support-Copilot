@@ -845,7 +845,7 @@ erDiagram
 - 路径前缀：`/api`。
 - 数据格式：JSON。
 - 时间格式：ISO 8601 UTC。
-- 分页参数：`page`、`size`、`sort`。
+- 分页参数按资源契约定义：工单和审计查询使用不透明 `cursor` 与 `limit`，并固定稳定排序。
 - 请求追踪：接收或生成 `X-Trace-Id`。
 - 幂等：分析接口支持 `Idempotency-Key` 或运行状态检查。
 - 错误响应包含稳定错误码，不把堆栈返回前端。
@@ -875,10 +875,14 @@ status=NEW,READY_FOR_REVIEW
 priority=HIGH,URGENT
 category=BILLING
 keyword=duplicate charge
-page=0
-size=20
-sort=createdAt,desc
+cursor=<opaque-cursor>
+limit=20
 ```
+
+工单响应体继续保持 JSON 数组，以兼容当前 React 运行时 Schema；`X-Page-Limit` 返回实际
+分页大小，存在更多结果时通过 `X-Next-Cursor` 返回下一页游标。结果固定按
+`createdAt DESC, id DESC` 排序，`limit` 只允许 1 到 100。`status`、`priority` 和 `category`
+支持逗号分隔的受控枚举，`keyword` 会在数据库查询中匹配编号、标题、客户和公司。
 
 #### `GET /api/tickets/{id}`
 

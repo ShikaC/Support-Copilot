@@ -1,7 +1,10 @@
 package com.cyagent.supportcopilot.analysis.review;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -134,6 +137,21 @@ public class AnalysisReviewService {
 	public Optional<AnalysisReviewResponse> latest(String analysisId) {
 		return analysisReviewRepository.findFirstByAnalysisIdOrderByCreatedAtDesc(analysisId)
 			.map(this::toResponse);
+	}
+
+	@Transactional(readOnly = true)
+	public Map<String, AnalysisReviewResponse> latestForAnalyses(Collection<String> analysisIds) {
+		if (analysisIds.isEmpty()) {
+			return Map.of();
+		}
+
+		var latestByAnalysis = new HashMap<String, AnalysisReviewResponse>();
+		for (var review : analysisReviewRepository.findByAnalysisIdInOrderByCreatedAtDescIdDesc(analysisIds)) {
+			if (!latestByAnalysis.containsKey(review.getAnalysisId())) {
+				latestByAnalysis.put(review.getAnalysisId(), toResponse(review));
+			}
+		}
+		return Map.copyOf(latestByAnalysis);
 	}
 
 	@Transactional(readOnly = true)

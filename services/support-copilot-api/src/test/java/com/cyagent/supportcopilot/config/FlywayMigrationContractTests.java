@@ -75,4 +75,27 @@ class FlywayMigrationContractTests {
 				"drop table", "truncate table", "delete from", "update knowledge_releases", "flyway clean"
 			);
 	}
+
+	@Test
+	void ticketMigrationAddsDomainChecksAndQueueIndexesWithoutDestructiveStatements() throws IOException {
+		var migration = new ClassPathResource("db/migration/V5__ticket_query_constraints.sql")
+			.getContentAsString(StandardCharsets.UTF_8)
+			.toLowerCase();
+
+		assertThat(migration)
+			.contains(
+				"ck_tickets_channel",
+				"ck_tickets_customer_tier",
+				"ck_tickets_category",
+					"ck_tickets_priority",
+					"ck_tickets_status",
+					"idx_tickets_queue_created_id",
+					"idx_tickets_category_created_id",
+					"idx_tickets_status_created_id",
+					"idx_tickets_priority_created_id",
+					"idx_analysis_runs_ticket_created_id",
+					"idx_analysis_reviews_analysis_created_id"
+				)
+			.doesNotContain("drop table", "truncate table", "delete from", "flyway clean");
+	}
 }

@@ -1,5 +1,6 @@
 package com.cyagent.supportcopilot.analysis;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,4 +11,8 @@ public interface AnalysisRunRepository extends JpaRepository<AnalysisRun, String
 	Optional<AnalysisRun> findFirstByTicketIdOrderByCreatedAtDesc(String ticketId);
 
 	List<AnalysisRun> findByTicketIdOrderByCreatedAtDesc(String ticketId);
+
+	List<AnalysisRun> findByTicketIdInOrderByCreatedAtDescIdDesc(Collection<String> ticketIds);
+
+	long countByStatus(String status);
 }
