@@ -17,42 +17,14 @@ from app.internal_auth import (
 )
 from app.knowledge import KnowledgeReleaseMismatchError, KnowledgeRetriever
 from app.models import TRACE_ID_PATTERN, AnalyzeRequest, AnalyzeResponse
+from app.observability import (
+    STRUCTURED_LOG_FORMAT,
+    StructuredLogDefaults,
+    configure_structured_logging,
+)
 from app.workflow import AnalysisWorkflow
 
-STRUCTURED_LOG_FORMAT: Final = (
-    "%(asctime)s %(levelname)s %(name)s event=%(message)s "
-    "trace_id=%(trace_id)s timeout_seconds=%(timeout_seconds)s "
-    "error_code=%(error_code)s error_type=%(error_type)s "
-    "mode=%(mode)s status=%(status)s hit_count=%(hit_count)s reason=%(reason)s "
-    "protocol=%(protocol)s model_response_failure_kind=%(model_response_failure_kind)s"
-)
-
-logging.basicConfig(level=logging.INFO, format=STRUCTURED_LOG_FORMAT)
-
-
-class StructuredLogDefaults(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        defaults: dict[str, str] = {
-            "trace_id": "none",
-            "timeout_seconds": "none",
-            "error_code": "none",
-            "error_type": "none",
-            "mode": "none",
-            "status": "none",
-            "hit_count": "none",
-            "reason": "none",
-            "protocol": "none",
-            "model_response_failure_kind": "none",
-        }
-        for name, value in defaults.items():
-            if not hasattr(record, name):
-                setattr(record, name, value)
-        return True
-
-
-for handler in logging.getLogger().handlers:
-    handler.addFilter(StructuredLogDefaults())
-    handler.setFormatter(logging.Formatter(STRUCTURED_LOG_FORMAT))
+configure_structured_logging()
 
 logger = logging.getLogger(__name__)
 TRACE_HEADER: Final = "X-Trace-Id"

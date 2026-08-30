@@ -13,6 +13,7 @@ if str(SERVICE_DIR) not in sys.path:
 from app.analysis_runner import AnalysisRunner
 from app.config import Settings
 from app.knowledge import KnowledgeRetriever
+from app.observability import configure_structured_logging
 from app.workflow import AnalysisWorkflow
 from evaluation.live_markdown import render_live_markdown
 from evaluation.live_provenance import load_verified_live_inputs
@@ -26,6 +27,7 @@ DEFAULT_REPORT_DIR = SERVICE_DIR / "evaluation" / "reports"
 
 
 async def run(dataset_path: Path, report_dir: Path, pricing_path: Path | None) -> int:
+    configure_structured_logging()
     settings = Settings(ai_mode="live")
     inputs = load_verified_live_inputs(dataset_path, settings)
     retriever = KnowledgeRetriever(settings)
