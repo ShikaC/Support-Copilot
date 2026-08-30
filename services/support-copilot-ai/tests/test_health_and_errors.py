@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from app.analysis_runner import AnalysisProcessingTimeoutError
-from app.main import app, runner, settings
+from app.main import STRUCTURED_LOG_FORMAT, StructuredLogDefaults, app, runner, settings
 from app.models import BUNDLED_KNOWLEDGE_ACCESS, AnalyzeRequest
 
 
@@ -57,6 +57,36 @@ def test_legacy_health_remains_backwards_compatible() -> None:
         "liveReady": settings.live_ready,
         "knowledgeChunks": 10,
     }
+
+
+def test_ordinary_records_render_with_safe_structured_log_defaults() -> None:
+    record = logging.LogRecord(
+        name="test.logging",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg="ordinary.event",
+        args=(),
+        exc_info=None,
+    )
+
+    StructuredLogDefaults().filter(record)
+    rendered = logging.Formatter(STRUCTURED_LOG_FORMAT).format(record)
+
+    assert "event=ordinary.event" in rendered
+    for field in (
+        "trace_id",
+        "timeout_seconds",
+        "error_code",
+        "error_type",
+        "mode",
+        "status",
+        "hit_count",
+        "reason",
+        "protocol",
+        "model_response_failure_kind",
+    ):
+        assert f"{field}=none" in rendered
 
 
 def test_validation_error_has_stable_envelope_and_trace_header() -> None:

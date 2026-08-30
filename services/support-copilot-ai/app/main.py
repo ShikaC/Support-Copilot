@@ -23,7 +23,8 @@ STRUCTURED_LOG_FORMAT: Final = (
     "%(asctime)s %(levelname)s %(name)s event=%(message)s "
     "trace_id=%(trace_id)s timeout_seconds=%(timeout_seconds)s "
     "error_code=%(error_code)s error_type=%(error_type)s "
-    "mode=%(mode)s status=%(status)s hit_count=%(hit_count)s reason=%(reason)s"
+    "mode=%(mode)s status=%(status)s hit_count=%(hit_count)s reason=%(reason)s "
+    "protocol=%(protocol)s model_response_failure_kind=%(model_response_failure_kind)s"
 )
 
 logging.basicConfig(level=logging.INFO, format=STRUCTURED_LOG_FORMAT)
@@ -40,6 +41,8 @@ class StructuredLogDefaults(logging.Filter):
             "status": "none",
             "hit_count": "none",
             "reason": "none",
+            "protocol": "none",
+            "model_response_failure_kind": "none",
         }
         for name, value in defaults.items():
             if not hasattr(record, name):

@@ -15,6 +15,7 @@ from app.errors import (
 )
 from app.knowledge import KnowledgeRetriever, RetrievalRequest
 from app.live_vector_index import RetrievalWindow
+from app.main import STRUCTURED_LOG_FORMAT, StructuredLogDefaults
 from app.models import (
     BUNDLED_KNOWLEDGE_ACCESS,
     AnalyzeRequest,
@@ -136,7 +137,21 @@ async def test_invalid_model_response_logs_safe_failure_kind(
     settings = live_settings()
     retriever = KnowledgeRetriever(settings)
     workflow = AnalysisWorkflow(settings, retriever)
-    sensitive_marker = "TASK10_SENSITIVE_MARKER_DO_NOT_LOG"
+    sensitive_markers = (
+        "TASK10_RAW_MODEL_RESPONSE_DO_NOT_LOG",
+        "TASK10_MODEL_CONTENT_DO_NOT_LOG",
+        "TASK10_MODEL_REFUSAL_DO_NOT_LOG",
+        "TASK10_VALIDATION_PAYLOAD_DO_NOT_LOG",
+        "TASK10_API_KEY_DO_NOT_LOG",
+        "TASK10_AUTH_HEADER_DO_NOT_LOG",
+    )
+    sensitive_payload = (
+        "raw_model_response="
+        f"{sensitive_markers[0]} content={sensitive_markers[1]} "
+        f"refusal={sensitive_markers[2]} validation={sensitive_markers[3]} "
+        f"api_key={sensitive_markers[4]} "
+        f"Authorization=Bearer {sensitive_markers[5]}"
+    )
 
     async def invalid_provider(
         provider: OpenAIProvider,
@@ -144,7 +159,7 @@ async def test_invalid_model_response_logs_safe_failure_kind(
         evidence: list[RetrievalHit],
     ) -> Never:
         try:
-            raise RuntimeError(sensitive_marker)
+            raise RuntimeError(sensitive_payload)
         except RuntimeError as cause:
             raise InvalidModelResponseError(ModelResponseFailureKind.REFUSAL) from cause
 
@@ -165,7 +180,12 @@ async def test_invalid_model_response_logs_safe_failure_kind(
     assert result.fallback_reason == "invalid_model_response"
     assert getattr(external_failure, "protocol") == settings.openai_chat_protocol
     assert getattr(external_failure, "model_response_failure_kind") == "refusal"
-    assert sensitive_marker not in caplog.text
+    StructuredLogDefaults().filter(external_failure)
+    rendered = logging.Formatter(STRUCTURED_LOG_FORMAT).format(external_failure)
+    assert f"protocol={settings.openai_chat_protocol}" in rendered
+    assert "model_response_failure_kind=refusal" in rendered
+    assert all(marker not in caplog.text for marker in sensitive_markers)
+    assert all(marker not in rendered for marker in sensitive_markers)
 
 
 @pytest.mark.asyncio
