@@ -7,6 +7,7 @@ from openai import AsyncOpenAI
 import pytest
 
 from app.config import Settings
+from app.errors import InvalidModelResponseError, ModelResponseFailureKind
 from app.models import (
     BUNDLED_KNOWLEDGE_ACCESS,
     AnalyzeRequest,
@@ -195,6 +196,28 @@ async def test_responses_protocol_wire_contract_is_preserved() -> None:
     assert "[REDACTED_PHONE]" in body["input"]
     assert draft == ModelDraft.model_validate(DRAFT_PAYLOAD)
     assert (input_tokens, output_tokens) == (37, 19)
+
+
+@pytest.mark.asyncio
+async def test_responses_parsed_none_is_classified_without_retry() -> None:
+    requests: list[httpx.Request] = []
+    payload = _responses_payload()
+    payload["output"] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=payload)
+
+    provider, http_client = _wire_provider(_settings(), respond)
+    try:
+        with pytest.raises(InvalidModelResponseError) as error:
+            await provider.analyze(_request(), _evidence())
+    finally:
+        await http_client.aclose()
+
+    assert error.value.model_response_failure_kind is ModelResponseFailureKind.PARSED_NONE
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v1/responses"
 
 
 @pytest.mark.asyncio

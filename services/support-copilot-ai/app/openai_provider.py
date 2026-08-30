@@ -7,6 +7,7 @@ from app.config import Settings
 from app.data_redaction import redact_sensitive_text
 from app.errors import (
     InvalidModelResponseError,
+    ModelResponseFailureKind,
     StructuredGenerationApiError,
     structured_generation_timeout_error,
 )
@@ -74,11 +75,16 @@ class OpenAIProvider:
                         response_format=ModelDraft,
                         store=False,
                     )
-                    parsed = (
-                        completion.choices[0].message.parsed
-                        if completion.choices
-                        else None
-                    )
+                    if not completion.choices:
+                        raise InvalidModelResponseError(
+                            ModelResponseFailureKind.NO_CHOICE,
+                        )
+                    message = completion.choices[0].message
+                    if message.refusal is not None:
+                        raise InvalidModelResponseError(
+                            ModelResponseFailureKind.REFUSAL,
+                        )
+                    parsed = message.parsed
                     usage = completion.usage
                     input_tokens = usage.prompt_tokens if usage else 0
                     output_tokens = usage.completion_tokens if usage else 0
@@ -86,7 +92,7 @@ class OpenAIProvider:
                     assert_never(unreachable)
 
             if parsed is None:
-                raise InvalidModelResponseError
+                raise InvalidModelResponseError(ModelResponseFailureKind.PARSED_NONE)
             draft = ModelDraft.model_validate(parsed)
         except APITimeoutError as exc:
             raise structured_generation_timeout_error(exc) from exc
@@ -94,6 +100,8 @@ class OpenAIProvider:
             # 只有 OpenAI SDK 明确报告的外部故障才允许进入工作流 fallback。
             raise StructuredGenerationApiError from exc
         except ValidationError as exc:
-            raise InvalidModelResponseError from exc
+            raise InvalidModelResponseError(
+                ModelResponseFailureKind.SCHEMA_VALIDATION,
+            ) from exc
 
         return draft, input_tokens, output_tokens

@@ -29,6 +29,13 @@ class FallbackReason(StrEnum):
     INVALID_AI_RESPONSE = "invalid_ai_response"
 
 
+class ModelResponseFailureKind(StrEnum):
+    NO_CHOICE = "no_choice"
+    REFUSAL = "refusal"
+    PARSED_NONE = "parsed_none"
+    SCHEMA_VALIDATION = "schema_validation"
+
+
 class LiveProviderConfigurationError(RuntimeError):
     def __init__(self) -> None:
         super().__init__("Live mode is not configured")
@@ -40,10 +47,12 @@ class RecoverableAiError(Exception):
         operation: ExternalAiOperation,
         failure_kind: ExternalAiFailureKind,
         fallback_reason: FallbackReason,
+        model_response_failure_kind: ModelResponseFailureKind | None = None,
     ) -> None:
         self.operation = operation
         self.failure_kind = failure_kind
         self.fallback_reason = fallback_reason
+        self.model_response_failure_kind = model_response_failure_kind
         super().__init__(f"External AI {operation} failed ({failure_kind})")
 
 
@@ -106,11 +115,15 @@ class StructuredGenerationResponseTimeoutError(ExternalAiServiceError):
 
 
 class InvalidModelResponseError(RecoverableAiError):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        model_response_failure_kind: ModelResponseFailureKind,
+    ) -> None:
         super().__init__(
             operation="structured_generation",
             failure_kind="invalid_response",
             fallback_reason=FallbackReason.INVALID_MODEL_RESPONSE,
+            model_response_failure_kind=model_response_failure_kind,
         )
 
 

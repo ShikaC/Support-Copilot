@@ -5,6 +5,7 @@ from app.errors import (
     EmbeddingConnectionTimeoutError,
     EmbeddingResponseTimeoutError,
     InvalidModelResponseError,
+    ModelResponseFailureKind,
     RecoverableAiError,
     StructuredGenerationApiError,
     StructuredGenerationConnectionTimeoutError,
@@ -27,7 +28,10 @@ from app.errors import (
             StructuredGenerationResponseTimeoutError(),
             "structured_generation_response_timeout",
         ),
-        (InvalidModelResponseError(), "invalid_model_response"),
+        (
+            InvalidModelResponseError(ModelResponseFailureKind.SCHEMA_VALIDATION),
+            "invalid_model_response",
+        ),
     ],
 )
 def test_recoverable_ai_error_has_stable_fallback_reason(

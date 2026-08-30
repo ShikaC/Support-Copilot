@@ -6,7 +6,11 @@ from openai import AsyncOpenAI
 import pytest
 
 from app.config import Settings
-from app.errors import ExternalAiServiceError, InvalidModelResponseError
+from app.errors import (
+    ExternalAiServiceError,
+    InvalidModelResponseError,
+    ModelResponseFailureKind,
+)
 from app.openai_provider import OpenAIProvider
 from tests.test_openai_provider_protocols import (
     DRAFT_PAYLOAD,
@@ -47,19 +51,35 @@ def _provider(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "payload",
+    ("payload", "expected_kind"),
     [
-        _chat_payload(content=""),
-        _chat_payload(content=None),
-        _chat_payload(content=None, refusal="I cannot provide that response."),
-        _chat_payload(content='{"intent":'),
-        {**_chat_payload(content=json.dumps(DRAFT_PAYLOAD)), "choices": []},
-        _chat_payload(content=json.dumps({**DRAFT_PAYLOAD, "unexpected": "field"})),
+        (_chat_payload(content=""), ModelResponseFailureKind.PARSED_NONE),
+        (_chat_payload(content=None), ModelResponseFailureKind.PARSED_NONE),
+        (
+            _chat_payload(
+                content=None,
+                refusal="TASK10_SENSITIVE_MARKER_DO_NOT_LOG",
+            ),
+            ModelResponseFailureKind.REFUSAL,
+        ),
+        (
+            _chat_payload(content='{"intent":'),
+            ModelResponseFailureKind.SCHEMA_VALIDATION,
+        ),
+        (
+            {**_chat_payload(content=json.dumps(DRAFT_PAYLOAD)), "choices": []},
+            ModelResponseFailureKind.NO_CHOICE,
+        ),
+        (
+            _chat_payload(content=json.dumps({**DRAFT_PAYLOAD, "unexpected": "field"})),
+            ModelResponseFailureKind.SCHEMA_VALIDATION,
+        ),
     ],
     ids=("empty", "unparsed", "refusal", "malformed-json", "no-choice", "extra-field"),
 )
 async def test_chat_completions_invalid_structured_output_fails_closed(
     payload: dict[str, JsonValue],
+    expected_kind: ModelResponseFailureKind,
 ) -> None:
     requests: list[httpx.Request] = []
 
@@ -69,13 +89,15 @@ async def test_chat_completions_invalid_structured_output_fails_closed(
 
     provider, http_client = _provider(respond)
     try:
-        with pytest.raises(InvalidModelResponseError):
+        with pytest.raises(InvalidModelResponseError) as error:
             await provider.analyze(_request(), _evidence())
     finally:
         await http_client.aclose()
 
     assert len(requests) == 1
     assert requests[0].url.path == "/v1/chat/completions"
+    assert error.value.model_response_failure_kind is expected_kind
+    assert "TASK10_SENSITIVE_MARKER_DO_NOT_LOG" not in str(error.value)
 
 
 @pytest.mark.asyncio

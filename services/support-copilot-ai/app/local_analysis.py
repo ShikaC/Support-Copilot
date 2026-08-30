@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app.errors import InvalidModelResponseError
+from app.errors import InvalidModelResponseError, ModelResponseFailureKind
 from app.models import (
     AnalyzeRequest,
     Decision,
@@ -129,12 +129,18 @@ class LocalAnalysisPolicy:
     ) -> list[RetrievalHit]:
         if not hits:
             if citation_indexes:
-                raise InvalidModelResponseError
+                raise InvalidModelResponseError(
+                    ModelResponseFailureKind.SCHEMA_VALIDATION,
+                )
             return []
         if not citation_indexes or len(set(citation_indexes)) != len(citation_indexes):
-            raise InvalidModelResponseError
+            raise InvalidModelResponseError(
+                ModelResponseFailureKind.SCHEMA_VALIDATION,
+            )
         if any(index < 1 or index > len(hits) for index in citation_indexes):
-            raise InvalidModelResponseError
+            raise InvalidModelResponseError(
+                ModelResponseFailureKind.SCHEMA_VALIDATION,
+            )
         return [hits[index - 1] for index in citation_indexes]
 
     def workflow_steps(

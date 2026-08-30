@@ -9,6 +9,8 @@ from openai import APITimeoutError, OpenAIError
 from app.config import Settings
 from app.errors import (
     ExternalAiServiceError,
+    InvalidModelResponseError,
+    ModelResponseFailureKind,
     StructuredGenerationResponseTimeoutError,
 )
 from app.knowledge import KnowledgeRetriever, RetrievalRequest
@@ -124,6 +126,46 @@ async def test_recoverable_ai_error_returns_fallback(
     assert getattr(fallback, "status") == "FALLBACK"
     assert getattr(fallback, "hit_count") == 1
     assert getattr(fallback, "reason") == "structured_generation_response_timeout"
+
+
+@pytest.mark.asyncio
+async def test_invalid_model_response_logs_safe_failure_kind(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: LogCaptureFixture,
+) -> None:
+    settings = live_settings()
+    retriever = KnowledgeRetriever(settings)
+    workflow = AnalysisWorkflow(settings, retriever)
+    sensitive_marker = "TASK10_SENSITIVE_MARKER_DO_NOT_LOG"
+
+    async def invalid_provider(
+        provider: OpenAIProvider,
+        request: AnalyzeRequest,
+        evidence: list[RetrievalHit],
+    ) -> Never:
+        try:
+            raise RuntimeError(sensitive_marker)
+        except RuntimeError as cause:
+            raise InvalidModelResponseError(ModelResponseFailureKind.REFUSAL) from cause
+
+    async def one_hit_search(_request: RetrievalRequest) -> list[RetrievalHit]:
+        return one_retrieval_hit()
+
+    monkeypatch.setattr(retriever, "search", one_hit_search)
+    monkeypatch.setattr(OpenAIProvider, "analyze", invalid_provider)
+    caplog.set_level(logging.WARNING, logger="app.workflow")
+
+    result = await workflow.run(analyze_request())
+
+    external_failure = next(
+        record
+        for record in caplog.records
+        if record.message == "analysis.external_failure"
+    )
+    assert result.fallback_reason == "invalid_model_response"
+    assert getattr(external_failure, "protocol") == settings.openai_chat_protocol
+    assert getattr(external_failure, "model_response_failure_kind") == "refusal"
+    assert sensitive_marker not in caplog.text
 
 
 @pytest.mark.asyncio

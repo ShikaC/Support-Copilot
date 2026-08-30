@@ -146,6 +146,12 @@ class AnalysisWorkflow:
                 extra={
                     "trace_id": request.trace_id,
                     "error_type": type(exc).__name__,
+                    "protocol": self._settings.openai_chat_protocol,
+                    "model_response_failure_kind": (
+                        exc.model_response_failure_kind.value
+                        if exc.model_response_failure_kind is not None
+                        else None
+                    ),
                 },
             )
             return await self._fallback_after_error(
