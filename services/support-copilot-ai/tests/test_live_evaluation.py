@@ -274,6 +274,61 @@ def test_cost_requires_explicit_model_bound_pricing_source(tmp_path: Path) -> No
 
 def test_no_evidence_success_requires_explicit_insufficient_evidence_fallback() -> None:
     assert retrieval_succeeded(False, (), (), FallbackReason.INSUFFICIENT_EVIDENCE)
-    assert citations_valid(False, (), (), (), FallbackReason.INSUFFICIENT_EVIDENCE)
+    assert citations_valid(
+        False,
+        (),
+        (),
+        (),
+        FallbackReason.INSUFFICIENT_EVIDENCE,
+        all_citations_resolved=True,
+    )
     assert not retrieval_succeeded(False, (), (), FallbackReason.INVALID_MODEL_RESPONSE)
-    assert not citations_valid(False, (), (), (), FallbackReason.INVALID_MODEL_RESPONSE)
+    assert not citations_valid(
+        False,
+        (),
+        (),
+        (),
+        FallbackReason.INVALID_MODEL_RESPONSE,
+        all_citations_resolved=True,
+    )
+    assert not citations_valid(
+        False,
+        (),
+        (),
+        (),
+        FallbackReason.INSUFFICIENT_EVIDENCE,
+        all_citations_resolved=False,
+    )
+
+
+def test_live_citations_require_relevant_retrieval_and_citation() -> None:
+    assert not citations_valid(
+        True,
+        ("unrelated-chunk",),
+        ("unrelated-chunk",),
+        ("unrelated-chunk",),
+        None,
+        expected_chunks=("expected-chunk",),
+        all_citations_resolved=True,
+    )
+
+
+def test_live_citations_reject_unresolved_or_duplicate_labels() -> None:
+    assert not citations_valid(
+        True,
+        ("expected-chunk",),
+        ("expected-chunk",),
+        ("expected-chunk",),
+        None,
+        expected_chunks=("expected-chunk",),
+        all_citations_resolved=False,
+    )
+    assert not citations_valid(
+        True,
+        ("expected-chunk", "expected-chunk"),
+        ("expected-chunk",),
+        ("expected-chunk",),
+        None,
+        expected_chunks=("expected-chunk",),
+        all_citations_resolved=True,
+    )

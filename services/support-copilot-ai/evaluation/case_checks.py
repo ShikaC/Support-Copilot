@@ -2,6 +2,7 @@ from typing import assert_never
 
 from app.local_analysis import citation_label
 from app.models import AnalyzeResponse
+from evaluation.citation_validation import citation_ids_are_valid
 from evaluation.models import CaseFailure, EvaluationCase, ReplyConstraint
 
 
@@ -67,24 +68,28 @@ def citation_failure(
     ]
     retrieved_ids = {hit.chunk_id for hit in response.retrieval.hits}
     relevant_evidence_retrieved = bool(case.expected_evidence_ids & retrieved_ids)
-    cited_relevant_evidence = bool(
-        case.expected_evidence_ids & {hit.chunk_id for hit in cited_hits}
-    )
     citations_are_valid = (
-        bool(response.suggested_reply.citations)
-        and len(cited_hits) == len(response.suggested_reply.citations)
-        and len(cited_hits) == len({hit.chunk_id for hit in cited_hits})
-        and cited_relevant_evidence
+        len(cited_hits) == len(response.suggested_reply.citations)
+        and citation_ids_are_valid(
+            expected_evidence_ids=case.expected_evidence_ids,
+            cited_chunk_ids=tuple(hit.chunk_id for hit in cited_hits),
+            retrieved_chunk_ids=retrieved_ids,
+            allowed_chunk_ids=retrieved_ids,
+        )
     )
-    if not relevant_evidence_retrieved or citations_are_valid:
+    if citations_are_valid:
         return None
     return CaseFailure(
         metric="citation",
         expected="retrieved_evidence_cited_and_mapped",
         actual=(
-            "missing_citation"
-            if not response.suggested_reply.citations
-            else "invalid_or_unrelated_citation"
+            "relevant_evidence_not_retrieved"
+            if not relevant_evidence_retrieved
+            else (
+                "missing_citation"
+                if not response.suggested_reply.citations
+                else "invalid_or_unrelated_citation"
+            )
         ),
     )
 

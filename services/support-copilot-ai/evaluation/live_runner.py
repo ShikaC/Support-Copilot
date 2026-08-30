@@ -7,6 +7,7 @@ from uuid import uuid4
 from app.errors import FallbackReason
 from app.local_analysis import citation_label
 from app.models import AnalyzeOptions, AnalyzeRequest, AnalyzeResponse, KnowledgeAccess, Priority, SupportScope, TicketInput
+from evaluation.citation_validation import citation_ids_are_valid
 from evaluation.live_models import (
     EmbeddingArtifactProvenance,
     HumanReview,
@@ -69,7 +70,8 @@ def _case_result(
 ) -> LiveCaseResult:
     retrieved = tuple(hit.chunk_id for hit in response.retrieval.hits)
     labels = {citation_label(hit): hit.chunk_id for hit in response.retrieval.hits}
-    cited = tuple(labels[label] for label in response.suggested_reply.citations if label in labels)
+    citation_labels = tuple(response.suggested_reply.citations)
+    cited = tuple(labels[label] for label in citation_labels if label in labels)
     indexes = tuple(index for index, chunk_id in enumerate(retrieved, start=1) if chunk_id in cited)
     usage_available = response.usage.input_tokens > 0 or response.usage.output_tokens > 0
     usage = TokenUsage(
@@ -99,6 +101,8 @@ def _case_result(
             retrieved,
             allowed_chunks,
             response.fallback_reason,
+            expected_chunks=expected_chunks,
+            all_citations_resolved=len(cited) == len(citation_labels),
         ),
         response_text=response.suggested_reply.content,
         response_evidence=(ResponseEvidence(statement=response.suggested_reply.content, evidence_indexes=indexes),),
@@ -126,10 +130,22 @@ def citations_valid(
     retrieved: tuple[str, ...],
     allowed: tuple[str, ...],
     fallback_reason: FallbackReason | None,
+    *,
+    expected_chunks: tuple[str, ...] = (),
+    all_citations_resolved: bool,
 ) -> bool:
     if evidence_required:
-        return bool(cited) and set(cited) <= set(retrieved) and set(cited) <= set(allowed)
-    return not cited and fallback_reason == FallbackReason.INSUFFICIENT_EVIDENCE
+        return all_citations_resolved and citation_ids_are_valid(
+            expected_evidence_ids=expected_chunks,
+            cited_chunk_ids=cited,
+            retrieved_chunk_ids=retrieved,
+            allowed_chunk_ids=allowed,
+        )
+    return (
+        all_citations_resolved
+        and not cited
+        and fallback_reason == FallbackReason.INSUFFICIENT_EVIDENCE
+    )
 
 
 def build_live_report(

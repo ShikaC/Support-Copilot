@@ -199,6 +199,44 @@ async def test_case_failures_rejects_a_citation_not_mapped_to_retrieved_evidence
 
 
 @pytest.mark.asyncio
+async def test_case_failures_rejects_when_relevant_evidence_is_not_retrieved() -> None:
+    case = load_evaluation_cases(DATASET_PATH)[0].model_copy(
+        update={"expected_evidence_ids": frozenset({"missing-relevant-chunk"})}
+    )
+    settings = Settings(ai_mode="mock")
+    workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
+    response = await workflow.run(case.to_request(OPTIONS))
+
+    assert citation_failure(case, response) == CaseFailure(
+        metric="citation",
+        expected="retrieved_evidence_cited_and_mapped",
+        actual="relevant_evidence_not_retrieved",
+    )
+
+
+@pytest.mark.asyncio
+async def test_case_failures_rejects_duplicate_citations_for_one_chunk() -> None:
+    case = load_evaluation_cases(DATASET_PATH)[0]
+    settings = Settings(ai_mode="mock")
+    workflow = AnalysisWorkflow(settings, KnowledgeRetriever(settings))
+    response = await workflow.run(case.to_request(OPTIONS))
+    citation = response.suggested_reply.citations[0]
+    duplicated_response = response.model_copy(
+        update={
+            "suggested_reply": response.suggested_reply.model_copy(
+                update={"citations": [citation, citation]}
+            )
+        }
+    )
+
+    assert citation_failure(case, duplicated_response) == CaseFailure(
+        metric="citation",
+        expected="retrieved_evidence_cited_and_mapped",
+        actual="invalid_or_unrelated_citation",
+    )
+
+
+@pytest.mark.asyncio
 async def test_citation_validation_maps_duplicate_visible_labels_to_selected_chunk() -> None:
     # Given: two retrieved chunks share a visible title and section but have different IDs.
     case = load_evaluation_cases(DATASET_PATH)[0].model_copy(
