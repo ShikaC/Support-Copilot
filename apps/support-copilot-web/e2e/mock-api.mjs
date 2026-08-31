@@ -46,6 +46,7 @@ const audit = { id: 'audit-1', actorSubject: 'reviewer-42', actorType: 'USER', a
 let scenario = 'success'
 let analyzeCount = 0
 let releaseTransitionCount = 0
+let currentTicket = ticket()
 
 function send(response, status, payload) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
@@ -100,6 +101,7 @@ const server = createServer(async (request, response) => {
     scenario = url.searchParams.get('scenario') ?? 'success'
     analyzeCount = 0
     releaseTransitionCount = 0
+    currentTicket = ticket()
     return send(response, 200, { scenario })
   }
   if (!url.pathname.startsWith('/api/')) return send(response, 404, { code: 'NOT_FOUND', message: 'Not found', traceId: 'trace-not-found' })
@@ -109,7 +111,7 @@ const server = createServer(async (request, response) => {
   let payload
   if (url.pathname === '/api/tickets') {
     if (!requireMethod(request, response, 'GET')) return
-    payload = scenario === 'malformed' ? [{ id: 7 }] : [ticket()]
+    payload = scenario === 'malformed' ? [{ id: 7 }] : [currentTicket]
   } else if (url.pathname === '/api/metrics') {
     if (!requireMethod(request, response, 'GET')) return
     payload = scenario === 'malformed' ? { summary: 'invalid' } : metrics
@@ -119,11 +121,24 @@ const server = createServer(async (request, response) => {
     analyzeCount += 1
     if (scenario === 'stale' && analyzeCount === 1) {
       status = 409
+      currentTicket = { ...currentTicket, subject: '并发更新后的扣款工单', version: 5 }
       payload = { code: 'VERSION_CONFLICT', message: 'Stale ticket.', traceId: 'trace-stale-task12', timestamp: '2026-08-27T03:00:00Z', details: { expectedVersion: 4, currentVersion: 5 } }
-    } else payload = analysis(scenario === 'fallback')
+    } else {
+      payload = analysis(scenario === 'fallback')
+      currentTicket = {
+        ...currentTicket,
+        category: payload.classification.category,
+        priority: payload.classification.priority,
+        status: payload.decision.escalationRequired ? 'NEEDS_ESCALATION' : 'READY_FOR_REVIEW',
+        updatedAt: payload.createdAt,
+        version: currentTicket.version + 1,
+        latestAnalysis: payload,
+        latestReview: null,
+      }
+    }
   } else if (url.pathname === '/api/tickets/ticket-10042') {
     if (!requireMethod(request, response, 'GET')) return
-    payload = ticket({ subject: '并发更新后的扣款工单', version: 5 })
+    payload = currentTicket
   }
   else if (url.pathname.endsWith('/reviews/reject')) {
     if (!requireMethod(request, response, 'POST') || !requireCommandHeaders(request, response)) return

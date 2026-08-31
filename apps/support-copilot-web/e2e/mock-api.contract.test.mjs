@@ -61,6 +61,30 @@ test('mutable endpoints reject a missing idempotency header', async () => {
   await assertContractError(response, 400)
 })
 
+test('successful analysis is visible from the refreshed ticket', async () => {
+  // Given: a reset success scenario and an authenticated idempotent command.
+  const reset = await fetch(`${baseUrl}/__control/reset?scenario=success`)
+  assert.equal(reset.status, 200)
+  const analysisResponse = await fetch(`${baseUrl}/api/tickets/ticket-10042/analyze`, {
+    method: 'POST',
+    headers: { Authorization: authorization, 'Content-Type': 'application/json', 'Idempotency-Key': 'fixture-analysis-success' },
+    body: '{}',
+  })
+  assert.equal(analysisResponse.status, 200)
+  const analysis = await analysisResponse.json()
+
+  // When: the browser refreshes server-owned ticket state after the command.
+  const ticketResponse = await fetch(`${baseUrl}/api/tickets/ticket-10042`, { headers: { Authorization: authorization } })
+  assert.equal(ticketResponse.status, 200)
+  const refreshedTicket = await ticketResponse.json()
+
+  // Then: the fixture reflects the same persisted analysis contract as the real API.
+  assert.equal(refreshedTicket.latestAnalysis.id, analysis.id)
+  assert.equal(refreshedTicket.latestAnalysis.modelName, 'mock-rules-v1')
+  assert.equal(refreshedTicket.status, 'NEEDS_ESCALATION')
+  assert.equal(refreshedTicket.version, 5)
+})
+
 test('versioned endpoints reject a missing body version', async () => {
   // Given: a release command whose DTO omits the required current version.
   const response = await fetch(`${baseUrl}/api/knowledge/releases/release-2026-08/approve`, { method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' }, body: '{}' })
