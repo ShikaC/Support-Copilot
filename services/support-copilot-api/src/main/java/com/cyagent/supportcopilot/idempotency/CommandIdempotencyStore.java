@@ -28,6 +28,7 @@ public class CommandIdempotencyStore {
 		this.clock = Clock.systemUTC();
 		this.requiresNew = new TransactionTemplate(transactionManager);
 		this.requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+		this.requiresNew.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
 	}
 
 	public CommandResolution resolve(CommandRequest request) {

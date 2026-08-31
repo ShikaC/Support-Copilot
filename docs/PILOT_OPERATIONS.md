@@ -7,8 +7,8 @@
 ## 1. 已验证范围
 
 - React 工作台、Java 业务 API、FastAPI AI 服务可在本地形成完整 mock 工单分析链路。
-- Java `demo`/`test` 使用 H2；`local`/`pilot` 的 MySQL/Flyway 配置契约已建立，但真实
-  MySQL 运行时验收属于 Task 15。
+- Java `demo`/`test` 使用 H2；Task 15 已在 MySQL 8.4.11 上以 9 个零跳过场景验证
+  `pilot` 的 Flyway/Hibernate、幂等、审计、知识发布和重启 parity。
 - Java Resource Server 角色策略、服务间 token、可信 actor、知识范围过滤、append-only
   业务审计和持久化命令幂等已在本地合成身份/H2 场景验证。
 - React 已有 `demo`/`secured` typed auth adapter，会话 token 只保存在内存和
@@ -16,8 +16,12 @@
   身份系统。
 - Python 可配置正式 chat 与 Embedding 端点。一次脱敏合成工单 live 链路成功不代表质量、
   稳定性、成本或生产性能；当前 4-case live 发布评估仍未通过且无人审结论。
-- 非容器 release gate 已覆盖工作流、依赖和 secrets；Docker、MySQL、备份恢复和部署回滚
-  继续显示为 `DEFERRED`，不能计为通过。
+- 非容器 release gate 已覆盖工作流、依赖和 secrets。Task 15 的 MySQL parity 与 11 个
+  当前镜像运行时场景已通过；完整跨版本回滚/fresh-volume 恢复受重复宿主磁盘耗尽阻塞，
+  镜像发布扫描仍因 56 个 HIGH/CRITICAL 结果失败。
+- 运维 verifier 已在对抗审查后固定 `linux/amd64`、为服务/网络/卷增加随机运行所有权标签、
+  删除前绑定镜像 ID，并让 Bearer header 通过标准输入进入 `curl`。这些加固通过本地故障注入，
+  但当前源码尚未在受阻远端宿主完成同源 Compose 复跑。
 
 证据入口：
 
@@ -50,8 +54,8 @@ Runtime profiles: `demo`, `test`, `local`, `pilot`.
 | --- | --- | --- |
 | `demo` | 内存 H2、8 条合成工单、匿名业务 API | 本地演示与 smoke |
 | `test` | 随机隔离 H2、合成 HMAC JWT | 自动化安全/事务测试 |
-| `local` | MySQL/Flyway/JWT 配置，无回退 | 仅配置与失败关闭契约；运行时待 Task 15 |
-| `pilot` | 与 local 同边界，无 H2/凭据默认值 | 仅配置与失败关闭契约；运行时待 Task 15 |
+| `local` | MySQL/Flyway/JWT 配置，无回退 | 配置与失败关闭契约；不自动提供身份或数据库 |
+| `pilot` | 与 local 同边界，无 H2/凭据默认值 | MySQL 8.4.11 parity、test-only OIDC 和部分 Compose 重启链路 |
 
 ## 3. AI 与模型配置
 
@@ -137,7 +141,9 @@ export SUPPORT_COPILOT_JWT_AUDIENCE='support-copilot-api'
 `SUPPORT_COPILOT_JWT_JWK_SET_URI` 是可选的直接 key-set 位置。配置它只改变密钥的获取位置，
 不会替代或关闭 issuer 和 audience claim 校验。缺少或留空 issuer、audience 或内部服务 token
 时，`local`/`pilot` 会在 datasource 创建前失败，不会回退到匿名访问或 H2。以上行为已在本地
-配置和合成 JWT 场景验证，不是对真实 OIDC provider、登录或 token refresh 的集成验证。
+配置和合成 JWT 场景验证之外，Task 15 还在真实 Compose 拓扑中使用固定 test-only OIDC
+issuer 验证 client credentials、issuer/audience、角色和知识 scope。它不是用户登录、token
+refresh 或生产身份供应商集成。
 
 知识访问范围只来自 JWT `support_scopes` 白名单，再与 active release 范围求交集。工单
 正文、query 参数或浏览器 header 都不能扩大权限。原始 Markdown/文本 PDF 在仓库外经
@@ -201,18 +207,26 @@ Mock 报告绑定数据集、知识库 hash、prompt/config 和 Git 状态，适
 
 ## 8. 备份、恢复与回滚边界
 
-当前可验证的“回滚”仅包括数据库事务失败时的原子回滚、知识 active release/pointer 切换，
-以及兼容的本地 file-backed embedding artifact rollback。它们不是数据库备份恢复或应用部署
-回滚。
+Task 15 当前运行时事实：
 
-Task 15 前不得执行或宣称以下能力已经通过：
+- MySQL 8.4.11 的 9 个 parity 场景通过，零跳过；覆盖 migration/checksum、stale schema、
+  幂等并发/重放、审计提交/回滚、知识发布/回滚和应用上下文重启。
+- 当前 API/AI/Web 镜像的 11 个容器验收场景通过，覆盖非 root、只读/权限边界、健康、
+  secrets、运行时契约和精确清理。
+- 五服务 Compose 已验证 test-only OIDC、401/403/2xx、scope-filtered mock RAG、审核/审计、
+  API/MySQL/整栈重启持久化、artifact identity 和重启后安全写入。
+- 兼容旧 API 镜像已从固定祖先 revision 独立构建并绑定 source/archive/OCI evidence。
+- 同一运维 gate 两次被共享宿主上的无关 no-cache 构建耗尽磁盘；第二次在已通过上述重启
+  场景后于 known-good 重应用阶段触发 MySQL errno 28。按两次同因上限停止第三次尝试。
+- 因此，真实旧版本切换、回切后的写入读取和 fresh-volume backup/restore 尚未形成完整成功
+  证据，不得宣称通过。重新验收前需保证 Docker-root 至少 8 GiB 可用且 60 秒内无并发构建。
+- 对抗审查后的当前 Compose/verifier 与上述远端部分成功记录不是同一源码快照；错误架构、
+  双标签精确清理、异所有权资源保留、镜像标签非破坏性核验和 JWT 不进入 curl argv 已由本地
+  测试覆盖，远端仍待复跑。容器/网络/卷在退出时按 project + 随机 ownership 精确删除；镜像
+  引用作为构建缓存保留并在回执中绑定 image ID，退出清理不会执行 `docker image rm` 或覆盖 tag。
 
-- MySQL 8 数据卷持久化和 Java 重启后数据保持。
-- 从备份恢复到全新 volume 并核对 sentinel、migration 和业务数据。
-- 容器镜像/Compose 健康、非 root、资源限制和 secrets injection。
-- 应用、schema、corpus/artifact 的兼容升级与部署回滚演练。
-
-仓库中的 Task 15 scaffold 仍待审查，当前发布门禁必须把这些项目显示为 `DEFERRED`。
+镜像发布闸门也未通过：严格 HIGH/CRITICAL、不过滤 unfixed、不豁免的扫描仍有 56 项结果。
+这些结果与磁盘阻塞相互独立，任一项都足以阻止发布声明。
 
 ## 9. 发布事实与限制
 
@@ -226,5 +240,8 @@ Python 57/66、Java 181、Node 234 个锁定坐标，运行当时 OSV 返回 0 �
 - 只有单租户本地 pilot，不是生产部署或真实企业客户经历。
 - 数据是 synthetic/redacted data，不代表真实客服数据分布。
 - 建议必须 human approval，系统没有自动发送邮件、退款或修改账户。
-- 真实 OIDC issuer、登录/刷新、MySQL parity、容器、备份恢复和部署回滚未验收。
+- MySQL parity、当前容器运行时和部分 Compose 重启链路已验收；生产 OIDC 登录/刷新、完整
+  跨版本回滚、fresh-volume 恢复和镜像安全发布闸门仍未通过。
+- AI/Web 镜像构建仍执行未锁定到具体系统包版本的安全升级，基础镜像虽按 digest 固定，构建
+  结果仍会随软件源变化。后续应改为刷新受支持的 digest-pinned 基础镜像并重新跑运行时/扫描门禁。
 - 没有生产流量、并发容量、SLO、真实用户数、成本或准确率结论。

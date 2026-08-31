@@ -22,36 +22,55 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.cyagent.supportcopilot.SupportCopilotApiApplication;
+import com.cyagent.supportcopilot.common.MySqlTestSupport.Database;
 import com.cyagent.supportcopilot.ticket.Ticket;
 
 final class CommandIdempotencyTestRig implements AutoCloseable {
 
 	private final Path directory;
 	private final Path databasePath;
+	private final Database database;
+	private final String profile;
 	private final CountingAiServer aiServer;
 
 	CommandIdempotencyTestRig() throws IOException {
 		directory = Files.createTempDirectory("support-copilot-task-6-");
 		databasePath = directory.resolve("shared-command-db");
+		database = new Database(databaseUrl(), "sa", "");
+		profile = "test";
+		aiServer = new CountingAiServer();
+	}
+
+	CommandIdempotencyTestRig(Database database) throws IOException {
+		directory = null;
+		databasePath = null;
+		this.database = database;
+		profile = "pilot";
 		aiServer = new CountingAiServer();
 	}
 
 	ConfigurableApplicationContext startContext() {
 		Flyway.configure()
-			.dataSource(databaseUrl(), "sa", "")
+			.dataSource(database.jdbcUrl(), database.username(), database.password())
 			.locations("classpath:db/migration")
 			.load()
 			.migrate();
 		return new SpringApplicationBuilder(SupportCopilotApiApplication.class)
 			.web(WebApplicationType.SERVLET)
 			.run(
-				"--spring.profiles.active=test",
+				"--spring.profiles.active=" + profile,
 				"--server.port=0",
-				"--spring.datasource.url=" + databaseUrl(),
+				"--spring.datasource.url=" + database.jdbcUrl(),
+				"--spring.datasource.username=" + database.username(),
+				"--spring.datasource.password=" + database.password(),
 				"--spring.jpa.hibernate.ddl-auto=validate",
 				"--spring.flyway.enabled=true",
 				"--spring.flyway.locations=classpath:db/migration",
 				"--support-copilot.demo-fixtures.enabled=false",
+				"--SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN=synthetic-mysql-integration-token",
+				"--SUPPORT_COPILOT_JWT_ISSUER_URI=https://issuer.test/support-copilot",
+				"--SUPPORT_COPILOT_JWT_JWK_SET_URI=https://issuer.test/support-copilot/jwks",
+				"--SUPPORT_COPILOT_JWT_AUDIENCE=support-copilot-api",
 				"--support-copilot.idempotency.lease-duration=PT0.3S",
 				"--support-copilot.idempotency.wait-timeout=PT3S",
 				"--support-copilot.idempotency.poll-interval=PT0.02S",
@@ -111,6 +130,9 @@ final class CommandIdempotencyTestRig implements AutoCloseable {
 	@Override
 	public void close() throws Exception {
 		aiServer.close();
+		if (directory == null) {
+			return;
+		}
 		try (var files = Files.list(directory)) {
 			files.forEach(this::delete);
 		}

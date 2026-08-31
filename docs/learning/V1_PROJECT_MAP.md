@@ -24,11 +24,11 @@ AI 只提供建议，Java 保存业务事实，React 负责让客服操作和查
 | --- | --- | --- |
 | React + TypeScript | 浏览器页面、按钮、状态和页面更新 | `apps/support-copilot-web/src/` |
 | Java + Spring Boot | HTTP 接口、业务编排、数据库保存和错误处理 | `services/support-copilot-api/src/main/java/` |
-| JPA + H2/MySQL 8 + Flyway | `demo`/`test` 隔离 H2；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，实库待 Task 15 验证 | `services/support-copilot-api/src/main/` |
+| JPA + H2/MySQL 8 + Flyway | `demo`/`test` 隔离 H2；`pilot` 已在 MySQL 8.4.11 上通过 9 个零跳过 parity 场景 | `services/support-copilot-api/src/main/` |
 | Python + FastAPI | AI 分析、知识检索和结构化结果生成 | `services/support-copilot-ai/app/` |
 | OpenAI API | Python live 模式显式选择 Responses 或 Chat Completions，并独立调用 Embeddings | `services/support-copilot-ai/app/openai_provider.py` |
 
-当前已加入 JWT Resource Server 角色门禁和 Java-to-Python 服务身份。`demo` 是唯一匿名业务 profile；`test` 使用合成 decoder 执行安全策略；`local`/`pilot` 要求 issuer、audience 和内部 token，缺少任一项时在 datasource 前失败；可选 JWK Set 只提供直接 key-set 位置，不会关闭 issuer/audience claim 校验。真实 OIDC+MySQL pilot、migration checksum、stale schema 和重启持久化证据均留待 Task 15；Redis、消息队列、OpenTelemetry 等后续能力也不能包装成已经完成。
+当前已加入 JWT Resource Server 角色门禁和 Java-to-Python 服务身份。`demo` 是唯一匿名业务 profile；`test` 使用合成 decoder 执行安全策略；`local`/`pilot` 要求 issuer、audience 和内部 token，缺少任一项时在 datasource 前失败；可选 JWK Set 只提供直接 key-set 位置，不会关闭 issuer/audience claim 校验。Task 15 已验证 MySQL 8.4.11 migration/checksum、stale schema、幂等/审计/知识事务 parity，以及固定 test-only OIDC 下的角色/scope 和 API/MySQL/整栈重启持久化。当前 Compose/verifier 的平台、随机所有权和凭据传输加固只通过本地故障注入，远端同源复跑仍受磁盘阻塞。它没有生产登录/refresh；跨版本回滚、fresh-volume 恢复和镜像发布闸门也未闭环。Redis、消息队列、OpenTelemetry 等后续能力不能包装成已经完成。
 
 ## 3. 服务边界
 
@@ -228,7 +228,7 @@ Java 返回 `AnalysisResponse` 后，React 会：
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/Ticket.java`
 - `services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketRepository.java`
 
-运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单、开放 H2 Console 并允许匿名业务 API；`test` 使用空的随机内存库和显式合成 JWT decoder，但 endpoint policy 与安全 profile 相同。`local`/`pilot` 要求非空 MySQL JDBC、内部服务 token、`SUPPORT_COPILOT_JWT_ISSUER_URI` 和 `SUPPORT_COPILOT_JWT_AUDIENCE`；`SUPPORT_COPILOT_JWT_JWK_SET_URI` 可选且只指定直接 key-set 位置，不会关闭 issuer/audience claim 校验。缺失/留空时拒绝启动，不回退 H2 或开放访问。真实 MySQL/OIDC 行为仍待 Task 15 验证。
+运行配置边界：启动时必须且只能选择 `demo`、`test`、`local`、`pilot` 中的一个；缺失、`default`、未知或多个 profile 会在 datasource 创建前失败。`demo` 才加载演示工单、开放 H2 Console 并允许匿名业务 API；`test` 使用空的随机内存库和显式合成 JWT decoder，但 endpoint policy 与安全 profile 相同。`local`/`pilot` 要求非空 MySQL JDBC、内部服务 token、`SUPPORT_COPILOT_JWT_ISSUER_URI` 和 `SUPPORT_COPILOT_JWT_AUDIENCE`；`SUPPORT_COPILOT_JWT_JWK_SET_URI` 可选且只指定直接 key-set 位置，不会关闭 issuer/audience claim 校验。缺失/留空时拒绝启动，不回退 H2 或开放访问。MySQL 8.4.11 与 test-only OIDC 的服务端组合已有 Task 15 运行时证据；生产身份登录和完整发布运维仍未完成。
 
 ### AnalysisRun
 
@@ -313,13 +313,13 @@ usage                耗时和 token 信息
 
 ### 尚未完成的设计
 
-- Java 已按 JWT roles 保护 tickets、knowledge、metrics、reviews 和 actuator；React 已有 session/memory 范围的 typed token adapter 和安全状态，但真实 OIDC 登录、token refresh 与 issuer 联调留待 Task 15。
+- Java 已按 JWT roles 保护 tickets、knowledge、metrics、reviews 和 actuator；React 已有 session/memory 范围的 typed token adapter 和安全状态，test-only OIDC issuer 的服务端 claims/角色/scope 已在 Compose 验证，但用户登录、token refresh 与生产 issuer 未实现。
 - 取消负责人已经有命令接口、版本冲突和终态检查，但尚未形成可信的权限检查。
 - 安全 profile 的审核与审计 actor 来自同一个 JWT trusted actor provider，浏览器 actor/action/metadata 不被信任；只有 `demo` 使用明确的 `anonymous-demo` actor。
 - `GET /api/audit-events` 只允许 reviewer/admin，并使用 `createdAt + id` keyset 分页；事件 metadata 只允许变更字段、分析状态/模式/fallback、审核动作、来源版本和结果 ID。
 - `AnalysisReview` 是持久化审核记录，但工单页面中的 `TicketEventResponse` 仍是根据业务数据派生的响应 DTO，不是独立持久化的通用审计日志。
-- 知识发布审计接入留待 Task 8；V2 migration 的 MySQL checksum、索引和事务 parity 留待 Task 15。
-- durable idempotency 的自动化和手工证据来自 H2；Task 15 仍需在 MySQL 8 重做并发 winner、重启重放、lease、唯一约束和事务 parity。JVM single-flight 不是正确性边界。
+- 知识发布审计已经接入；审计与知识 migration/checksum、提交/回滚事务和重启 parity 已在 MySQL 8.4.11 验证，但仍不是生产合规认证。
+- durable idempotency 已在 MySQL 8.4.11 重做并发 winner、重启重放、唯一约束和事务 parity；acquisition 使用 `READ_COMMITTED` 避免缺失键 gap-lock 死锁。JVM single-flight 仍不是正确性边界。
 - 工单和指标仍不是同一个后端快照，严格一致性需要统一初始化接口或明确统计时间范围。
 - Python/RAG 还需要更多真实案例和评估数据。
 - Java 指标接口只返回有持久化来源的运行态数据；固定 mock 评估报告现在可通过 `EVALUATION_REPORT_PATH` 接入质量页面，报告缺失或损坏时 `evaluation` 仍为空。

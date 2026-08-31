@@ -1,0 +1,41 @@
+{
+  "httpServer": "MockWebServerWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "requestMappings": [
+        {
+          "requestParam": "client_id",
+          "match": "support-copilot-reviewer",
+          "claims": {
+            "sub": "pilot-reviewer",
+            "aud": ["support-copilot-api"],
+            "roles": ["SUPPORT_REVIEWER"],
+            "scope": "support:review"
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "support-copilot-agent",
+          "claims": {
+            "sub": "pilot-agent",
+            "aud": ["support-copilot-api"],
+            "roles": ["SUPPORT_AGENT"],
+            "support_scopes": ["ACCOUNT"],
+            "scope": "support:agent"
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "support-copilot-admin",
+          "claims": {
+            "sub": "pilot-admin",
+            "aud": ["support-copilot-api"],
+            "roles": ["SUPPORT_ADMIN"],
+            "scope": "support:admin"
+          }
+        }
+      ]
+    }
+  ]
+}

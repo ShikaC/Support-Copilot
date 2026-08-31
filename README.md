@@ -11,8 +11,8 @@ Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路
 - 检索查询、Top K 知识片段、来源、分数和引用展示。
 - 建议回复编辑、采纳和风险提示。
 - 运营概览、知识目录演示页和质量评估占位视图；只有接入可追溯报告后才展示评估数字。
-- `demo`/`test` 使用隔离 H2；`local`/`pilot` 已准备 Flyway 管理的 MySQL 8 配置与 migration 契约，实库验证留待 Task 15。
-- Java Resource Server 已按 `SUPPORT_AGENT`、`SUPPORT_REVIEWER`、`SUPPORT_ADMIN` 执行 JWT 角色门禁；真实 pilot OIDC/MySQL 联调仍留待 Task 15。
+- `demo`/`test` 使用隔离 H2；`pilot` 已在 MySQL 8.4.11 上以 9 个零跳过场景验证 Flyway、Hibernate、幂等、审计、知识发布和重启 parity。
+- Java Resource Server 已按 `SUPPORT_AGENT`、`SUPPORT_REVIEWER`、`SUPPORT_ADMIN` 执行 JWT 角色门禁；Compose 中的固定 test-only OIDC issuer 已验证 token claims 与 401/403/2xx 边界，但不是生产登录系统。
 - Java 调用 Python 时使用仅服务端可见的 `X-Internal-Service-Token`；Python `/health` 公开，`/analyze` 在进入工作流前校验该凭据。
 - 工单创建/实际变更、分析持久化和人工审核会在同一事务写入不可编辑的可信审计事件；事件只保存 JWT/演示身份、受控动作与目标、版本、`traceId` 和白名单元数据。
 - FastAPI 配置支持 `mock`、`live` 和 `auto`；分析结果会明确标识 `mock`、`live` 或 `fallback`。
@@ -158,9 +158,9 @@ export SUPPORT_COPILOT_JWT_AUDIENCE='support-copilot-api'
 
 AI 服务与质量报告配置在四个 profile 中保持一致，可继续通过 `AI_SERVICE_BASE_URL`、`AI_SERVICE_TIMEOUT_MS`、`AI_SERVICE_RETRY_MAX_ATTEMPTS`、`AI_SERVICE_RETRY_WAIT_MS`、`AI_SERVICE_CIRCUIT_*`、`AI_SERVICE_BULKHEAD_*` 和 `EVALUATION_REPORT_PATH` 覆盖。可靠性参数在启动时校验边界和交叉约束，非法值拒绝启动。`local`/`pilot` 缺少或留空 `SUPPORT_COPILOT_JWT_ISSUER_URI`、`SUPPORT_COPILOT_JWT_AUDIENCE` 或服务间 token 时会在 datasource 创建前失败，不会回退到开放访问。`SUPPORT_COPILOT_JWT_JWK_SET_URI` 只是可选的直接 key-set 位置，永远不会关闭 issuer/audience claim 校验。`demo` 是唯一允许匿名业务 API 的 profile；`test` 使用显式合成 HMAC decoder，但执行与 `local`/`pilot` 相同的受保护 endpoint policy。
 
-上述 JWT 行为已用合成 JWT 和本地配置场景验证；这不是对真实 OIDC provider 的集成验证，也不代表生产身份系统已经接入。
+上述 JWT 行为既有合成 JWT 自动化，也已在真实 Compose 拓扑中通过固定的 test-only OIDC issuer 验证 client credentials、issuer、audience、角色和知识 scope。它没有用户登录、token refresh 或生产身份供应商，因此不代表生产身份系统已经接入。
 
-以上 `local`/`pilot` 命令是配置契约，不是实库通过声明。MySQL schema、Flyway version/checksum、Hibernate 实库校验、LOB/time/`@Version` 映射、空库行为、stale schema 拒绝和 Java 重启持久化均未在本轮执行；它们统一由 Task 15 的 MySQL 8 运行时验收负责。
+以上仍是手工启动示例，不会自动生成生产凭据。Task 15 已在 MySQL 8.4.11 上执行 9 个零跳过运行时场景，覆盖 schema/Flyway version 与 checksum、Hibernate validation、LOB/time/`@Version`、空库、stale schema、幂等并发/重放、审计事务、知识发布/回滚和应用上下文重启。该证据只针对单机 pilot/Testcontainers，不是生产容量或高可用结论。
 
 健康检查：
 
@@ -190,7 +190,7 @@ curl -X POST http://localhost:8080/api/tickets/ticket-10042/analyze
 | `GET /api/audit-events` | 401 | 403 | 允许 | 允许 |
 | 其他 `/actuator/**` | 401 | 403 | 403 | 允许 |
 
-401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。知识访问范围只读取 JWT 的 `support_scopes`，经过 `GENERAL`、`BILLING`、`ACCOUNT`、`PRIVACY`、`TECHNICAL` 白名单后再与当前发布范围求交集；缺失或空 claim 都表示零知识权限，工单正文不能扩展权限。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。React 已实现 `demo`/`secured` typed token adapter、Authorization 注入和 401/403/409 状态，但没有真实 OIDC 登录或 token refresh；真实 issuer、MySQL 与 pilot 组合验收属于 Task 15。
+401/403 使用稳定 JSON `code`、`message`、`traceId`，不会回显 bearer token。审核和审计操作人来自同一个 trusted actor provider：安全 profile 只读取 JWT subject 与角色，`demo` 只使用明确的 `anonymous-demo` 身份；浏览器 actor/action/trace/metadata header 或 body 均不受信任。知识访问范围只读取 JWT 的 `support_scopes`，经过 `GENERAL`、`BILLING`、`ACCOUNT`、`PRIVACY`、`TECHNICAL` 白名单后再与当前发布范围求交集；缺失或空 claim 都表示零知识权限，工单正文不能扩展权限。审计查询按 `createdAt DESC, id DESC` 使用不透明 cursor 和最大 100 条的 keyset 分页，支持 `targetType`/`targetId` 过滤；非法 cursor/filter/limit 返回 `400 INVALID_AUDIT_QUERY`。React 已实现 `demo`/`secured` typed token adapter、Authorization 注入和 401/403/409 状态，但没有用户 OIDC 登录或 token refresh；Task 15 只验证了 test-only issuer 的 pilot 服务端组合边界。
 
 ### 3. React 前端
 
@@ -262,7 +262,7 @@ Java 会在没有请求头时生成安全的 `X-Trace-Id`，并将同一个值�
 
 分析、采纳/编辑回复和拒绝回复都要求 `Idempotency-Key`。键必须是 16 到 128 个 ASCII 字符，只允许字母、数字、`.`、`_`、`:`、`-`，并在全局唯一约束下绑定命令类型、路由/目标和规范化请求 SHA-256 指纹。相同键与相同命令会返回数据库中保存的原始成功结果；相同键绑定不同目标、动作或规范化内容会返回 `409 IDEMPOTENCY_KEY_CONFLICT`。浏览器为每个新命令生成 UUID；同一在途调用共享请求，只有未收到任何 HTTP 响应的网络失败才保留原键供重试，明确成功或 HTTP 错误后下一次命令使用新键。
 
-Java 的数据库记录、owner lease 和有界等待负责跨 Spring context 的正确性；原有 JVM single-flight 只保留为减少同实例重复工作的优化。文件型 H2 已验证并发收敛、活跃 owner 续租、过期 owner 恢复和重启重放。MySQL 8 并发、重启、锁和事务 parity 仍属于 Task 15，不能从 H2 结果推断。单实例优化背景见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
+Java 的数据库记录、owner lease 和有界等待负责跨 Spring context 的正确性；原有 JVM single-flight 只保留为减少同实例重复工作的优化。文件型 H2 已验证并发收敛、活跃 owner 续租、过期 owner 恢复和重启重放；Task 15 又在 MySQL 8.4.11 上验证并发 winner、唯一约束、重启重放和事务 parity，并将 acquisition 事务固定为 `READ_COMMITTED` 以避免缺失键 gap-lock 死锁。单实例优化背景见 [分析在途请求合并契约](docs/contracts/analysis-single-flight-contract.md)。
 
 React 不直接相信 Java 返回的 2xx JSON。工单、指标、分析和工单命令响应会先通过 Zod 运行时 Schema，缺字段、错误类型或未知枚举会在进入页面状态前转换为 `ApiContractError`；完整范围见 [前端运行时响应契约](docs/contracts/frontend-runtime-schema-contract.md)。工单 PATCH 必须携带当前 `expectedVersion`；匹配时版本递增，过期或并发写入返回 `409 VERSION_CONFLICT`，页面会保留错误详情并重新读取受影响工单。没有版本的本地 Demo 工单不会发送写请求。
 
@@ -444,7 +444,7 @@ cd services/support-copilot-api
 ./gradlew compileTestJava --no-daemon
 ```
 
-`MySqlProfileIntegrationTests` 源码随 `compileTestJava` 编译，但其三个运行时场景不计入 Task 3 通过数，也不在普通测试中冒充成功。Task 15 将负责 MySQL 8、Testcontainers、Compose、migration checksum、stale schema 和仅重启 Java 后的数据持久化验收；完成前不能声称 `local`/`pilot` 已通过真实 MySQL。
+普通测试仍不会把 Docker opt-in 场景冒充成功。Task 15 已显式设置 `SUPPORT_COPILOT_RUN_MYSQL_TESTS=true`，在 MySQL 8.4.11 上运行 9 个零跳过场景并通过；这份实库证据独立于普通 H2/compile 门禁。
 
 Python：
 
@@ -506,7 +506,7 @@ Java API CI：
 -> 运行全部 Java 测试
 ```
 
-Java 工作流定义见 [`.github/workflows/java-api-ci.yml`](.github/workflows/java-api-ci.yml)。普通测试显式使用隔离 H2 和测试 mock，不需要 Python 或 React。`MySqlProfileIntegrationTests` 的运行时验收留待 Task 15，当前只保证测试源码可编译。
+Java 工作流定义见 [`.github/workflows/java-api-ci.yml`](.github/workflows/java-api-ci.yml)。普通 CI 显式使用隔离 H2 和测试 mock，不需要 Python 或 React，也不自动启动 Docker；MySQL 8.4.11 的 9 个零跳过场景来自 Task 15 独立运行时门禁。
 
 React Web CI：
 
@@ -528,7 +528,7 @@ React 工作流定义见 [`.github/workflows/react-web-ci.yml`](.github/workflow
 
 默认 `all` 模式会串行执行 Python 锁文件、测试和 mock 评估，Java 全量/profile/Flyway 契约，React 安装、lint、测试、构建、体积预算和 Playwright，以及工作流语法、静态安全检查、依赖漏洞扫描和 tracked/history secret 扫描。也可以使用 `--mode python|java|react|release` 运行指定分组。发布工作流 [`.github/workflows/release-gates-ci.yml`](.github/workflows/release-gates-ci.yml) 只执行不依赖外部模型和容器的 `release` 分组，并使用只读仓库权限。
 
-依赖扫描对 Python 生产/开发锁、Gradle 锁和 npm lock 分别生成可验证报告；任一扫描器运行错误、报告损坏或已知漏洞都会令门禁失败。Docker、Compose、MySQL/Testcontainers、备份恢复和部署回滚会明确显示为 `DEFERRED`，统一留到 Task 15，不能把该提示理解为已通过。完整门禁不需要 API Key，也不会调用 live 模型。
+依赖扫描对 Python 生产/开发锁、Gradle 锁和 npm lock 分别生成可验证报告；任一扫描器运行错误、报告损坏或已知漏洞都会令门禁失败。该聚合命令仍是非容器门禁，所以其 `DEFERRED` 提示不能替代 Task 15 的独立 Docker 证据。当前 MySQL parity 和 11 个容器运行时场景已通过；跨版本回滚、fresh-volume 恢复仍受共享宿主磁盘阻塞，镜像发布扫描仍因 56 个 HIGH/CRITICAL 结果失败。
 
 如需保留本地依赖扫描证据，调用方必须提供一个预先创建、尚未包含任何扫描结果的目录：
 
@@ -568,20 +568,42 @@ CI_GATE_SCAN_EVIDENCE_DIR="$evidence_dir" ./scripts/verify-ci-gates.sh --mode re
 `INVALID_TICKET_PAGE`、`INVALID_TICKET_CURSOR`、`INVALID_TICKET_FILTER`。当前 React
 工作台仍只加载首批并在客户端筛选，服务端续页能力已存在但尚未形成完整“加载更多”交互。
 
+## Task 15 运行时状态
+
+截至 2026-08-31，MySQL 8.4.11 parity 的 9 个场景和当前 API/AI/Web 镜像的 11 个运行时
+场景均零跳过通过。真实五服务 Compose 链路已通过 test-only OIDC claims/角色/scope、
+401/403/2xx、mock RAG、审核/审计、API/MySQL/整栈重启持久化、artifact identity 和重启后
+安全写入。API restart verifier 还修复了“静态 Web health 已 200、Java 尚未 ready”导致的
+502 race。
+
+Task 15 仍未关闭：同一共享宿主两次被无关 no-cache 构建耗尽磁盘，按两次同因上限停止，
+所以真实旧版本切换/回切和 fresh-volume backup/restore 尚无完整成功证据。严格镜像扫描还保留
+56 个 HIGH/CRITICAL 结果。解除运行时阻塞需先停止外部构建，并在无并发 image build 时让
+Docker-root 连续 60 秒至少保有 8 GiB；镜像发布闸门则必须通过更新受支持基础镜像/依赖解决，
+不能忽略 unfixed 或增加豁免。完整命令和边界见 [基础设施运行手册](infra/README.md)。
+
+对抗审查后，当前 Compose/verifier 又增加了 `linux/amd64` 强制平台、随机运行所有权标签、
+容器/网络/卷双标签精确清理，以及不把 Bearer Token 放入 curl 参数的请求方式。退出清理不再
+删除或覆盖 Docker image tag：运行产生的镜像引用作为构建缓存保留并记录 image ID，预构建引用
+只验证是否回到原始身份；错误架构、异所有权资源和标签重绑等本地故障注入已通过。这些改动晚于
+远端部分成功证据，因此当前源码仍需在解除磁盘阻塞后重新执行完整 Compose gate，不能把旧证据
+冒充为当前源码闭环。
+
 ## 演示
 
 正式演示前运行 `./scripts/run-local-smoke.sh`。完整 5 至 8 分钟讲解顺序、预期结果、故障演练和禁止表述见 [面试演示脚本](docs/DEMO.md)。
 
 ## 当前限制
 
-- `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`local`/`pilot` 的 MySQL 配置与 migration 契约已准备，但真实 MySQL 持久化仍待 Task 15 验证。
+- `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`pilot` 的 MySQL 8.4.11 parity 与 API/MySQL/整栈重启持久化已有运行时证据，但只覆盖单机合成 pilot。
 - 当前 append-only 审计覆盖已提交的工单创建/实际变更、分析持久化、`APPROVED`/`EDITED`/`REJECTED` 审核和知识 release 创建/审批/发布/回滚；元数据白名单不保存工单正文、回复、拒绝原因、证据、provider payload、token 或异常消息。
-- 审计在 H2 `test` profile 已完成事务与真实 HTTP 验证，但 V2 migration 尚未在 MySQL 执行；checksum、索引与事务 parity 属于 Task 15，当前不构成生产或合规审计声明。
-- JWT endpoint policy、合成 test decoder 和 React session/memory token adapter 已验证，但真实登录、token refresh、pilot OIDC、MySQL 和容器组合验收属于 Task 15，不能据此声称生产身份平台已经完成。
+- 审计 V2 migration、checksum、提交/回滚事务和重启 parity 已在 MySQL 8.4.11 验证；数据仍是 synthetic/redacted，且没有合规认证或生产留存流程，因此不能称为生产合规审计。
+- JWT endpoint policy、React session/memory token adapter 和 test-only OIDC pilot 组合已验证，但用户登录、token refresh 与生产身份供应商尚未实现。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - Java release 发布不会热加载 Python file-backed corpus/artifact；新 release 仍需要显式部署 corpus、构建并激活 artifact。当前只验证本地文件系统原子生命周期，不代表共享存储或跨主机协调。
 - 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。
-- MySQL 运行时、Redis、持久化向量数据库、Compose 和自动化部署/CD 尚未完成验收；当前有三条服务 CI 和一条非容器 release gate，但都不包含部署。
+- Compose 五服务拓扑、当前镜像运行时和重启持久化已有部分运行时证据；真实跨版本回滚与 fresh-volume 备份恢复因共享宿主第二次耗尽磁盘停止，发布扫描还剩 56 个 HIGH/CRITICAL 结果。Redis、持久化向量数据库、自动化部署/CD、生产高可用和容量验收仍未实现。
+- AI/Web Dockerfile 的系统包安全升级尚未锁定到具体包版本；即使基础镜像已按 digest 固定，构建仍不是完全可复现，后续修复必须重新取得容器运行时和严格扫描证据。

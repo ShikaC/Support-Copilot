@@ -1,0 +1,260 @@
+name: support-copilot-pilot
+
+services:
+  mysql:
+    image: mysql:8.4.11-oraclelinux9@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+    platform: linux/amd64
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: support_copilot
+      MYSQL_USER: support_copilot
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_app_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    secrets:
+      - mysql_app_password
+      - mysql_root_password
+    networks:
+      - backend
+    volumes:
+      - type: volume
+        source: mysql-data
+        target: /var/lib/mysql
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,size=64m
+    cap_drop:
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+          pids: 256
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} --password=$$(cat /run/secrets/mysql_app_password) --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 30s
+
+  oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff
+    platform: linux/amd64
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+    restart: unless-stopped
+    environment:
+      JSON_CONFIG_PATH: /app/config.json
+    networks:
+      - backend
+    volumes:
+      - type: bind
+        source: ./oidc/config.json
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
+          pids: 128
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/isalive"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  ai:
+    platform: linux/amd64
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+    build:
+      context: ..
+      dockerfile: services/support-copilot-ai/Dockerfile
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      AI_MODE: ${SUPPORT_COPILOT_AI_MODE:-mock}
+      EMBEDDING_ARTIFACT_ROOT: /var/lib/support-copilot-ai
+      EMBEDDING_ARTIFACT_BUILD_POLICY: require-active
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN="$$(cat /run/secrets/internal_service_token)"
+        export OPENAI_API_KEY="$$(cat /run/secrets/openai_api_key)"
+        exec setpriv --reuid=10001 --regid=10001 --clear-groups "$$@"
+      - --
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    secrets:
+      - internal_service_token
+      - openai_api_key
+    networks:
+      - backend
+    volumes:
+      - type: volume
+        source: embedding-artifacts
+        target: /var/lib/support-copilot-ai
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+          pids: 192
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'from urllib.request import urlopen; urlopen(\"http://127.0.0.1:8000/health\", timeout=2).read()'"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 15s
+
+  api:
+    platform: linux/amd64
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+    build:
+      context: ..
+      dockerfile: services/support-copilot-api/Dockerfile
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      SPRING_PROFILES_ACTIVE: pilot
+      SUPPORT_COPILOT_DB_URL: jdbc:mysql://mysql:3306/support_copilot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SUPPORT_COPILOT_DB_USERNAME: support_copilot
+      SUPPORT_COPILOT_JWT_ISSUER_URI: http://oidc:8080/default
+      SUPPORT_COPILOT_JWT_AUDIENCE: support-copilot-api
+      AI_SERVICE_BASE_URL: http://ai:8000
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        export SUPPORT_COPILOT_DB_PASSWORD="$$(cat /run/secrets/mysql_app_password)"
+        export SUPPORT_COPILOT_INTERNAL_SERVICE_TOKEN="$$(cat /run/secrets/internal_service_token)"
+        exec setpriv --reuid=10001 --regid=10001 --clear-groups "$$@"
+      - --
+    command: ["java", "-jar", "/opt/support-copilot/app.jar"]
+    secrets:
+      - mysql_app_password
+      - internal_service_token
+    depends_on:
+      mysql:
+        condition: service_healthy
+      oidc:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+    networks:
+      - frontend
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.50"
+          memory: 1024M
+          pids: 256
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health/readiness | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 4s
+      retries: 18
+      start_period: 30s
+
+  web:
+    platform: linux/amd64
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+    build:
+      context: ..
+      dockerfile: apps/support-copilot-web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - frontend
+    ports:
+      - "${SUPPORT_COPILOT_WEB_PORT:-13080}:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,noexec,nosuid,size=32m
+      - /var/cache/nginx:mode=1777,noexec,nosuid,size=32m
+      - /var/run:mode=1777,noexec,nosuid,size=8m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+          pids: 128
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 10s
+
+networks:
+  frontend:
+    internal: false
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+  backend:
+    internal: true
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+
+volumes:
+  mysql-data:
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+  embedding-artifacts:
+    labels:
+      io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+
+secrets:
+  mysql_app_password:
+    file: ${PILOT_SECRET_DIR:?PILOT_SECRET_DIR must point to a directory containing pilot secret files}/mysql_app_password
+  mysql_root_password:
+    file: ${PILOT_SECRET_DIR:?PILOT_SECRET_DIR must point to a directory containing pilot secret files}/mysql_root_password
+  internal_service_token:
+    file: ${PILOT_SECRET_DIR:?PILOT_SECRET_DIR must point to a directory containing pilot secret files}/internal_service_token
+  openai_api_key:
+    file: ${PILOT_SECRET_DIR:?PILOT_SECRET_DIR must point to a directory containing pilot secret files}/openai_api_key

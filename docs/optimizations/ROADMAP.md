@@ -56,6 +56,20 @@ Task 14 已把根 README、前端 README、5 至 8 分钟演示脚本和 pilot �
 
 该结果只证明上述提交的本地、非容器、mock 可复现路径。Task 10 可发布 live 人工评估仍受已重复出现两次的 provider structured-output 失败阻塞；真实 OIDC、Docker、Compose、MySQL parity、重启持久化、备份恢复和部署回滚仍属于 Task 15，不能据此宣称生产部署、SLO、真实用户规模或企业客户效果。
 
+### Task 15 运行时与发布阻塞状态（2026-08-31）
+
+Task 15 已在 MySQL 8.4.11 `linux/amd64` 上完成 9 个零跳过 parity 场景，覆盖 Flyway version/checksum、Hibernate validation、stale schema、LOB/time/`@Version`、幂等并发/重放、审计提交/回滚、知识发布/回滚和应用上下文重启。当前 API/AI/Web 镜像的 11 个运行时场景也全部通过，精确清理回执无残留。兼容旧 API 已从固定 revision `a79d7533c1d02a233e1517047fbcc5585ef881f4` 构建为独立 `linux/amd64` OCI 身份，并绑定源码 archive 与 Dockerfile hash。
+
+真实五服务 Compose 链路已观察到 test-only OIDC issuer 的 issuer/audience/role/scope、401/403/2xx、scope-filtered mock RAG、服务间 401、审核/审计、API/MySQL/整栈重启持久化、artifact identity 和重启后安全写入。运行中发现静态 Web health 早于 Java readiness 的 502 race；修复后 verifier 等待同一 API 容器 healthcheck 并保存 actuator readiness，47 个 operations/Compose 聚焦测试、Ruff、BasedPyright、Bash 和 no-excuse 均通过。
+
+随后对抗式代码审查发现三项高优先级 fail-open/误删/凭据暴露风险：旧 Docker inspect 回退不验证平台，cleanup 仅按项目名或可变 tag 操作，以及 Bearer Token 出现在 curl argv。当前源码已把所有 Compose 服务固定为 `linux/amd64`，并在旧 inspect 路径校验 OS/architecture；每次运行生成随机所有权标签，服务/网络/卷必须同时匹配项目与运行标签后才按精确 ID 删除，独立 restore 也采用同一双标签边界，异所有权资源只报告不删除；退出清理不再删除或覆盖 image tag，而是保留构建缓存、记录 image ID，并只验证预构建引用是否回到原始身份；Bearer header 改由标准输入传给 curl。49 个 Compose/operations 本地契约与故障注入测试通过，另有 28 个 backup/restore 契约通过，覆盖错误平台、标签重绑无破坏性动作、双标签清理、异所有权保留和 token 不进入 argv。该加固晚于远端部分运行证据，当前源码仍没有同源远端完整成功记录。
+
+完整 operations gate 仍未通过。同一共享宿主两次被无关 Minishop no-cache 可复现构建耗尽根分区；第二次磁盘监控从 6,334,939,136 可用字节降为 0，MySQL 在 known-good 重应用时以 OS errno 28 失败。按两次同因上限不再进行第三次尝试。解除条件是停止/完成该外部构建、只清理其自有资源，并在无并发 image build 时连续 60 秒保持 Docker-root 至少 8 GiB 可用；此前不得声称真实跨版本切换/回切或 fresh-volume backup/restore 已通过。
+
+镜像发布闸门独立保持失败：严格扫描不忽略 unfixed、不使用豁免，当前 API 与 Web 为 0，AI 为 13 HIGH/3 CRITICAL，MySQL 为 37 HIGH/1 CRITICAL，test-only OIDC 为 2 HIGH，旧 API 为 0，总计 56。相较首次 101 项已有下降，但未达到零 HIGH/CRITICAL，不能发布或改写为生产安全结论。
+
+保留一项 P2 可复现性债务：AI/Web Dockerfile 在 digest-pinned 基础镜像上仍执行未锁定具体包版本的系统包升级。为避免在宿主阻塞期间使既有 11/11 运行时与扫描证据失去归属，本轮不改 Dockerfile；后续应刷新受支持的 digest-pinned 基础镜像、移除浮动升级，并重新执行完整容器运行时和严格镜像扫描。
+
 ### 2.1 当前架构
 
 ~~~text
@@ -63,7 +77,7 @@ React + TypeScript + Ant Design + ECharts
                   |
                   | /api
                   v
-     Java 21 + Spring Boot + JPA + H2
+ Java 21 + Spring Boot + JPA + H2/MySQL 8
                   |
                   | /analyze
                   v
@@ -926,7 +940,7 @@ FALLBACK
 - 工单版本。
 - traceId。
 
-当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录完整业务审核内容；另有 append-only `AuditEvent` 只保存可信 actor、受控动作/目标、版本、`traceId` 和脱敏白名单 metadata。两者在同一事务提交，同内容重放不新增审核或审计行。知识 release 创建、审批、发布和回滚也已接入同一 typed recorder，并与 active pointer/状态变更同事务提交。真实 OIDC 和 MySQL parity 尚未完成，因此仍不能称为生产或合规审计能力。
+当前已用独立 `AnalysisReview` 记录实现 `APPROVED`、`EDITED` 和 `REJECTED`，并记录完整业务审核内容；另有 append-only `AuditEvent` 只保存可信 actor、受控动作/目标、版本、`traceId` 和脱敏白名单 metadata。两者在同一事务提交，同内容重放不新增审核或审计行。知识 release 创建、审批、发布和回滚也已接入同一 typed recorder，并与 active pointer/状态变更同事务提交。MySQL 8.4.11 已验证 migration/checksum、审计提交/回滚和重启 parity，test-only OIDC 已验证可信 actor/角色边界；数据仍为 synthetic/redacted 且没有生产身份、留存和合规认证，因此仍不能称为生产或合规审计能力。
 
 ### P5-03 权限边界
 
@@ -936,7 +950,7 @@ FALLBACK
 - `SUPPORT_REVIEWER`：agent 能力加 analysis review 读写。
 - `SUPPORT_ADMIN`：reviewer 能力加非 health actuator。
 
-React 已实现 session/memory 范围的 typed token adapter、严格 API contract、secured 401/403/409 状态和按工单隔离的分析工作流，并用 synthetic JWT 在本地生产 build 完成浏览器验证。真实 OIDC 登录、token refresh 和生产身份仍未实现；README 必须把本地 adapter、匿名 demo、已验证的 Resource Server policy 和 Task 15 OIDC parity 分开，不能声称已有生产身份系统。
+React 已实现 session/memory 范围的 typed token adapter、严格 API contract、secured 401/403/409 状态和按工单隔离的分析工作流，并用 synthetic JWT 在本地生产 build 完成浏览器验证。Task 15 只增加了 test-only OIDC issuer 的服务端 issuer/audience/role/scope parity；用户 OIDC 登录、token refresh 和生产身份仍未实现，不能声称已有生产身份系统。
 
 ### P5-04 生产配置隔离
 

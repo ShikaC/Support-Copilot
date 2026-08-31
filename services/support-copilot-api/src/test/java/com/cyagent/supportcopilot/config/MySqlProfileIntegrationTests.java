@@ -1,207 +1,169 @@
 package com.cyagent.supportcopilot.config;
 
+import static com.cyagent.supportcopilot.common.MySqlTestSupport.container;
+import static com.cyagent.supportcopilot.common.MySqlTestSupport.createDatabase;
+import static com.cyagent.supportcopilot.common.MySqlTestSupport.startContext;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.time.Instant;
 
-import jakarta.persistence.EntityManager;
-
-import org.hibernate.tool.schema.spi.SchemaManagementException;
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.BeforeEach;
+import org.flywaydb.core.api.exception.FlywayValidateException;
+import org.hibernate.tool.schema.spi.SchemaManagementException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.WebApplicationType;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.WebApplicationContext;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import com.cyagent.supportcopilot.analysis.AnalysisRun;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReview;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
-import com.cyagent.supportcopilot.SupportCopilotApiApplication;
-import com.cyagent.supportcopilot.ticket.TicketRepository;
+import com.cyagent.supportcopilot.common.MySqlTestSupport.Database;
+import com.cyagent.supportcopilot.common.TestTrustedActors;
+import com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest;
+import com.cyagent.supportcopilot.ticket.TicketDomain.Channel;
+import com.cyagent.supportcopilot.ticket.TicketDomain.CustomerTier;
+import com.cyagent.supportcopilot.ticket.TicketService;
 
-@SpringBootTest
-@ActiveProfiles("pilot")
 @EnabledIfEnvironmentVariable(named = "SUPPORT_COPILOT_RUN_MYSQL_TESTS", matches = "true")
 @Testcontainers(disabledWithoutDocker = true)
 class MySqlProfileIntegrationTests {
+	private static final int MYSQL_TEXT_MAX_BYTES = 65_535;
+	private static final int LARGE_PAYLOAD_BYTES = 100_000;
 
 	@Container
-	static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.0.36"))
-		.withDatabaseName("support_copilot")
-		.withUsername("support_copilot")
-		.withPassword("integration-only");
+	static final MySQLContainer MYSQL = container("support_copilot_profile");
 
-	@Container
-	static final MySQLContainer STALE_MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.0.36"))
-		.withDatabaseName("unmigrated_support_copilot")
-		.withUsername("support_copilot")
-		.withPassword("integration-only");
+	@Test
+	void migratedPilotSchemaStartsWithoutDemoTickets() {
+		try (var context = startContext(MYSQL)) {
+			var flyway = context.getBean(Flyway.class);
+			var jdbc = context.getBean(JdbcTemplate.class);
 
-	@DynamicPropertySource
-	static void mysqlProperties(DynamicPropertyRegistry registry) {
-		registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-		registry.add("spring.datasource.username", MYSQL::getUsername);
-		registry.add("spring.datasource.password", MYSQL::getPassword);
-	}
-
-	@Autowired
-	private TicketRepository ticketRepository;
-
-	@Autowired
-	private AnalysisRunRepository analysisRunRepository;
-
-	@Autowired
-	private AnalysisReviewRepository analysisReviewRepository;
-
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
-
-	@Autowired
-	private Flyway flyway;
-
-	@Autowired
-	private EntityManager entityManager;
-
-	@Autowired
-	private WebApplicationContext applicationContext;
-
-	private MockMvc mockMvc;
-
-	@BeforeEach
-	void setUpMockMvc() {
-		mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext).build();
+			assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+			assertThat(flyway.info().applied())
+				.hasSize(5)
+				.allSatisfy(migration -> assertThat(migration.getChecksum()).isNotNull());
+			assertThat(jdbc.queryForObject("select count(*) from tickets", Long.class)).isZero();
+		}
 	}
 
 	@Test
-	@Transactional
-	void appliesSchemaAndPreservesCurrentRepositoryAndApiMappings() throws Exception {
-		assertThat(ticketRepository.count()).isZero();
-		assertThat(analysisRunRepository.count()).isZero();
+	void largeAnalysisAndReviewPayloadsRoundTripExactlyAfterRestart(TestReporter testReporter) {
+		var connection = createDatabase(MYSQL, "support_copilot_large_payload");
+		var analysisPayload = "A".repeat(LARGE_PAYLOAD_BYTES);
+		var reviewedPayload = "R".repeat(LARGE_PAYLOAD_BYTES);
 
-		var createResult = mockMvc.perform(post("/api/tickets")
-			.contentType(APPLICATION_JSON)
-			.content("""
-				{
-				  "channel": "EMAIL",
-				  "customerName": "Persistence Sentinel",
-				  "customerCompany": "Task 3 Verification",
-				  "customerTier": "STANDARD",
-				  "subject": "Verify MySQL persistence",
-				  "description": "Synthetic integration-test ticket.",
-				  "language": "en-US"
-				}
-				"""))
-			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.version").value(0))
-			.andReturn();
-		var ticketId = com.jayway.jsonpath.JsonPath.<String>read(
-			createResult.getResponse().getContentAsString(), "$.id");
+		try (var context = startContext(connection)) {
+			TestTrustedActors.authenticate("mysql-large-payload-agent", "SUPPORT_AGENT");
+			try {
+				var ticket = context.getBean(TicketService.class).create(new CreateTicketRequest(
+					Channel.EMAIL,
+					"Synthetic MySQL Customer",
+					"Task 15 Verification",
+					CustomerTier.STANDARD,
+					"Large payload round trip",
+					"Synthetic persistence test data.",
+					"en-US"
+				));
+				var observedAt = Instant.parse("2026-08-30T12:34:56.123456Z");
+				var run = new AnalysisRun();
+				run.setId("analysis-mysql-large-payload");
+				run.setTicketId(ticket.id());
+				run.setSourceTicketVersion(ticket.version());
+				run.setTraceId("trace-mysql-large-payload");
+				run.setStatus("SUCCEEDED");
+				run.setMode("mock");
+				run.setResponseJson(analysisPayload);
+				run.setCreatedAt(observedAt);
+				context.getBean(AnalysisRunRepository.class).saveAndFlush(run);
 
-		mockMvc.perform(patch("/api/tickets/{id}", ticketId)
-			.contentType(APPLICATION_JSON)
-			.content("""
-				{"status":"IN_PROGRESS","priority":"HIGH","expectedVersion":0}
-				"""))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.id").value(ticketId))
-			.andExpect(jsonPath("$.version").value(1));
+				var review = new AnalysisReview();
+				review.setId("review-mysql-large-payload");
+				review.setTicketId(ticket.id());
+				review.setAnalysisId(run.getId());
+				review.setAction(AnalysisReviewAction.EDITED);
+				review.setReviewerType("SUPPORT_AGENT");
+				review.setReviewerLabel("MySQL Persistence Test");
+				review.setOriginalReplyContent(analysisPayload);
+				review.setReviewedReplyContent(reviewedPayload);
+				review.setTicketVersion(ticket.version());
+				review.setTraceId(run.getTraceId());
+				review.setCreatedAt(observedAt);
+				context.getBean(AnalysisReviewRepository.class).saveAndFlush(review);
+			} finally {
+				TestTrustedActors.clear();
+			}
+		}
 
-		var observedAt = Instant.parse("2026-08-26T12:34:56.123456Z");
-		var longContent = "x".repeat(70_000);
-		var run = new AnalysisRun();
-		run.setId("analysis-mysql-mapping");
-		run.setTicketId(ticketId);
-		run.setSourceTicketVersion(1);
-		run.setTraceId("task-3-mysql-mapping");
-		run.setStatus("SUCCEEDED");
-		run.setMode("mock");
-		run.setResponseJson(longContent);
-		run.setCreatedAt(observedAt);
-		analysisRunRepository.saveAndFlush(run);
-
-		var review = new AnalysisReview();
-		review.setId("review-mysql-mapping");
-		review.setTicketId(ticketId);
-		review.setAnalysisId(run.getId());
-		review.setAction(AnalysisReviewAction.EDITED);
-		review.setReviewerType("DEMO_USER");
-		review.setReviewerLabel("Persistence Test");
-		review.setOriginalReplyContent(longContent);
-		review.setReviewedReplyContent(longContent + "-reviewed");
-		review.setTicketVersion(1);
-		review.setTraceId(run.getTraceId());
-		review.setCreatedAt(observedAt);
-		analysisReviewRepository.saveAndFlush(review);
-		entityManager.clear();
-
-		assertThat(analysisRunRepository.findById(run.getId()).orElseThrow().getResponseJson())
-			.hasSize(70_000);
-		assertThat(analysisRunRepository.findById(run.getId()).orElseThrow().getCreatedAt())
-			.isEqualTo(observedAt);
-		assertThat(analysisReviewRepository.findById(review.getId()).orElseThrow().getReviewedReplyContent())
-			.endsWith("-reviewed");
-		assertThat(ticketRepository.findById(ticketId).orElseThrow().getVersion()).isEqualTo(1);
-
-		assertThat(columnType("analysis_runs", "response_json")).isEqualTo("longtext");
-		assertThat(columnType("analysis_runs", "created_at")).isEqualTo("datetime");
-		assertThat(columnType("tickets", "version")).isEqualTo("bigint");
+		try (var restarted = startContext(connection)) {
+			var storedAnalysis = restarted.getBean(AnalysisRunRepository.class)
+				.findById("analysis-mysql-large-payload").orElseThrow();
+			var storedReview = restarted.getBean(AnalysisReviewRepository.class)
+				.findById("review-mysql-large-payload").orElseThrow();
+			assertThat(storedAnalysis.getResponseJson()).isEqualTo(analysisPayload);
+			assertThat(storedReview.getOriginalReplyContent()).isEqualTo(analysisPayload);
+			assertThat(storedReview.getReviewedReplyContent()).isEqualTo(reviewedPayload);
+			assertThat(storedAnalysis.getResponseJson().getBytes(UTF_8).length)
+				.isGreaterThan(MYSQL_TEXT_MAX_BYTES);
+			testReporter.publishEntry("mysqlLargePayloadUtf8Bytes", Integer.toString(LARGE_PAYLOAD_BYTES));
+		}
 	}
 
 	@Test
-	void migrationChecksumIsStableAndSecondMigrateIsANoOp() {
-		var migration = flyway.info().current();
+	void tamperedMigrationHistoryPreventsPilotStartup() {
+		var connection = createDatabase(MYSQL, "support_copilot_checksum");
+		migrate(connection);
+		jdbc(connection).update(
+			"update flyway_schema_history set checksum = checksum + 1 where version = '4'"
+		);
 
-		assertThat(migration).isNotNull();
-		assertThat(migration.getVersion().getVersion()).isEqualTo("5");
-		assertThat(migration.getChecksum()).isNotNull();
-		assertThat(flyway.migrate().migrationsExecuted).isZero();
-		assertThat(flyway.info().current().getChecksum()).isEqualTo(migration.getChecksum());
+		var failure = catchThrowable(() -> startContext(connection));
+
+		assertThat(failure)
+			.isNotNull()
+			.hasRootCauseInstanceOf(FlywayValidateException.class);
 	}
 
 	@Test
-	void hibernateValidationRejectsAnUnmigratedSchema() {
-		assertThat(org.assertj.core.api.Assertions.catchThrowable(() ->
-			new SpringApplicationBuilder(SupportCopilotApiApplication.class)
-				.web(WebApplicationType.NONE)
-				.run(
-					"--spring.profiles.active=pilot",
-					"--spring.datasource.url=" + STALE_MYSQL.getJdbcUrl(),
-					"--spring.datasource.username=" + STALE_MYSQL.getUsername(),
-					"--spring.datasource.password=" + STALE_MYSQL.getPassword(),
-					"--spring.flyway.enabled=false"
-				)
-		))
-			.hasRootCauseInstanceOf(SchemaManagementException.class)
-			.hasStackTraceContaining("Schema-validation: missing table");
+	void missingKnowledgeActivePointerColumnPreventsPilotStartup() {
+		var connection = createDatabase(MYSQL, "support_copilot_drift");
+		migrate(connection);
+		var jdbc = jdbc(connection);
+		jdbc.execute("alter table knowledge_active_release drop foreign key fk_knowledge_active_release");
+		jdbc.execute("alter table knowledge_active_release drop column release_id");
+
+		var failure = catchThrowable(() -> startContext(
+			connection,
+			"--spring.flyway.enabled=false"
+		));
+
+		assertThat(failure)
+			.isNotNull()
+			.hasRootCauseInstanceOf(SchemaManagementException.class);
 	}
 
-	private String columnType(String table, String column) {
-		return jdbcTemplate.queryForObject("""
-			SELECT DATA_TYPE
-			FROM information_schema.columns
-			WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
-			""", String.class, table, column);
+	private Flyway migrate(Database database) {
+		var flyway = Flyway.configure()
+			.dataSource(database.jdbcUrl(), database.username(), database.password())
+			.load();
+		flyway.migrate();
+		return flyway;
+	}
+
+	private JdbcTemplate jdbc(Database database) {
+		return new JdbcTemplate(new DriverManagerDataSource(
+			database.jdbcUrl(),
+			database.username(),
+			database.password()
+		));
 	}
 }

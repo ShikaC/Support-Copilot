@@ -33,7 +33,7 @@ dependencies {
 	implementation("io.github.resilience4j:resilience4j-bulkhead:2.4.0")
 	implementation("io.github.resilience4j:resilience4j-circuitbreaker:2.4.0")
 	implementation("io.github.resilience4j:resilience4j-retry:2.4.0")
-	implementation("org.flywaydb:flyway-core")
+	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("com.h2database:h2")
 	runtimeOnly("com.mysql:mysql-connector-j")
