@@ -1,23 +1,47 @@
-import { Tag } from 'antd'
+import { useEffect, useState } from 'react'
+import { Button, Spin } from 'antd'
+import { ApiError, ApiRequestError, getQualityReports, type ApiClient } from '../../services/api'
+import type { QualityReports, QualityReportSlot } from '../../services/qualityReports'
 import type { Metrics } from '../../types'
 import { UnavailablePanel } from '../shared/presentation'
+import { LegacyQualityMetrics } from './LegacyQualityMetrics'
+import { QualityReportPanel } from './QualityReportPanel'
 
-export function QualityView({ metrics, metricsError }: { readonly metrics: Metrics | null; readonly metricsError: boolean }) {
-  if (metricsError) return <div className="view-enter"><UnavailablePanel title="质量指标请求失败" description="指标接口请求失败，当前页面没有可展示的质量数字。请检查 Java API 和本地服务日志。" /></div>
-  if (!metrics?.evaluation) return <div className="view-enter"><UnavailablePanel title="质量指标暂不可用" description="当前没有收到可追溯的评估报告，因此不展示硬编码的质量数字。请先运行固定 mock 评估。" /></div>
-  const evaluation = metrics.evaluation
-  return <div className="view-enter"><section className="quality-panel">
-    <div className="quality-hero">
-      <Metric label={`Hit@${evaluation.topK}`} value={`${(evaluation.hitRateAtK * 100).toFixed(1)}%`} note="来自后端评估报告" />
-      <Metric label="MRR" value={evaluation.mrr.toFixed(3)} note="来自后端评估报告" />
-      <Metric label="无证据安全率" value={`${(evaluation.noEvidenceSafetyRate * 100).toFixed(1)}%`} note="样本数见评估报告" />
-      <Metric label="引用覆盖率" value={`${(evaluation.citationCoverage * 100).toFixed(1)}%`} note="校验规则见评估报告" />
-    </div>
-    <div className="panel-header"><div className="panel-heading"><h2 className="panel-title">评估运行</h2><div className="panel-meta">{evaluation.datasetName} · {evaluation.totalCases} 条案例 · {evaluation.modelName}</div></div></div>
-    <div className="evaluation-table-wrap"><table className="evaluation-table"><thead><tr><th>评估集</th><th className="numeric">样本</th><th>配置</th><th className="numeric">Hit@{evaluation.topK}</th><th className="numeric">MRR</th><th className="numeric">p95</th><th>门禁</th></tr></thead><tbody><tr><td>{evaluation.datasetName}</td><td className="numeric">{evaluation.totalCases}</td><td>{evaluation.mode} · top {evaluation.topN}/{evaluation.topK}</td><td className="numeric">{(evaluation.hitRateAtK * 100).toFixed(1)}%</td><td className="numeric">{evaluation.mrr.toFixed(3)}</td><td className="numeric">{evaluation.p95DurationMs} ms</td><td><Tag color={evaluation.passed ? 'green' : 'red'}>{evaluation.passed ? '通过' : `未通过 · ${evaluation.thresholdFailureCount} 项`}</Tag></td></tr></tbody></table></div>
-  </section></div>
+type ReportState = { readonly kind: 'loading' } | { readonly kind: 'ready'; readonly data: QualityReports } | { readonly kind: 'error'; readonly message: string }
+
+const defaultReportClient = { getQualityReports: ({ signal }: { readonly signal?: AbortSignal } = {}) => getQualityReports(signal) }
+
+export function QualityView({ metrics, metricsError, client = defaultReportClient }: { readonly metrics: Metrics | null; readonly metricsError: boolean; readonly client?: Pick<ApiClient, 'getQualityReports'> }) {
+  const [attempt, setAttempt] = useState(0)
+  const [state, setState] = useState<ReportState>({ kind: 'loading' })
+  useEffect(() => {
+    const controller = new AbortController()
+    client.getQualityReports({ signal: controller.signal }).then((data) => {
+      if (!controller.signal.aborted) setState({ kind: 'ready', data })
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      const message = error instanceof ApiError ? error.message : error instanceof ApiRequestError ? error.message : '报告响应无法读取，请检查服务与报告配置。'
+      setState({ kind: 'error', message })
+    })
+    return () => controller.abort()
+  }, [attempt, client])
+
+  const retry = () => { setState({ kind: 'loading' }); setAttempt((value) => value + 1) }
+  return <div className="view-enter quality-center">
+    <div className="panel-header quality-center-heading"><div><h1 className="page-title">质量证据</h1><p className="panel-meta">分别查看模型回归与完整业务链路。流程完成、规则通过与回答正确是不同的结论。</p></div><Button onClick={retry} loading={state.kind === 'loading'}>刷新报告</Button></div>
+    {state.kind === 'loading' && <section className="quality-panel data-loading" role="status"><Spin /><span>正在校验并加载评估报告</span></section>}
+    {state.kind === 'error' && <section className="quality-panel"><UnavailablePanel title="评估报告请求失败" description={state.message} /><div className="analysis-content"><Button onClick={retry}>重试加载报告</Button></div></section>}
+    {state.kind === 'ready' && <><ReportSlot title="模型回归评估" slot={state.data.liveEvaluation} /><ReportSlot title="完整业务基准" slot={state.data.businessBenchmark} /></>}
+    {(state.kind === 'ready' && state.data.liveEvaluation.status === 'NOT_CONFIGURED') && <LegacyQualityMetrics metrics={metrics} metricsError={metricsError} />}
+  </div>
 }
 
-function Metric({ label, value, note }: { readonly label: string; readonly value: string; readonly note: string }) {
-  return <div className="quality-hero-item"><span className="quality-hero-label">{label}</span><span className="quality-hero-value">{value}</span><span className="quality-hero-note">{note}</span></div>
+function ReportSlot({ title, slot }: { readonly title: string; readonly slot: QualityReportSlot }) {
+  switch (slot.status) {
+    case 'AVAILABLE': return <QualityReportPanel report={slot.report} />
+    case 'NOT_CONFIGURED': return <UnavailablePanel title={`${title}尚未配置`} description="服务尚未配置该报告及摘要。其他报告可独立查看。" />
+    case 'MISSING': return <UnavailablePanel title={`${title}文件不可用`} description="已配置的报告暂时无法读取，请检查报告文件。" />
+    case 'INVALID': return <UnavailablePanel title="报告校验失败" description={`${title}未通过摘要或数据一致性检查，因此不展示其中数字。`} />
+    default: return slot
+  }
 }

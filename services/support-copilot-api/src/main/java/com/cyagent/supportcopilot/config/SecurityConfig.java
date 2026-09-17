@@ -74,7 +74,7 @@ public class SecurityConfig {
 					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/api/tickets/*/analyses/*/reviews/**")
 					.hasAnyRole("SUPPORT_REVIEWER", "SUPPORT_ADMIN")
-				.requestMatchers("/api/tickets/**", "/api/knowledge/**", "/api/metrics/**")
+				.requestMatchers("/api/tickets/**", "/api/knowledge/**", "/api/metrics/**", "/api/quality-reports")
 					.hasAnyRole("SUPPORT_AGENT", "SUPPORT_REVIEWER", "SUPPORT_ADMIN")
 				.requestMatchers("/actuator/**").hasRole("SUPPORT_ADMIN")
 				.anyRequest().denyAll())
