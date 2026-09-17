@@ -18,12 +18,12 @@ startup whitelist as well as by the workspace launcher.
   workspace, run Gradle, run MySQL/Testcontainers, or call external APIs.
 - **Lock evidence:** the current SHA-256 values of `workspace-data.sh`,
   `workspace_data.py`, and both recovery test scripts match
-  [`workspace-lock-results.json`](/Users/shika/Documents/Support-Copilot/.omo/evidence/workspace-lock-results.json:13).
+  [`workspace-lock-results.json`:13](../../../.omo/evidence/workspace-lock-results.json).
   That artifact records H2 2.4.240 bidirectional file-lock interoperability and
   three deterministic cases covering backup and replacement race windows. I
   verified the current helper's locking protocol but did not re-run it.
 - **Persistence evidence:**
-  [`persistence-results.json`](/Users/shika/Documents/Support-Copilot/docs/enterprise-workspace/persistence-results.json:41)
+  [`persistence-results.json`:41](../persistence-results.json)
   records an offline backup/restore preserving 12 ticket IDs/versions and note
   fields. It names the pre-rename `application-workspace.properties`; the
   current `workspace-defaults.properties` has the same recorded SHA-256 content
@@ -60,50 +60,50 @@ None.
 `TicketActivityService` maps `AUTHENTICATED_JWT` to the controlled string
 `"已认证操作人"`, without reading `event.getActorSubject()` while projecting the
 agent-visible response
-([`TicketActivityService.java:66`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/activity/TicketActivityService.java:66)).
+([`TicketActivityService.java:66`](../../../services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/activity/TicketActivityService.java)).
 The focused API test makes a request authorized only as `SUPPORT_AGENT`, asserts
 that fixed actor label, and asserts known actor subjects, metadata fields,
 sensitive canaries, and a different ticket ID are absent
-([`TicketActivityApiTests.java:83`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/activity/TicketActivityApiTests.java:83)).
+([`TicketActivityApiTests.java:83`](../../../services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/activity/TicketActivityApiTests.java)).
 
 ### P1: Recovery operations keep OS locks through copy and replacement
 
 The shell entry point validates workspace paths and the manifest before
 delegating the file operation to the helper
-([`workspace-data.sh:41`](/Users/shika/Documents/Support-Copilot/scripts/workspace-data.sh:41)).
+([`workspace-data.sh:41`](../../../scripts/workspace-data.sh)).
 `database_lock` opens the database with `O_NOFOLLOW`, verifies a regular file,
 acquires an exclusive non-blocking POSIX lock, and confirms the pathname still
 names that locked inode
-([`workspace_data.py:32`](/Users/shika/Documents/Support-Copilot/scripts/workspace_data.py:32)).
+([`workspace_data.py:32`](../../../scripts/workspace_data.py)).
 Backup copies from that descriptor. Restore retains the old-inode lock, locks the
 temporary replacement inode before copy, fsyncs and verifies its digest, then
 renames while both descriptors remain open
-([`workspace_data.py:109`](/Users/shika/Documents/Support-Copilot/scripts/workspace_data.py:109)).
+([`workspace_data.py:109`](../../../scripts/workspace_data.py)).
 
 The Python test uses independent processes to attempt a lock during backup copy,
 restore copy, immediately before replacement, and immediately after replacement
-([`test_workspace_data.py:55`](/Users/shika/Documents/Support-Copilot/scripts/tests/test_workspace_data.py:55)).
+([`test_workspace_data.py:55`](../../../scripts/tests/test_workspace_data.py)).
 The hash-bound evidence additionally records a real H2 interoperability probe
 and persisted-workspace restore readback.
 
 ### P2: Application startup now enforces demo loopback addresses
 
 `application-demo.properties` provides `server.address=127.0.0.1`
-([`application-demo.properties:1`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/resources/application-demo.properties:1)).
+([`application-demo.properties:1`](../../../services/support-copilot-api/src/main/resources/application-demo.properties)).
 The globally registered application initializer reads the effective address while
 the Spring context is prepared and allows only explicit loopback forms for
 `demo`; blank, wildcard, external, and arbitrary-domain values fail before
 context refresh
-([`RuntimeProfileApplicationContextInitializer.java:24`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/config/RuntimeProfileApplicationContextInitializer.java:24)).
+([`RuntimeProfileApplicationContextInitializer.java:24`](../../../services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/config/RuntimeProfileApplicationContextInitializer.java)).
 The workspace launcher remains explicitly loopback-bound and passes
 `workspace-defaults.properties` as its durable H2 configuration
-([`dev-workspace.sh:42`](/Users/shika/Documents/Support-Copilot/scripts/dev-workspace.sh:42)).
+([`dev-workspace.sh:42`](../../../scripts/dev-workspace.sh)).
 
 `RuntimeProfileIntegrationTests` uses a real `SpringApplicationBuilder`, not a
 mock-only property check, to cover the default, accepted IPv4/IPv6 loopback
 forms, rejected `0.0.0.0`, `::`, external IP, domain, and blank values, plus the
 unchanged pilot/test policy
-([`RuntimeProfileIntegrationTests.java:75`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/config/RuntimeProfileIntegrationTests.java:75)).
+([`RuntimeProfileIntegrationTests.java:75`](../../../services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/config/RuntimeProfileIntegrationTests.java)).
 The test XML reports all 24 parameterized cases green.
 
 ## Other Confirmed Controls
@@ -118,9 +118,9 @@ The test XML reports all 24 parameterized cases green.
   reply/rejection text, audit metadata, role arrays, or raw actor subjects.
 - Note writes lock the ticket before checking the ticket-scoped request ID,
   enforce expected version, and record the trusted actor audit event in the same
-  transaction ([`TicketNoteService.java:33`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketNoteService.java:33)).
+  transaction ([`TicketNoteService.java:33`](../../../services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketNoteService.java)).
   V6 enforces `(ticket_id, request_id)` uniqueness
-  ([`V6__ticket_internal_notes.sql:1`](/Users/shika/Documents/Support-Copilot/services/support-copilot-api/src/main/resources/db/migration/V6__ticket_internal_notes.sql:1)).
+  ([`V6__ticket_internal_notes.sql:1`](../../../services/support-copilot-api/src/main/resources/db/migration/V6__ticket_internal_notes.sql)).
 - V7 is fixed DDL only and matches the static JPA mappings. No user input is
   concatenated into schema or business queries.
 

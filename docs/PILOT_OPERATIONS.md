@@ -88,6 +88,7 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 | GET | `/api/knowledge/releases/{releaseId}` | 查询指定 release |
 | GET | `/api/knowledge/search` | 按可信 scope 检索知识 |
 | GET | `/api/metrics` | 查询工单与评估报告指标 |
+| GET | `/api/quality-reports` | 查询固定评估的质量报告及其证据边界 |
 | GET | `/api/tickets` | 使用 keyset cursor 查询工单队列 |
 | GET | `/api/tickets/{ticketId}/activity` | 游标查询经裁剪的持久化处理记录 |
 | GET | `/api/tickets/{ticketId}/notes` | 查询最近 100 条内部备注 |

@@ -51,18 +51,18 @@ The final source closes the previously observed high-risk races:
 ### MEDIUM
 
 1. **Current verification text was still in its first-round form at the time
-   of this review.** [VERIFICATION.md](/Users/shika/Documents/Support-Copilot/docs/enterprise-workspace/VERIFICATION.md:5)
+   of this review.** [VERIFICATION.md:5](../VERIFICATION.md)
    describes its table as results for the *current* dirty worktree, but the
    frozen source has changed after those reported commands. Its limitation at
-   [line 59](/Users/shika/Documents/Support-Copilot/docs/enterprise-workspace/VERIFICATION.md:59)
+   [line 59](../VERIFICATION.md)
    also says SLA ordering and global search apply only to already-loaded data,
    which is no longer true. A historical copy,
-   [VERIFICATION-R1.md](/Users/shika/Documents/Support-Copilot/docs/enterprise-workspace/VERIFICATION-R1.md:1),
+   [VERIFICATION-R1.md](../VERIFICATION-R1.md),
    has correctly been introduced; the current file still needs replacement
    with final command output and the new behavior before it is relied on as
    evidence.
 
-   [PILOT_OPERATIONS.md](/Users/shika/Documents/Support-Copilot/docs/PILOT_OPERATIONS.md:110)
+   [PILOT_OPERATIONS.md:110](../../PILOT_OPERATIONS.md)
    has already been corrected to document server-side filtering, cursor-bound
    sort/filter state, `X-Total-Count`, and global search. This finding is
    limited to finalizing the current verification artifact, not a product-code
@@ -75,29 +75,29 @@ None.
 ## Behavioral Evidence Reviewed
 
 - A first page begins with the pending-status filter from
-  [ticketWorkspaceSchemas.ts](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/services/ticketWorkspaceSchemas.ts:29).
+  [ticketWorkspaceSchemas.ts:29](../../../apps/support-copilot-web/src/services/ticketWorkspaceSchemas.ts).
   `fetchTicketPage` encodes keyword, status, priority, assignee, sort, cursor,
   and limit and reads both cursor/count headers in
-  [api.ts](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/services/api.ts:178).
+  [api.ts:178](../../../apps/support-copilot-web/src/services/api.ts).
 - The command palette sends an unscoped server keyword query, aborts the prior
   request on a new query, and accepts a response only while its controller is
   current in
-  [CommandPalette.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/components/CommandPalette.tsx:19).
+  [CommandPalette.tsx:19](../../../apps/support-copilot-web/src/components/CommandPalette.tsx).
   `openTicket` merges an unloaded result into the ticket store before selecting
   it, so its detail can be opened without first loading a queue page.
 - Activity history is keyed by ticket/version/analysis/review, aborts requests
   during a ticket change, preserves a successful first page when an older page
   fails, and deduplicates overlapping cursor boundaries in
-  [TicketActivity.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/tickets/TicketActivity.tsx:16).
+  [TicketActivity.tsx:16](../../../apps/support-copilot-web/src/features/tickets/TicketActivity.tsx).
   A successfully saved note independently increments the activity key in
-  [TicketDetail.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/tickets/TicketDetail.tsx:48),
+  [TicketDetail.tsx:48](../../../apps/support-copilot-web/src/features/tickets/TicketDetail.tsx),
   so a failed follow-up ticket read does not hide its durable activity entry.
 - `TicketQueue` preserves server order for persisted tickets, reports the
   server's matching total, and applies client-side SLA/priority ordering only
   to versionless preview data in
-  [TicketQueue.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/tickets/TicketQueue.tsx:39).
+  [TicketQueue.tsx:39](../../../apps/support-copilot-web/src/features/tickets/TicketQueue.tsx).
 - The modular ECharts import and registration in
-  [OverviewView.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/overview/OverviewView.tsx:2)
+  [OverviewView.tsx:2](../../../apps/support-copilot-web/src/features/overview/OverviewView.tsx)
   match the two rendered chart types and provide accessible tabular equivalents.
 
 ## Test Relevance And Skill Perspectives
@@ -107,14 +107,14 @@ applied before judging tests and maintainability.
 
 The focused tests are behavior-oriented rather than implementation-mirroring:
 
-- [queueConsistency.test.ts](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/workbench/queueConsistency.test.ts:40)
+- [queueConsistency.test.ts:40](../../../apps/support-copilot-web/src/features/workbench/queueConsistency.test.ts)
   verifies that a resolved ticket disappears from the filtered queue while its
-  selected detail remains, and at [line 83](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/workbench/queueConsistency.test.ts:83)
+  selected detail remains, and at [line 83](../../../apps/support-copilot-web/src/features/workbench/queueConsistency.test.ts)
   resolves the old filtered page after changing the query.
-- [CommandPalette.test.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/components/CommandPalette.test.tsx:18)
+- [CommandPalette.test.tsx:18](../../../apps/support-copilot-web/src/components/CommandPalette.test.tsx)
   covers selection of an item absent from the loaded page plus stale-query
   suppression and retry.
-- [TicketActivity.test.tsx](/Users/shika/Documents/Support-Copilot/apps/support-copilot-web/src/features/tickets/TicketActivity.test.tsx:31)
+- [TicketActivity.test.tsx:31](../../../apps/support-copilot-web/src/features/tickets/TicketActivity.test.tsx)
   covers ticket switches, cursor failure/retry, durable-version reloads, and
   no fabricated legacy history.
 

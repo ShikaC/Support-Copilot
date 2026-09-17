@@ -8,15 +8,15 @@ not rely on superseded R1 screenshots or findings.
 - **Rendered surface:** five routes (`工单工作台`, `运营概览`, `知识库`,
   `审计记录`, `质量评估`) at `1600`, `1280`, `768`, and `375` widths.
 - **Primary artifacts:** the 20 screenshots under
-  [`docs/enterprise-workspace/screenshots`](../../docs/enterprise-workspace/screenshots),
-  including [`workbench-375.png`](../../docs/enterprise-workspace/screenshots/workbench-375.png),
-  [`workbench-768.png`](../../docs/enterprise-workspace/screenshots/workbench-768.png),
-  [`audit-375.png`](../../docs/enterprise-workspace/screenshots/audit-375.png),
-  [`overview-375.png`](../../docs/enterprise-workspace/screenshots/overview-375.png), and
-  [`quality-375.png`](../../docs/enterprise-workspace/screenshots/quality-375.png).
-- **Automation evidence:** [`surface-results.json`](../../docs/enterprise-workspace/screenshots/surface-results.json)
+  [`docs/enterprise-workspace/screenshots`](../screenshots),
+  including [`workbench-375.png`](../screenshots/workbench-375.png),
+  [`workbench-768.png`](../screenshots/workbench-768.png),
+  [`audit-375.png`](../screenshots/audit-375.png),
+  [`overview-375.png`](../screenshots/overview-375.png), and
+  [`quality-375.png`](../screenshots/quality-375.png).
+- **Automation evidence:** [`surface-results.json`](../screenshots/surface-results.json)
   records all 20 surface/viewport pairs with `overflow: 0`, no axe violations,
-  and no page errors. [`workflow-results.json`](../../docs/enterprise-workspace/screenshots/workflow-results.json)
+  and no page errors. [`workflow-results.json`](../screenshots/workflow-results.json)
   records the real local Java plus deterministic Python mock workflow with no
   browser errors.
 - **Freshness and validity:** the reviewed screenshots are RGB PNGs at their
@@ -37,9 +37,9 @@ not rely on superseded R1 screenshots or findings.
 | --- | --- | --- |
 | Live UI rather than screenshot reconstruction | PASS | React/Ant Design component tree and real handlers in `App.tsx`, `WorkbenchView.tsx`, `TicketQueue.tsx`, and route views; workflow evidence exercises persisted commands. |
 | Desktop workbench hierarchy | PASS | `workbench-1600.png` and `workbench-1280.png` show a usable queue, detail, and assistant composition with settled analysis/closed states. |
-| 768px queue controls | PASS | `workbench-768.png` shows search, status scope, priority, server sort, and assignee controls with readable labels and no overlap; each is a labelled interactive control in [`TicketQueue.tsx:59`](../../apps/support-copilot-web/src/features/tickets/TicketQueue.tsx:59). |
-| 375px operator workflow | PASS | `workbench-375.png` shows the intended detail-first mobile flow and real return button. The state transition is implemented in [`WorkbenchView.tsx:34`](../../apps/support-copilot-web/src/features/workbench/WorkbenchView.tsx:34); the completed 21-case browser suite covers the mobile interaction path. |
-| CJK and long identifiers | PASS | `audit-375.png` uses labelled vertical records; long target IDs wrap rather than crop under [`workspace.css:147`](../../apps/support-copilot-web/src/workspace.css:147). Activity metadata uses `overflow-wrap:anywhere` at [`workspace.css:159`](../../apps/support-copilot-web/src/workspace.css:159). Workflow trace/prompt values and 375px knowledge/quality copy remain readable in their captures. |
+| 768px queue controls | PASS | `workbench-768.png` shows search, status scope, priority, server sort, and assignee controls with readable labels and no overlap; each is a labelled interactive control in [`TicketQueue.tsx:59`](../../../apps/support-copilot-web/src/features/tickets/TicketQueue.tsx). |
+| 375px operator workflow | PASS | `workbench-375.png` shows the intended detail-first mobile flow and real return button. The state transition is implemented in [`WorkbenchView.tsx:34`](../../../apps/support-copilot-web/src/features/workbench/WorkbenchView.tsx); the completed 21-case browser suite covers the mobile interaction path. |
+| CJK and long identifiers | PASS | `audit-375.png` uses labelled vertical records; long target IDs wrap rather than crop under [`workspace.css:147`](../../../apps/support-copilot-web/src/workspace.css). Activity metadata uses `overflow-wrap:anywhere` at [`workspace.css:159`](../../../apps/support-copilot-web/src/workspace.css). Workflow trace/prompt values and 375px knowledge/quality copy remain readable in their captures. |
 | Mobile table information | PASS | The current 375px audit/quality captures use stacked record layouts and retain actor, trace, evaluation metrics, and gate fields rather than hiding right-side columns. |
 | Responsive charts and non-workbench routes | PASS | Current overview captures show settled trend/category charts. Knowledge, audit, and quality captures contain ready-state content, not loading placeholders; quality visibly labels the mock/offline evaluation context. |
 | Accessibility and overflow | PASS | `surface-results.json`: 20/20 pairs have zero document overflow, zero axe violations, and zero page errors. |
