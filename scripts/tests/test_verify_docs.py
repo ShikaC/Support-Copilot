@@ -1,4 +1,5 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -70,6 +71,33 @@ def test_markdown_links_reject_missing_markdown_anchors(tmp_path: Path) -> None:
 
     assert validate_markdown_links(tmp_path, [source]) == [
         "docs/source.md: missing local anchor: target.md#missing-heading"
+    ]
+
+
+def test_markdown_links_allow_ignored_local_evidence(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    (tmp_path / ".gitignore").write_text("evidence/**/*.json\n", encoding="utf-8")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    source = docs / "source.md"
+    source.write_text(
+        "[local](../evidence/run/trials.json)\n[missing](../evidence/run/other.txt)\n",
+        encoding="utf-8",
+    )
+
+    assert validate_markdown_links(tmp_path, [source]) == [
+        "docs/source.md: missing local link target: ../evidence/run/other.txt"
+    ]
+
+
+def test_markdown_links_reject_missing_targets_outside_a_git_repository(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    source = docs / "source.md"
+    source.write_text("[missing](artifacts.json)\n", encoding="utf-8")
+
+    assert validate_markdown_links(tmp_path, [source]) == [
+        "docs/source.md: missing local link target: artifacts.json"
     ]
 
 

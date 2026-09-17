@@ -196,6 +196,8 @@ Mock 报告绑定数据集、知识库 hash、prompt/config 和 Git 状态，适
 | verify-preflight | `./scripts/check-local-startup.sh --preflight` |
 | verify-smoke | `./scripts/run-local-smoke.sh` |
 
+证据文档可以链接到 `.gitignore` 排除的本地派生产物（trials、corpus、workspace 快照等）。这类目标在 tracked-only fixture 中允许缺失，但链接路径仍必须是仓库相对路径；指向已发布文件的缺失链接和错误锚点仍会使门禁失败。
+
 故障处置顺序：
 
 1. 记录用户可见错误码和 `traceId`，不要记录正文或 token。
