@@ -404,6 +404,15 @@ def test_pilot_verifier_rejects_verifier_owned_tag_collision_before_mutation(
     assert "image rm" not in calls
 
 
+def test_pilot_verifier_has_no_mutable_restore_oidc_reference() -> None:
+    source = PILOT_SCRIPT.read_text(encoding="utf-8")
+
+    assert "RESTORE_OIDC_REFERENCE" not in source
+    assert '"$RESTORE_PROJECT-oidc:latest"' not in source
+    assert 'export SUPPORT_COPILOT_OIDC_IMAGE="$RESTORE_OIDC_IMAGE_ID"' in source
+    assert '"referenceKind": "immutableLocalImageId"' in source
+
+
 def test_pilot_verifier_rejects_previous_image_aliasing_owned_project_ref(
     tmp_path: Path,
 ) -> None:
@@ -673,8 +682,12 @@ def test_pilot_verifier_rejects_missing_prebuilt_current_image_before_compose(
                 "case \"${*: -1}\" in",
                 f"  prebuilt-pilot-api:latest) printf '%s\\n' \"sha256:{'a' * 64}\" ;;",
                 f"  prebuilt-pilot-ai:latest) printf '%s\\n' \"sha256:{'b' * 64}\" ;;",
+                f"  prebuilt-pilot-mysql:latest) printf '%s\\n' \"sha256:{'d' * 64}\" ;;",
+                f"  prebuilt-pilot-oidc:latest) printf '%s\\n' \"sha256:{'e' * 64}\" ;;",
                 f"  sha256:{'a' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'a' * 64}\" ;;",
                 f"  sha256:{'b' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'b' * 64}\" ;;",
+                f"  sha256:{'d' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'d' * 64}\" ;;",
+                f"  sha256:{'e' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'e' * 64}\" ;;",
                 "  prebuilt-pilot-web:latest) exit 1 ;;",
                 "esac",
                 "",
@@ -705,7 +718,6 @@ def test_pilot_verifier_rejects_missing_prebuilt_current_image_before_compose(
 def test_pilot_verifier_starts_with_no_build_for_prebuilt_current_images(
     tmp_path: Path,
 ) -> None:
-    # Given: all exact project tags resolve to valid, distinct image IDs.
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     docker_log = tmp_path / "docker.log"
@@ -722,12 +734,16 @@ def test_pilot_verifier_starts_with_no_build_for_prebuilt_current_images(
                 f"printf '%s\\n' \"$*\" >> {docker_log!s}",
                 "[[ \"$*\" == *'up --no-build --detach --wait'* ]] && exit 124",
                 "case \"${*: -1}\" in",
+                f"  prebuilt-start-mysql:latest) printf '%s\\n' \"sha256:{'d' * 64}\" ;;",
+                f"  prebuilt-start-oidc:latest) printf '%s\\n' \"sha256:{'e' * 64}\" ;;",
                 f"  prebuilt-start-api:latest) printf '%s\\n' \"sha256:{'a' * 64}\" ;;",
                 f"  prebuilt-start-ai:latest) printf '%s\\n' \"sha256:{'b' * 64}\" ;;",
                 f"  prebuilt-start-web:latest) printf '%s\\n' \"sha256:{'c' * 64}\" ;;",
                 f"  sha256:{'a' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'a' * 64}\" ;;",
                 f"  sha256:{'b' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'b' * 64}\" ;;",
                 f"  sha256:{'c' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'c' * 64}\" ;;",
+                f"  sha256:{'d' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'d' * 64}\" ;;",
+                f"  sha256:{'e' * 64}) printf '%s\\n' \"linux/amd64|sha256:{'e' * 64}\" ;;",
                 "esac",
                 "",
             ]
@@ -754,16 +770,38 @@ def test_pilot_verifier_starts_with_no_build_for_prebuilt_current_images(
     assert " up --no-build --detach --wait" in calls
     assert " up --build --detach --wait" not in calls
     assert json.loads((evidence_dir / "prebuilt-current-images.json").read_text(encoding="utf-8")) == {
-        "api": f"sha256:{'a' * 64}",
-        "ai": f"sha256:{'b' * 64}",
-        "web": f"sha256:{'c' * 64}",
+        "mysql": {
+            "reference": "prebuilt-start-mysql:latest",
+            "imageId": f"sha256:{'d' * 64}",
+            "platformImageId": f"sha256:{'d' * 64}",
+        },
+        "oidc": {
+            "reference": "prebuilt-start-oidc:latest",
+            "imageId": f"sha256:{'e' * 64}",
+            "platformImageId": f"sha256:{'e' * 64}",
+        },
+        "api": {
+            "reference": "prebuilt-start-api:latest",
+            "imageId": f"sha256:{'a' * 64}",
+            "platformImageId": f"sha256:{'a' * 64}",
+        },
+        "ai": {
+            "reference": "prebuilt-start-ai:latest",
+            "imageId": f"sha256:{'b' * 64}",
+            "platformImageId": f"sha256:{'b' * 64}",
+        },
+        "web": {
+            "reference": "prebuilt-start-web:latest",
+            "imageId": f"sha256:{'c' * 64}",
+            "platformImageId": f"sha256:{'c' * 64}",
+        },
     }
-    for service, image_id in (("api", "a"), ("ai", "b"), ("web", "c")):
+    for service, image_id in (("mysql", "d"), ("oidc", "e"), ("api", "a"), ("ai", "b"), ("web", "c")):
         reference = f"prebuilt-start-{service}:latest"
         assert f"tag sha256:{image_id * 64} {reference}" not in calls
         assert f"image rm {reference}" not in calls
     cleanup_receipt = (evidence_dir / "cleanup-receipt.log").read_text(encoding="utf-8")
-    assert cleanup_receipt.count("prebuilt_reference_verified=") == 3
+    assert cleanup_receipt.count("prebuilt_reference_verified=") == 5
     assert "prebuilt_primary_tags_verified=true" in cleanup_receipt
 
 
@@ -890,6 +928,7 @@ def test_pilot_verifier_rejects_health_only_fake_and_cleans_exact_projects(
                 "#!/usr/bin/env bash",
                 f"printf '%s\\n' \"$*\" >> {docker_log!s}",
                 'case "$*" in',
+                "  'image inspect --help') printf '%s\\n' 'Usage: docker image inspect' ;;",
                 f"  *'exec -T ai python - build-artifact'*) printf '%s\\n' '{{\"artifactId\":\"{'b' * 64}\",\"rows\":3}}' ;;",
                 f"  *'exec -T ai python - inspect-artifact'*) printf '%s\\n' '{{\"artifactId\":\"{'b' * 64}\",\"manifestPath\":\"{'b' * 64}/manifest.json\",\"manifestSha256\":\"{'c' * 64}\"}}' ;;",
                 f"  *'exec -T ai python - support-copilot-agent'*) printf '%s\\n' '{_jwt('pilot-agent', 'SUPPORT_AGENT')}' ;;",
@@ -898,6 +937,17 @@ def test_pilot_verifier_rejects_health_only_fake_and_cleans_exact_projects(
                 f"  *'image inspect --format {{{{.Id}}}} fake-pilot-api:latest'*) printf '%s\\n' 'sha256:{'a' * 64}' ;;",
                 f"  *'image inspect --format {{{{.Id}}}} fake-pilot-ai:latest'*) printf '%s\\n' 'sha256:{'b' * 64}' ;;",
                 f"  *'image inspect --format {{{{.Id}}}} fake-pilot-web:latest'*) printf '%s\\n' 'sha256:{'c' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Id}}}} fake-pilot-mysql:latest'*) printf '%s\\n' 'sha256:{'d' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Id}}}} fake-pilot-oidc:latest'*) printf '%s\\n' 'sha256:{'e' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Os}}}}/{{{{.Architecture}}}}|{{{{.Id}}}} sha256:{'a' * 64}'*) printf '%s\\n' 'linux/amd64|sha256:{'a' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Os}}}}/{{{{.Architecture}}}}|{{{{.Id}}}} sha256:{'b' * 64}'*) printf '%s\\n' 'linux/amd64|sha256:{'b' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Os}}}}/{{{{.Architecture}}}}|{{{{.Id}}}} sha256:{'c' * 64}'*) printf '%s\\n' 'linux/amd64|sha256:{'c' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Os}}}}/{{{{.Architecture}}}}|{{{{.Id}}}} sha256:{'d' * 64}'*) printf '%s\\n' 'linux/amd64|sha256:{'d' * 64}' ;;",
+                f"  *'image inspect --format {{{{.Os}}}}/{{{{.Architecture}}}}|{{{{.Id}}}} sha256:{'e' * 64}'*) printf '%s\\n' 'linux/amd64|sha256:{'e' * 64}' ;;",
+                "  *' ps -q mysql'*) printf '%s\\n' 'fake-mysql-container' ;;",
+                f"  *'inspect --format {{{{.Image}}}} fake-mysql-container'*) printf '%s\\n' 'sha256:{'d' * 64}' ;;",
+                "  *' ps -q oidc'*) printf '%s\\n' 'fake-oidc-container' ;;",
+                f"  *'inspect --format {{{{.Image}}}} fake-oidc-container'*) printf '%s\\n' 'sha256:{'e' * 64}' ;;",
                 "esac",
                 "",
             ]
@@ -962,28 +1012,43 @@ if [[ -n "$output" ]]; then printf '%s\\n' '{"status":"up"}' >"$output"; printf 
 
 
 @pytest.mark.parametrize(
-    ("platform_mode", "container_api_image", "expected_error"),
+    ("platform_mode", "container_api_image", "container_oidc_image", "expected_error"),
     [
-        ("manifest", f"sha256:{'1' * 64}", None),
-        ("legacy", f"sha256:{'a' * 64}", None),
-        ("legacy-wrong-platform", f"sha256:{'a' * 64}", "could not inspect prebuilt current runtime image"),
-        ("manifest", f"sha256:{'f' * 64}", "running API does not match prebuilt current image"),
-        ("error", f"sha256:{'a' * 64}", "could not inspect prebuilt current runtime image"),
+        ("manifest", f"sha256:{'1' * 64}", f"sha256:{'5' * 64}", None),
+        ("legacy", f"sha256:{'a' * 64}", f"sha256:{'e' * 64}", None),
+        ("legacy-wrong-platform", f"sha256:{'a' * 64}", f"sha256:{'e' * 64}", "could not inspect prebuilt current runtime image"),
+        ("legacy-oidc-wrong-platform", f"sha256:{'a' * 64}", f"sha256:{'e' * 64}", "could not inspect prebuilt current runtime image"),
+        ("manifest", f"sha256:{'f' * 64}", f"sha256:{'5' * 64}", "running API does not match prebuilt current image"),
+        ("manifest", f"sha256:{'1' * 64}", f"sha256:{'f' * 64}", "running OIDC does not match prebuilt current image"),
+        ("error", f"sha256:{'a' * 64}", f"sha256:{'e' * 64}", "could not inspect prebuilt current runtime image"),
     ],
-    ids=["manifest-list", "legacy-single-platform", "legacy-wrong-platform", "wrong-runtime-image", "platform-inspect-error"],
+    ids=["manifest-list", "legacy-single-platform", "legacy-wrong-platform", "oidc-wrong-platform", "wrong-api-runtime-image", "wrong-oidc-runtime-image", "platform-inspect-error"],
 )
 def test_pilot_verifier_compares_prebuilt_images_to_running_containers(
     tmp_path: Path,
-    platform_mode: Literal["manifest", "legacy", "legacy-wrong-platform", "error"],
+    platform_mode: Literal["manifest", "legacy", "legacy-wrong-platform", "legacy-oidc-wrong-platform", "error"],
     container_api_image: str,
+    container_oidc_image: str,
     expected_error: str | None,
 ) -> None:
     # Given: Docker 29 keeps OCI index IDs on containers while platform inspection resolves children.
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     docker_log = tmp_path / "docker.log"
-    index = {"api": f"sha256:{'1' * 64}", "ai": f"sha256:{'2' * 64}", "web": f"sha256:{'3' * 64}"}
-    runtime = {"api": f"sha256:{'a' * 64}", "ai": f"sha256:{'b' * 64}", "web": f"sha256:{'c' * 64}"}
+    index = {
+        "mysql": f"sha256:{'4' * 64}",
+        "oidc": f"sha256:{'5' * 64}",
+        "api": f"sha256:{'1' * 64}",
+        "ai": f"sha256:{'2' * 64}",
+        "web": f"sha256:{'3' * 64}",
+    }
+    runtime = {
+        "mysql": f"sha256:{'d' * 64}",
+        "oidc": f"sha256:{'e' * 64}",
+        "api": f"sha256:{'a' * 64}",
+        "ai": f"sha256:{'b' * 64}",
+        "web": f"sha256:{'c' * 64}",
+    }
     reference_id = runtime if platform_mode.startswith("legacy") else index
     _write_executable(fake_bin / "timeout", '#!/usr/bin/env bash\nshift\nexec "$@"\n')
     _write_executable(fake_bin / "sha256sum", "#!/usr/bin/env bash\nexit 0\n")
@@ -999,6 +1064,8 @@ def test_pilot_verifier_compares_prebuilt_images_to_running_containers(
                 "  *'image inspect --platform linux/amd64 --format {{.Id}}'*)",
                 f"    [[ {str(platform_mode != 'error').lower()} == true ]] || {{ printf '%s\\n' 'daemon inspection failed' >&2; exit 70; }}",
                 "    case \"$*\" in",
+                f"      *'{index['mysql']}'*) printf '%s\\n' '{runtime['mysql']}' ;;",
+                f"      *'{index['oidc']}'*) printf '%s\\n' '{runtime['oidc']}' ;;",
                 f"      *'{index['api']}'*) printf '%s\\n' '{runtime['api']}' ;;",
                 f"      *'{index['ai']}'*) printf '%s\\n' '{runtime['ai']}' ;;",
                 f"      *'{index['web']}'*) printf '%s\\n' '{runtime['web']}' ;;",
@@ -1006,25 +1073,35 @@ def test_pilot_verifier_compares_prebuilt_images_to_running_containers(
                 "  *'image inspect --format {{.Os}}/{{.Architecture}}|{{.Id}}'*)",
                 f"    platform={'linux/arm64' if platform_mode == 'legacy-wrong-platform' else 'linux/amd64'}",
                 "    case \"$*\" in",
+                f"      *'{runtime['mysql']}'*) printf '%s|%s\\n' \"$platform\" '{runtime['mysql']}' ;;",
+                f"      *'{runtime['oidc']}'*) [[ {str(platform_mode == 'legacy-oidc-wrong-platform').lower()} == true ]] && platform=linux/arm64; printf '%s|%s\\n' \"$platform\" '{runtime['oidc']}' ;;",
                 f"      *'{runtime['api']}'*) printf '%s|%s\\n' \"$platform\" '{runtime['api']}' ;;",
                 f"      *'{runtime['ai']}'*) printf '%s|%s\\n' \"$platform\" '{runtime['ai']}' ;;",
                 f"      *'{runtime['web']}'*) printf '%s|%s\\n' \"$platform\" '{runtime['web']}' ;;",
                 "    esac ;;",
                 "  *'image inspect --format {{.Id}}'*)",
                 "    case \"$*\" in",
+                f"      *'identity-pilot-mysql:latest'*) printf '%s\\n' '{reference_id['mysql']}' ;;",
+                f"      *'identity-pilot-oidc:latest'*) printf '%s\\n' '{reference_id['oidc']}' ;;",
                 f"      *'identity-pilot-api:latest'*) printf '%s\\n' '{reference_id['api']}' ;;",
                 f"      *'identity-pilot-ai:latest'*) printf '%s\\n' '{reference_id['ai']}' ;;",
                 f"      *'identity-pilot-web:latest'*) printf '%s\\n' '{reference_id['web']}' ;;",
                 f"      *'{runtime['api']}'*) printf '%s\\n' '{runtime['api']}' ;;",
                 f"      *'{runtime['ai']}'*) printf '%s\\n' '{runtime['ai']}' ;;",
                 f"      *'{runtime['web']}'*) printf '%s\\n' '{runtime['web']}' ;;",
+                f"      *'{runtime['mysql']}'*) printf '%s\\n' '{runtime['mysql']}' ;;",
+                f"      *'{runtime['oidc']}'*) printf '%s\\n' '{runtime['oidc']}' ;;",
                 "    esac ;;",
                 "  *' ps -q api'*) printf '%s\\n' 'identity-api-container' ;;",
                 "  *' ps -q ai'*) printf '%s\\n' 'identity-ai-container' ;;",
                 "  *' ps -q web'*) printf '%s\\n' 'identity-web-container' ;;",
+                "  *' ps -q mysql'*) printf '%s\\n' 'identity-mysql-container' ;;",
+                "  *' ps -q oidc'*) printf '%s\\n' 'identity-oidc-container' ;;",
                 f"  *'inspect --format {{{{.Image}}}} identity-api-container'*) printf '%s\\n' '{container_api_image}' ;;",
                 f"  *'inspect --format {{{{.Image}}}} identity-ai-container'*) printf '%s\\n' '{reference_id['ai']}' ;;",
                 f"  *'inspect --format {{{{.Image}}}} identity-web-container'*) printf '%s\\n' '{reference_id['web']}' ;;",
+                f"  *'inspect --format {{{{.Image}}}} identity-mysql-container'*) printf '%s\\n' '{reference_id['mysql']}' ;;",
+                f"  *'inspect --format {{{{.Image}}}} identity-oidc-container'*) printf '%s\\n' '{container_oidc_image}' ;;",
                 "  *'exec -T ai python - build-artifact'*) exit 71 ;;",
                 "esac",
                 "",
@@ -1070,8 +1147,13 @@ done
     if platform_mode.startswith("legacy"):
         assert "image inspect --platform linux/amd64" not in calls
     else:
-        assert f"image inspect --platform linux/amd64 --format {{{{.Id}}}} {index['api']}" in calls
+        first_platform_service = "mysql" if platform_mode == "error" else "api"
+        assert (
+            f"image inspect --platform linux/amd64 --format {{{{.Id}}}} "
+            f"{index[first_platform_service]}"
+        ) in calls
         if platform_mode != "error":
+            assert f"image inspect --platform linux/amd64 --format {{{{.Id}}}} {index['oidc']}" in calls
             assert f"image inspect --platform linux/amd64 --format {{{{.Id}}}} {index['ai']}" in calls
             assert f"image inspect --platform linux/amd64 --format {{{{.Id}}}} {index['web']}" in calls
     if expected_error is None:
@@ -1086,24 +1168,53 @@ done
 
 
 @pytest.mark.parametrize(
-    ("use_prebuilt", "fail_after_retag", "with_cross_version", "cleanup_inspection_failure"),
+    (
+        "use_prebuilt",
+        "fail_after_retag",
+        "with_cross_version",
+        "cleanup_inspection_failure",
+        "infrastructure_identity_failure",
+        "oidc_restore_fault",
+    ),
     [
-        (False, False, True, None),
-        (True, False, True, None),
-        (True, True, True, None),
-        (True, False, False, None),
-        (True, False, False, "container"),
-        (True, False, False, "network"),
-        (True, False, False, "volume"),
-        (True, False, False, "mixed-container"),
-        (True, False, False, "mixed-network"),
-        (True, False, False, "mixed-volume"),
+        (False, False, True, None, "none", "none"),
+        (True, False, True, None, "none", "none"),
+        (True, True, True, None, "none", "none"),
+        (True, False, False, None, "none", "none"),
+        (True, False, False, None, "running-mismatch", "none"),
+        (True, False, False, None, "candidate-container", "none"),
+        (True, False, False, None, "known-good-image", "none"),
+        (True, False, False, None, "oidc-candidate-container", "none"),
+        (True, False, False, None, "oidc-known-good-image", "none"),
+        (True, False, False, None, "tag-rebound", "none"),
+        (True, False, False, None, "oidc-tag-rebound", "none"),
+        (True, False, False, None, "none", "primary-rebound"),
+        (True, False, False, None, "none", "primary-deleted"),
+        (False, False, False, None, "none", "primary-rebound"),
+        (False, False, False, None, "none", "primary-deleted"),
+        (True, False, False, "container", "none", "none"),
+        (True, False, False, "network", "none", "none"),
+        (True, False, False, "volume", "none", "none"),
+        (True, False, False, "mixed-container", "none", "none"),
+        (True, False, False, "mixed-network", "none", "none"),
+        (True, False, False, "mixed-volume", "none", "none"),
     ],
     ids=[
         "default-build-cross-version",
         "prebuilt-cross-version",
         "prebuilt-failure-after-retag",
         "prebuilt-same-schema",
+        "prebuilt-mysql-running-mismatch",
+        "prebuilt-candidate-mysql-container-drift",
+        "prebuilt-known-good-mysql-image-drift",
+        "prebuilt-candidate-oidc-container-drift",
+        "prebuilt-known-good-oidc-image-drift",
+        "prebuilt-mysql-tag-rebound",
+        "prebuilt-oidc-tag-rebound",
+        "prebuilt-restore-oidc-primary-rebound",
+        "prebuilt-restore-oidc-primary-deleted",
+        "build-restore-oidc-primary-rebound",
+        "build-restore-oidc-primary-deleted",
         "cleanup-container-inspection-fails",
         "cleanup-network-inspection-fails",
         "cleanup-volume-inspection-fails",
@@ -1126,13 +1237,36 @@ def test_pilot_verifier_executes_stateful_rollback_acceptance(
         "mixed-volume",
     ]
     | None,
+    infrastructure_identity_failure: Literal[
+        "none",
+        "running-mismatch",
+        "candidate-container",
+        "known-good-image",
+        "oidc-candidate-container",
+        "oidc-known-good-image",
+        "tag-rebound",
+        "oidc-tag-rebound",
+    ],
+    oidc_restore_fault: Literal["none", "primary-rebound", "primary-deleted"],
 ) -> None:
     # Given: a stateful Linux-shaped Compose surface with distinct current and previous APIs.
     fake_bin, state_dir = tmp_path / "bin", tmp_path / "state"
     for directory in (fake_bin, state_dir):
         directory.mkdir()
-    known = {"api": f"sha256:{'a' * 64}", "ai": f"sha256:{'b' * 64}", "web": f"sha256:{'c' * 64}"}
-    candidate = {"api": f"sha256:{'d' * 64}", "ai": f"sha256:{'e' * 64}", "web": f"sha256:{'f' * 64}"}
+    known = {
+        "api": f"sha256:{'a' * 64}",
+        "ai": f"sha256:{'b' * 64}",
+        "web": f"sha256:{'c' * 64}",
+        "mysql": f"sha256:{'6' * 64}",
+        "oidc": f"sha256:{'4' * 64}",
+    }
+    candidate = {
+        "api": f"sha256:{'d' * 64}",
+        "ai": f"sha256:{'e' * 64}",
+        "web": f"sha256:{'f' * 64}",
+        "mysql": f"sha256:{'5' * 64}",
+        "oidc": f"sha256:{'3' * 64}",
+    }
     previous_api = f"sha256:{'9' * 64}"
     mutated_previous_api = f"sha256:{'8' * 64}"
     rebound_image = f"sha256:{'7' * 64}"
@@ -1143,6 +1277,12 @@ def test_pilot_verifier_executes_stateful_rollback_acceptance(
     _ = (state_dir / "api-tag").write_text(known["api"], encoding="utf-8")
     _ = (state_dir / "ai-tag").write_text(known["ai"], encoding="utf-8")
     _ = (state_dir / "web-tag").write_text(known["web"], encoding="utf-8")
+    _ = (state_dir / "mysql-tag").write_text(known["mysql"], encoding="utf-8")
+    _ = (state_dir / "oidc-tag").write_text(known["oidc"], encoding="utf-8")
+    _ = (state_dir / "caller-restore-oidc-tag").write_text(
+        rebound_image,
+        encoding="utf-8",
+    )
     _write_executable(fake_bin / "timeout", '#!/usr/bin/env bash\nshift\nexec "$@"\n')
     _write_executable(fake_bin / "sha256sum", "#!/usr/bin/env bash\nprintf '%064d  %s\\n' 0 \"$1\"\n")
     real_python = shutil.which("python3", path="/usr/bin:/bin")
@@ -1169,18 +1309,31 @@ case "$*" in
     '{known['api']}') printf '%s\n' 'linux/amd64|{known['api']}' ;;
     '{known['ai']}') printf '%s\n' 'linux/amd64|{known['ai']}' ;;
     '{known['web']}') printf '%s\n' 'linux/amd64|{known['web']}' ;;
+    '{known['mysql']}') printf '%s\n' 'linux/amd64|{known['mysql']}' ;;
+    '{known['oidc']}') printf '%s\n' 'linux/amd64|{known['oidc']}' ;;
+    '{candidate['api']}') printf '%s\n' 'linux/amd64|{candidate['api']}' ;;
+    '{candidate['ai']}') printf '%s\n' 'linux/amd64|{candidate['ai']}' ;;
+    '{candidate['web']}') printf '%s\n' 'linux/amd64|{candidate['web']}' ;;
+    '{candidate['mysql']}') printf '%s\n' 'linux/amd64|{candidate['mysql']}' ;;
+    '{candidate['oidc']}') printf '%s\n' 'linux/amd64|{candidate['oidc']}' ;;
     rehearsal-pilot-api:latest) printf 'linux/amd64|'; cat "$state/api-tag" ;;
     rehearsal-pilot-ai:latest) printf 'linux/amd64|'; cat "$state/ai-tag" ;;
     rehearsal-pilot-web:latest) printf 'linux/amd64|'; cat "$state/web-tag" ;;
+    rehearsal-pilot-mysql:latest) printf 'linux/amd64|'; cat "$state/mysql-tag" ;;
+    rehearsal-pilot-oidc:latest) printf 'linux/amd64|'; cat "$state/oidc-tag" ;;
   esac ;;
   *'image inspect --format '*'Id'*'support-copilot-api:previous'*) if [[ -f "$state/previous-ref-mutated" ]]; then printf '%s\n' '{mutated_previous_api}'; else printf '%s\n' '{previous_api}'; printf '%s' '{mutated_previous_api}' >"$state/previous-ref-mutated"; fi ;;
   *'image inspect --format '*'Id'*'{previous_api}'*) printf '%s\n' '{previous_api}' ;;
   *'image inspect --format '*'Id'*'{known['api']}'*) printf '%s\n' '{known['api']}' ;;
   *'image inspect --format '*'Id'*'{known['ai']}'*) printf '%s\n' '{known['ai']}' ;;
   *'image inspect --format '*'Id'*'{known['web']}'*) printf '%s\n' '{known['web']}' ;;
+  *'image inspect --format '*'Id'*'{known['mysql']}'*) printf '%s\n' '{known['mysql']}' ;;
+  *'image inspect --format '*'Id'*'{known['oidc']}'*) if [[ -f "$state/backup-completed" && ! -f "$state/pilot-restore-started" && ! -f "$state/restore-oidc-validated" ]]; then touch "$state/restore-oidc-validated"; printf 'restore-oidc-validated:{known['oidc']}\n' >>"$state/events"; fi; printf '%s\n' '{known['oidc']}' ;;
   *'image inspect --format '*'Id'*'rehearsal-pilot-api:latest'*) cat "$state/api-tag" ;;
   *'image inspect --format '*'Id'*'rehearsal-pilot-ai:latest'*) cat "$state/ai-tag" ;;
   *'image inspect --format '*'Id'*'rehearsal-pilot-web:latest'*) cat "$state/web-tag" ;;
+  *'image inspect --format '*'Id'*'rehearsal-pilot-mysql:latest'*) if [[ -f "$state/cleanup-started" && "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == tag-rebound ]]; then printf '%s\n' '{rebound_image}'; else cat "$state/mysql-tag"; fi ;;
+  *'image inspect --format '*'Id'*'rehearsal-pilot-oidc:latest'*) if [[ -f "$state/oidc-primary-deleted" ]]; then exit 1; elif [[ -f "$state/oidc-primary-rebound" || -f "$state/cleanup-started" && "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == oidc-tag-rebound ]]; then printf '%s\n' '{rebound_image}'; else cat "$state/oidc-tag"; fi ;;
   *'image inspect --format '*'Id'*'rehearsal-pilot-api:known-good'*) if [[ -f "$state/cleanup-started" && "${{FAKE_IMAGE_REBIND_REFERENCE:-}}" == rehearsal-pilot-api:known-good ]]; then printf '%s\n' '{rebound_image}'; else printf '%s\n' '{known['api']}'; fi ;;
   *'image inspect --format '*'Id'*'rehearsal-pilot-ai:known-good'*) printf '%s\n' '{known['ai']}' ;;
   *'image inspect --format '*'Id'*'rehearsal-pilot-web:known-good'*) printf '%s\n' '{known['web']}' ;;
@@ -1196,8 +1349,17 @@ case "$*" in
   *'exec -T api timeout 15 bash '*direct-ai*) printf '401\n' ;; *'exec -T api cat /tmp/direct-ai.json'*) printf '%s\n' '{{"code":"INTERNAL_SERVICE_AUTHENTICATION_REQUIRED"}}' ;;
   *'exec -T api bash '*admin-actuator*) printf '200\n' ;; *'exec -T api cat /tmp/admin-actuator.json'*) printf '{{}}\n' ;;
   *flyway_schema_history*) printf '5\t123\n' ;; *'SELECT DATABASE()'*) printf 'wrong_database\n' ;;
-  *' ps -q api') cat "$state/api-container" ;; *' ps -q mysql') printf 'mysql-container\n' ;; *' ps -q ai') printf 'ai-container\n' ;; *' ps -q oidc') printf 'oidc-container\n' ;; *' ps -q web') printf 'web-container\n' ;; *' ps --format json') printf '[]\n' ;;
-  *'inspect --format {{{{.Image}}}} api-container'*) cat "$state/current-api" ;; *'inspect --format {{{{.Image}}}} ai-container'*) cat "$state/current-ai" ;; *'inspect --format {{{{.Image}}}} web-container'*) cat "$state/current-web" ;;
+  *' ps -q api') cat "$state/api-container" ;;
+  *' ps -q mysql') if [[ "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == candidate-container && "$(cat "$state/rehearsal-phase" 2>/dev/null)" == candidate ]]; then printf 'mysql-container-candidate\n'; else printf 'mysql-container\n'; fi ;;
+  *' ps -q ai') printf 'ai-container\n' ;;
+  *' ps -q oidc') if [[ "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == oidc-candidate-container && "$(cat "$state/rehearsal-phase" 2>/dev/null)" == candidate ]]; then printf 'oidc-container-candidate\n'; else printf 'oidc-container\n'; fi ;;
+  *' ps -q web') printf 'web-container\n' ;;
+  *' ps --format json') printf '[]\n' ;;
+  *'inspect --format {{{{.Image}}}} api-container'*) cat "$state/current-api" ;;
+  *'inspect --format {{{{.Image}}}} ai-container'*) cat "$state/current-ai" ;;
+  *'inspect --format {{{{.Image}}}} web-container'*) cat "$state/current-web" ;;
+  *'inspect --format {{{{.Image}}}} mysql-container'*) if [[ "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == running-mismatch || "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == known-good-image && "$(cat "$state/rehearsal-phase" 2>/dev/null)" == known-good ]]; then printf '%s\n' '{rebound_image}'; else cat "$state/current-mysql"; fi ;;
+  *'inspect --format {{{{.Image}}}} oidc-container'*) if [[ "$FAKE_INFRASTRUCTURE_IDENTITY_FAILURE" == oidc-known-good-image && "$(cat "$state/rehearsal-phase" 2>/dev/null)" == known-good ]]; then printf '%s\n' '{rebound_image}'; else cat "$state/current-oidc"; fi ;;
   *' images -q api') cat "$state/current-api" ;; *' images -q ai') cat "$state/current-ai" ;; *' images -q web') cat "$state/current-web" ;;
   *'State.StartedAt'*) count=$(cat "$state/inspect-count" 2>/dev/null || printf 0); count=$((count+1)); printf '%s' "$count" >"$state/inspect-count"; printf '2026-08-31T00:00:%02dZ\n' "$count" ;;
   *'ps -aq --filter label=com.docker.compose.project=rehearsal-pilot-restore --filter label=io.support-copilot.run-ownership='*) touch "$state/cleanup-started"; printf '%s\n' '222222222222' ;;
@@ -1210,11 +1372,13 @@ case "$*" in
   'ps -aq --filter label=com.docker.compose.project=rehearsal-pilot') if [[ -f "$state/cleanup-started" ]]; then case "$FAKE_CLEANUP_INSPECTION_FAILURE" in mixed-container|mixed-network|mixed-volume) printf '%s\\n' leftover-container ;; esac; [[ "$FAKE_CLEANUP_INSPECTION_FAILURE" != container && "$FAKE_CLEANUP_INSPECTION_FAILURE" != mixed-container ]] || exit 61; fi ;;
   'network ls -q --filter label=com.docker.compose.project=rehearsal-pilot') if [[ -f "$state/cleanup-started" ]]; then case "$FAKE_CLEANUP_INSPECTION_FAILURE" in mixed-container|mixed-network|mixed-volume) printf '%s\\n' leftover-network ;; esac; [[ "$FAKE_CLEANUP_INSPECTION_FAILURE" != network && "$FAKE_CLEANUP_INSPECTION_FAILURE" != mixed-network ]] || exit 62; fi ;;
   'volume ls -q --filter label=com.docker.compose.project=rehearsal-pilot') if [[ -f "$state/cleanup-started" ]]; then case "$FAKE_CLEANUP_INSPECTION_FAILURE" in mixed-container|mixed-network|mixed-volume) printf '%s\\n' leftover-volume ;; esac; [[ "$FAKE_CLEANUP_INSPECTION_FAILURE" != volume && "$FAKE_CLEANUP_INSPECTION_FAILURE" != mixed-volume ]] || exit 63; fi ;;
-      *'image inspect '*) if [[ -f "$state/cleanup-started" && "${{FAKE_IMAGE_LOOKUP_FAILURE:-}}" == all ]]; then case "${{*: -1}}" in rehearsal-pilot-api:known-good|rehearsal-pilot-ai:known-good|rehearsal-pilot-web:known-good|rehearsal-pilot-restore-api:latest|rehearsal-pilot-restore-ai:latest|rehearsal-pilot-restore-web:latest|rehearsal-pilot-api:latest|rehearsal-pilot-ai:latest|rehearsal-pilot-web:latest) exit 67 ;; esac; fi ;;
+      *'image inspect '*) if [[ -f "$state/cleanup-started" && "${{FAKE_IMAGE_LOOKUP_FAILURE:-}}" == all ]]; then case "${{*: -1}}" in rehearsal-pilot-api:known-good|rehearsal-pilot-ai:known-good|rehearsal-pilot-web:known-good|rehearsal-pilot-restore-api:latest|rehearsal-pilot-restore-ai:latest|rehearsal-pilot-restore-web:latest|rehearsal-pilot-api:latest|rehearsal-pilot-ai:latest|rehearsal-pilot-web:latest|rehearsal-pilot-mysql:latest|rehearsal-pilot-oidc:latest) exit 67 ;; esac; fi ;;
       *'image ls --quiet --no-trunc '*) if [[ -f "$state/cleanup-started" ]]; then [[ "${{FAKE_IMAGE_LOOKUP_FAILURE:-}}" != all ]] || exit 67; case "${{*: -1}}" in
         rehearsal-pilot-api:known-good|rehearsal-pilot-api:latest) printf '%s\n' '{known['api']}' ;;
         rehearsal-pilot-ai:known-good|rehearsal-pilot-ai:latest) printf '%s\n' '{known['ai']}' ;;
         rehearsal-pilot-web:known-good|rehearsal-pilot-web:latest) printf '%s\n' '{known['web']}' ;;
+        rehearsal-pilot-mysql:latest) printf '%s\n' '{known['mysql']}' ;;
+        rehearsal-pilot-oidc:latest) if [[ ! -f "$state/oidc-primary-deleted" ]]; then printf '%s\n' '{known['oidc']}'; fi ;;
         rehearsal-pilot-restore-api:latest) if grep -q '^restore-tag:api:' "$state/events"; then printf '%s\n' '{known['api']}'; fi ;;
         rehearsal-pilot-restore-ai:latest) if grep -q '^restore-tag:ai:' "$state/events"; then printf '%s\n' '{known['ai']}'; fi ;;
         rehearsal-pilot-restore-web:latest) if grep -q '^restore-tag:web:' "$state/events"; then printf '%s\n' '{known['web']}'; fi ;;
@@ -1226,14 +1390,17 @@ case "$*" in
   'tag rehearsal-pilot-ai:known-good rehearsal-pilot-restore-ai:latest') printf 'restore-tag:ai:{known['ai']}\n' >>"$state/events" ;;
   'tag rehearsal-pilot-web:known-good rehearsal-pilot-restore-web:latest') printf 'restore-tag:web:{known['web']}\n' >>"$state/events" ;;
   'tag rehearsal-pilot-api:known-good rehearsal-pilot-api:latest') count=$(cat "$state/known-good-api-tag-count" 2>/dev/null || printf 0); count=$((count+1)); printf '%s' "$count" >"$state/known-good-api-tag-count"; printf '%s' '{known['api']}' >"$state/api-tag"; if [[ "$count" == 1 ]]; then printf 'rollback-tag:api\n' >>"$state/events"; else printf 'candidate-return-tag:{known['api']}\n' >>"$state/events"; fi ;;
-  'tag rehearsal-pilot-ai:known-good rehearsal-pilot-ai:latest') printf 'rollback-tag:ai\n' >>"$state/events" ;;
-  'tag rehearsal-pilot-web:known-good rehearsal-pilot-web:latest') printf 'rollback-tag:web\n' >>"$state/events" ;;
-  *' up --build --detach --wait'*) count=$(cat "$state/build-count" 2>/dev/null || printf 0); count=$((count+1)); printf '%s' "$count" >"$state/build-count"; if [[ "$count" == 2 ]]; then printf '%s' '{candidate['api']}' >"$state/current-api"; printf '%s' '{candidate['ai']}' >"$state/current-ai"; printf '%s' '{candidate['web']}' >"$state/current-web"; printf '%s' '{candidate['api']}' >"$state/api-tag"; printf '%s' '{candidate['ai']}' >"$state/ai-tag"; printf '%s' '{candidate['web']}' >"$state/web-tag"; printf 'candidate-current:{candidate['api']}\n' >>"$state/events"; fi ;;
+  'tag rehearsal-pilot-ai:known-good rehearsal-pilot-ai:latest') printf '%s' '{known['ai']}' >"$state/ai-tag"; printf 'rollback-tag:ai\n' >>"$state/events" ;;
+  'tag rehearsal-pilot-web:known-good rehearsal-pilot-web:latest') printf '%s' '{known['web']}' >"$state/web-tag"; printf 'rollback-tag:web\n' >>"$state/events" ;;
+  *' up --build --no-deps --force-recreate --detach --wait api ai web'*) printf 'candidate' >"$state/rehearsal-phase"; printf '%s' '{candidate['api']}' >"$state/current-api"; printf '%s' '{candidate['ai']}' >"$state/current-ai"; printf '%s' '{candidate['web']}' >"$state/current-web"; printf '%s' '{candidate['api']}' >"$state/api-tag"; printf '%s' '{candidate['ai']}' >"$state/ai-tag"; printf '%s' '{candidate['web']}' >"$state/web-tag"; printf 'candidate-current:{candidate['api']}\n' >>"$state/events" ;;
+  *' up --no-build --no-deps --force-recreate --detach --wait api ai web'*) phase=candidate; [[ -f "$state/rehearsal-phase" ]] && phase=known-good; printf '%s' "$phase" >"$state/rehearsal-phase"; printf '%s' "$(cat "$state/api-tag")" >"$state/current-api"; printf '%s' "$(cat "$state/ai-tag")" >"$state/current-ai"; printf '%s' "$(cat "$state/web-tag")" >"$state/current-web"; [[ "$phase" != known-good ]] || printf 'rollback-reapplied:{known['api']}\n' >>"$state/events" ;;
   'tag {previous_api} rehearsal-pilot-api:latest') printf '%s' '{previous_api}' >"$state/api-tag"; printf 'previous-captured-tag:{previous_api}\n' >>"$state/events" ;;
   'tag support-copilot-api:previous rehearsal-pilot-api:latest') printf '%s' '{mutated_previous_api}' >"$state/api-tag"; printf 'previous-mutable-tag:{mutated_previous_api}\n' >>"$state/events" ;;
   'tag {known['api']} rehearsal-pilot-api:latest') printf '%s' '{known['api']}' >"$state/api-tag"; printf 'candidate-return-tag:{known['api']}\n' >>"$state/events" ;;
   'tag {known['ai']} rehearsal-pilot-ai:latest') printf '%s' '{known['ai']}' >"$state/ai-tag"; printf 'cleanup-current-tag:ai:{known['ai']}\n' >>"$state/events" ;;
   'tag {known['web']} rehearsal-pilot-web:latest') printf '%s' '{known['web']}' >"$state/web-tag"; printf 'cleanup-current-tag:web:{known['web']}\n' >>"$state/events" ;;
+  *'--project-name rehearsal-pilot-restore'*' up --no-build --detach --wait') printf '%s\n' "$SUPPORT_COPILOT_OIDC_IMAGE" >"$state/restore-compose-oidc-image.log"; printf 'restore-compose-oidc:%s\n' "$SUPPORT_COPILOT_OIDC_IMAGE" >>"$state/events" ;;
+  *'--project-name rehearsal-pilot-restore'*' up --detach --wait') printf '%s\n' "$SUPPORT_COPILOT_OIDC_IMAGE" >"$state/restore-compose-oidc-image.log"; printf 'restore-compose-oidc:%s\n' "$SUPPORT_COPILOT_OIDC_IMAGE" >>"$state/events" ;;
   *' up --no-build --no-deps --force-recreate --detach --wait api'*) current=$(cat "$state/api-tag"); if [[ "$FAKE_FAIL_AFTER_RETAG" == true && ! -f "$state/failed-after-retag" ]]; then touch "$state/failed-after-retag"; printf 'api-only-failed:%s\n' "$current" >>"$state/events"; exit 73; fi; printf '%s' "$current" >"$state/current-api"; count=$(cat "$state/api-cross-count" 2>/dev/null || printf 0); count=$((count+1)); printf '%s' "$count" >"$state/api-cross-count"; printf 'api-container-%s' "$count" >"$state/api-container"; printf 'api-only:%s\n' "$current" >>"$state/events" ;;
   *' up --no-build --force-recreate --detach --wait'*) printf '%s' '{known['api']}' >"$state/current-api"; printf '%s' '{known['ai']}' >"$state/current-ai"; printf '%s' '{known['web']}' >"$state/current-web"; printf '%s' '{known['api']}' >"$state/api-tag"; printf 'rollback-reapplied:{known['api']}\n' >>"$state/events" ;;
 esac
@@ -1270,7 +1437,7 @@ printf '%s\n' "$body" >"$output"; printf '%s' "$status"
         packaging_sha256=SHA256_ZERO,
     )
     pilot_script = PILOT_SCRIPT
-    if use_prebuilt:
+    if use_prebuilt or oidc_restore_fault != "none":
         scripts_dir = tmp_path / "scripts"
         scripts_dir.mkdir()
         pilot_script = scripts_dir / "verify-pilot-operations.sh"
@@ -1294,12 +1461,34 @@ while [[ $# -gt 0 ]]; do
   fi
 done
 mkdir -p "$evidence_dir"
+printf '%s\\n' "$SUPPORT_COPILOT_MYSQL_IMAGE" >"$FAKE_STATE_DIR/backup-mysql-image.log"
+printf '%s\\n' "$SUPPORT_COPILOT_OIDC_IMAGE" >"$FAKE_STATE_DIR/backup-oidc-image.log"
 printf '%s\\n' '{"embeddingArtifacts":{"activeArtifactId":"1111111111111111111111111111111111111111111111111111111111111111","archiveSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}' >"$evidence_dir/manifest.json"
+touch "$FAKE_STATE_DIR/backup-completed"
 """,
         )
         _write_executable(
             scripts_dir / "pilot-restore.sh",
-            """#!/usr/bin/env bash
+            f"""#!/usr/bin/env bash
+set -euo pipefail
+[[ -f "$FAKE_STATE_DIR/restore-oidc-validated" ]] || exit 79
+touch "$FAKE_STATE_DIR/pilot-restore-started"
+printf '%s\\n' "$SUPPORT_COPILOT_MYSQL_IMAGE" >"$FAKE_STATE_DIR/restore-mysql-image.log"
+printf '%s\\n' "$SUPPORT_COPILOT_OIDC_IMAGE" >"$FAKE_STATE_DIR/restore-oidc-image.log"
+resolved_oidc_id="$(docker image inspect --format '{{{{.Id}}}}' "$SUPPORT_COPILOT_OIDC_IMAGE")"
+printf 'pilot-restore-oidc:%s\\n' "$resolved_oidc_id" >>"$FAKE_STATE_DIR/events"
+printf 'pilot-restore-mysql-mutated\\n' >>"$FAKE_STATE_DIR/events"
+case "$FAKE_OIDC_RESTORE_FAULT" in
+  primary-rebound)
+    printf '%s' '{rebound_image}' >"$FAKE_STATE_DIR/oidc-tag"
+    touch "$FAKE_STATE_DIR/oidc-primary-rebound"
+    printf 'primary-oidc-rebound:%s\\n' '{rebound_image}' >>"$FAKE_STATE_DIR/events"
+    ;;
+  primary-deleted)
+    touch "$FAKE_STATE_DIR/oidc-primary-deleted"
+    printf 'primary-oidc-deleted\\n' >>"$FAKE_STATE_DIR/events"
+    ;;
+esac
 printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
 """,
         )
@@ -1329,6 +1518,8 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
         "RESTORE_ARGUMENT_LOG": str(state_dir / "restore-arguments.log"),
         "FAKE_FAIL_AFTER_RETAG": str(fail_after_retag).lower(),
         "FAKE_CLEANUP_INSPECTION_FAILURE": cleanup_inspection_failure or "",
+        "FAKE_INFRASTRUCTURE_IDENTITY_FAILURE": infrastructure_identity_failure,
+        "FAKE_OIDC_RESTORE_FAULT": oidc_restore_fault,
     }
     result = subprocess.run(
         [str(pilot_script), "--compose-file", str(compose_file), "--evidence-dir", str(evidence_dir), "--project", "rehearsal-pilot",
@@ -1339,6 +1530,37 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
     )
 
     docker_calls = (state_dir / "docker.log").read_text(encoding="utf-8")
+    mutable_restore_oidc_reference = "rehearsal-pilot-restore-oidc:latest"
+    assert mutable_restore_oidc_reference not in docker_calls
+    assert (state_dir / "caller-restore-oidc-tag").read_text(encoding="utf-8") == (
+        rebound_image
+    )
+    cleanup_receipt_path = evidence_dir / "cleanup-receipt.log"
+    if cleanup_receipt_path.exists():
+        assert mutable_restore_oidc_reference not in cleanup_receipt_path.read_text(
+            encoding="utf-8"
+        )
+    if infrastructure_identity_failure == "running-mismatch":
+        assert result.returncode != 0
+        assert "running MySQL does not match prebuilt current image" in result.stderr
+        assert not (evidence_dir / "artifact-build.json").exists()
+        return
+    if infrastructure_identity_failure == "candidate-container":
+        assert result.returncode != 0
+        assert "MySQL container changed during candidate redeploy" in result.stderr
+        return
+    if infrastructure_identity_failure == "known-good-image":
+        assert result.returncode != 0
+        assert "MySQL image changed during known-good reapply" in result.stderr
+        return
+    if infrastructure_identity_failure == "oidc-candidate-container":
+        assert result.returncode != 0
+        assert "OIDC container changed during candidate redeploy" in result.stderr
+        return
+    if infrastructure_identity_failure == "oidc-known-good-image":
+        assert result.returncode != 0
+        assert "OIDC image changed during known-good reapply" in result.stderr
+        return
     curl_calls = (state_dir / "curl.log").read_text(encoding="utf-8")
     curl_headers = (state_dir / "curl-headers.log").read_text(encoding="utf-8")
     assert "--header @-" in curl_calls
@@ -1434,6 +1656,8 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
                 "",
                 "volumes_output_end",
                 "project_absent=rehearsal-pilot-restore",
+                "prebuilt_reference_verified=rehearsal-pilot-mysql:latest",
+                "prebuilt_reference_verified=rehearsal-pilot-oidc:latest",
                 "prebuilt_reference_verified=rehearsal-pilot-api:latest",
                 "prebuilt_reference_verified=rehearsal-pilot-ai:latest",
                 "prebuilt_reference_verified=rehearsal-pilot-web:latest",
@@ -1449,15 +1673,116 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
                 "cleanup_completed=false",
             ]
         return
+    if infrastructure_identity_failure == "tag-rebound":
+        assert result.returncode == 1
+        cleanup_receipt = (evidence_dir / "cleanup-receipt.log").read_text(encoding="utf-8")
+        assert "prebuilt_reference_identity_mismatch=rehearsal-pilot-mysql:latest" in cleanup_receipt
+        assert "prebuilt_primary_tags_verified=false" in cleanup_receipt
+        assert "cleanup_completed=false" in cleanup_receipt
+        assert "PASS:" not in result.stdout
+        return
+    if infrastructure_identity_failure == "oidc-tag-rebound":
+        assert result.returncode == 1
+        cleanup_receipt = (evidence_dir / "cleanup-receipt.log").read_text(encoding="utf-8")
+        assert "prebuilt_reference_identity_mismatch=rehearsal-pilot-oidc:latest" in cleanup_receipt
+        assert "prebuilt_primary_tags_verified=false" in cleanup_receipt
+        assert "cleanup_completed=false" in cleanup_receipt
+        assert "image rm rehearsal-pilot-oidc:latest" not in docker_calls
+        assert "PASS:" not in result.stdout
+        return
+    if oidc_restore_fault != "none":
+        assert result.returncode == 1, result.stderr
+        cleanup_receipt = (evidence_dir / "cleanup-receipt.log").read_text(encoding="utf-8")
+        if oidc_restore_fault == "primary-rebound":
+            expected_receipt = (
+                "prebuilt_reference_identity_mismatch=rehearsal-pilot-oidc:latest"
+                if use_prebuilt
+                else "image_reference_identity_mismatch=rehearsal-pilot-oidc:latest"
+            )
+        elif use_prebuilt:
+            expected_receipt = (
+                "prebuilt_reference_identity_inspection_failed="
+                "rehearsal-pilot-oidc:latest"
+            )
+        else:
+            expected_receipt = "image_reference_missing=rehearsal-pilot-oidc:latest"
+        assert expected_receipt in cleanup_receipt
+        assert "cleanup_completed=false" in cleanup_receipt
+        assert "cleanup_completed=true" not in cleanup_receipt
+        assert "PASS:" not in result.stdout
+        assert "prune" not in docker_calls
+        assert "down --volumes --remove-orphans" not in docker_calls
+        assert "image rm rehearsal-pilot-oidc:latest" not in docker_calls
+        restore_oidc_image = (state_dir / "restore-oidc-image.log").read_text(encoding="utf-8").strip()
+        assert restore_oidc_image == known["oidc"]
+        assert (state_dir / "restore-compose-oidc-image.log").read_text(
+            encoding="utf-8"
+        ).strip() == known["oidc"]
+        expected_identity = {
+            "reference": known["oidc"],
+            "imageId": known["oidc"],
+            "platformImageId": known["oidc"],
+            "referenceKind": "immutableLocalImageId",
+            "ownership": (
+                "caller-owned-prebuilt-image"
+                if use_prebuilt
+                else "verifier-owned-built-image"
+            ),
+        }
+        assert json.loads(
+            (evidence_dir / "restore-oidc-identity.json").read_text(encoding="utf-8")
+        ) == expected_identity
+        if use_prebuilt:
+            assert json.loads(
+                (evidence_dir / "restore-prebuilt-images.json").read_text(
+                    encoding="utf-8"
+                )
+            )["oidc"] == expected_identity
+        events = (state_dir / "events").read_text(encoding="utf-8").splitlines()
+        pilot_restore_consumption = f"pilot-restore-oidc:{known['oidc']}"
+        verifier_validation = f"restore-oidc-validated:{known['oidc']}"
+        primary_drift = (
+            f"primary-oidc-rebound:{rebound_image}"
+            if oidc_restore_fault == "primary-rebound"
+            else "primary-oidc-deleted"
+        )
+        compose_consumption = f"restore-compose-oidc:{known['oidc']}"
+        assert events.index(verifier_validation) < events.index(pilot_restore_consumption)
+        assert events.index(pilot_restore_consumption) < events.index(
+            "pilot-restore-mysql-mutated"
+        )
+        assert events.index("pilot-restore-mysql-mutated") < events.index(primary_drift)
+        assert events.index(primary_drift) < events.index(compose_consumption)
+        return
     if use_prebuilt:
         assert result.returncode == 0, result.stderr
     else:
         assert result.returncode != 0 and (evidence_dir / "backup-command.log").exists()
+        built_images = json.loads(
+            (evidence_dir / "current-built-images.json").read_text(encoding="utf-8")
+        )
+        assert built_images["oidc"] == {
+            "reference": "rehearsal-pilot-oidc:latest",
+            "imageId": known["oidc"],
+            "platformImageId": known["oidc"],
+        }
+    expected_restore_oidc_identity = {
+        "reference": known["oidc"],
+        "imageId": known["oidc"],
+        "platformImageId": known["oidc"],
+        "referenceKind": "immutableLocalImageId",
+        "ownership": (
+            "caller-owned-prebuilt-image"
+            if use_prebuilt
+            else "verifier-owned-built-image"
+        ),
+    }
+    assert json.loads(
+        (evidence_dir / "restore-oidc-identity.json").read_text(encoding="utf-8")
+    ) == expected_restore_oidc_identity
     events = (state_dir / "events").read_text(encoding="utf-8").splitlines()
     expected_events = [f"capture:api:{known['api']}", f"capture:ai:{known['ai']}", f"capture:web:{known['web']}"]
-    if use_prebuilt:
-        expected_events.append(f"rollback-reapplied:{known['api']}")
-    else:
+    if not use_prebuilt:
         expected_events.append(f"candidate-current:{candidate['api']}")
     expected_events.extend(["rollback-tag:api", "rollback-tag:ai", "rollback-tag:web",
                             f"rollback-reapplied:{known['api']}"])
@@ -1465,7 +1790,15 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
         expected_events.extend([f"previous-captured-tag:{previous_api}", f"api-only:{previous_api}",
                                 f"candidate-return-tag:{known['api']}", f"api-only:{known['api']}"])
     if use_prebuilt:
-        expected_events.extend([f"restore-tag:api:{known['api']}", f"restore-tag:ai:{known['ai']}", f"restore-tag:web:{known['web']}"])
+        expected_events.extend([
+            f"restore-tag:api:{known['api']}",
+            f"restore-tag:ai:{known['ai']}",
+            f"restore-tag:web:{known['web']}",
+            f"restore-oidc-validated:{known['oidc']}",
+            f"pilot-restore-oidc:{known['oidc']}",
+            "pilot-restore-mysql-mutated",
+            f"restore-compose-oidc:{known['oidc']}",
+        ])
     assert events == expected_events
     if not use_prebuilt:
         assert candidate["api"] != known["api"]
@@ -1505,15 +1838,34 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
         assert not (evidence_dir / "cross-version-rollback.json").exists()
         assert not (state_dir / "previous-ref-mutated").exists()
     if use_prebuilt:
+        assert (state_dir / "backup-mysql-image.log").read_text(encoding="utf-8").strip() == (
+            "rehearsal-pilot-mysql:latest"
+        )
+        assert (state_dir / "restore-mysql-image.log").read_text(encoding="utf-8").strip() == (
+            "rehearsal-pilot-mysql:latest"
+        )
+        assert (state_dir / "backup-oidc-image.log").read_text(encoding="utf-8").strip() == (
+            known["oidc"]
+        )
+        assert (state_dir / "restore-oidc-image.log").read_text(encoding="utf-8").strip() == (
+            known["oidc"]
+        )
+        assert (state_dir / "restore-compose-oidc-image.log").read_text(
+            encoding="utf-8"
+        ).strip() == (
+            known["oidc"]
+        )
         assert (state_dir / "restore-arguments.log").read_text(encoding="utf-8").split()[-1] == known["ai"]
         assert json.loads((evidence_dir / "restore-prebuilt-images.json").read_text(encoding="utf-8")) == {
             "api": {"reference": "rehearsal-pilot-restore-api:latest", "imageId": known["api"]},
             "ai": {"reference": "rehearsal-pilot-restore-ai:latest", "imageId": known["ai"]},
             "web": {"reference": "rehearsal-pilot-restore-web:latest", "imageId": known["web"]},
+            "oidc": expected_restore_oidc_identity,
         }
         docker_calls = (state_dir / "docker.log").read_text(encoding="utf-8")
         assert "--project-name rehearsal-pilot-restore --file" in docker_calls
         assert "up --no-build --detach --wait" in docker_calls
+        assert "up --build --detach --wait" not in docker_calls
         assert "image rm rehearsal-pilot-api:latest" not in docker_calls
         assert "image rm rehearsal-pilot-ai:latest" not in docker_calls
         assert "image rm rehearsal-pilot-web:latest" not in docker_calls
@@ -1534,7 +1886,15 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
             assert str(evidence_dir / "operations-result.json") in result.stdout
             assert "cross-version-rollback.json" not in result.stdout
     expected_api_only_commands = 2 if with_cross_version else 0
-    assert docker_calls.count("up --no-build --no-deps --force-recreate --detach --wait api") == expected_api_only_commands
+    assert sum(
+        call.endswith("up --no-build --no-deps --force-recreate --detach --wait api")
+        for call in docker_calls.splitlines()
+    ) == expected_api_only_commands
+    assert docker_calls.count(
+        "up --no-build --no-deps --force-recreate --detach --wait api ai web"
+    ) == (2 if use_prebuilt else 1)
+    assert "force-recreate --detach --wait mysql" not in docker_calls
+    assert "force-recreate --detach --wait oidc" not in docker_calls
     assert f"tag {mutated_previous_api} rehearsal-pilot-api:latest" not in docker_calls
 
     if use_prebuilt and not with_cross_version and cleanup_inspection_failure is None:
@@ -1553,6 +1913,7 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
         def reset_fake_state() -> None:
             for name in (
                 "api-cross-count",
+                "backup-completed",
                 "build-count",
                 "cleanup-started",
                 "curl-headers.log",
@@ -1561,14 +1922,24 @@ printf '%s\\n' "$*" >"$RESTORE_ARGUMENT_LOG"
                 "failed-secret-path",
                 "inspect-count",
                 "known-good-api-tag-count",
+                "oidc-primary-deleted",
+                "oidc-primary-rebound",
                 "previous-ref-mutated",
+                "pilot-restore-started",
                 "restore-arguments.log",
+                "restore-compose-oidc-image.log",
+                "restore-oidc-image.log",
+                "restore-oidc-validated",
             ):
                 (state_dir / name).unlink(missing_ok=True)
             for service, image_id in known.items():
                 _ = (state_dir / f"current-{service}").write_text(image_id, encoding="utf-8")
                 _ = (state_dir / f"{service}-tag").write_text(image_id, encoding="utf-8")
             _ = (state_dir / "api-container").write_text("api-container-0", encoding="utf-8")
+            _ = (state_dir / "caller-restore-oidc-tag").write_text(
+                rebound_image,
+                encoding="utf-8",
+            )
             _ = (state_dir / "events").write_text("", encoding="utf-8")
             _ = (state_dir / "docker.log").write_text("", encoding="utf-8")
 

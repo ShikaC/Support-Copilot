@@ -37,20 +37,31 @@ USE_PREBUILT_CURRENT_IMAGES=false
 PREBUILT_API_IMAGE_ID=""
 PREBUILT_AI_IMAGE_ID=""
 PREBUILT_WEB_IMAGE_ID=""
+PREBUILT_MYSQL_IMAGE_ID=""
+PREBUILT_OIDC_IMAGE_ID=""
 PREBUILT_API_PLATFORM_IMAGE_ID=""
 PREBUILT_AI_PLATFORM_IMAGE_ID=""
 PREBUILT_WEB_PLATFORM_IMAGE_ID=""
+PREBUILT_MYSQL_PLATFORM_IMAGE_ID=""
+PREBUILT_OIDC_PLATFORM_IMAGE_ID=""
 RUN_OWNERSHIP_LABEL="io.support-copilot.run-ownership"
 RUN_OWNERSHIP=""
 OWNED_PRIMARY_API_REFERENCE_ID=""
 OWNED_PRIMARY_AI_REFERENCE_ID=""
 OWNED_PRIMARY_WEB_REFERENCE_ID=""
+OWNED_PRIMARY_MYSQL_REFERENCE_ID=""
+OWNED_PRIMARY_MYSQL_PLATFORM_IMAGE_ID=""
+OWNED_PRIMARY_OIDC_REFERENCE_ID=""
+OWNED_PRIMARY_OIDC_PLATFORM_IMAGE_ID=""
 OWNED_PRIMARY_API_KNOWN_GOOD_REFERENCE_ID=""
 OWNED_PRIMARY_AI_KNOWN_GOOD_REFERENCE_ID=""
 OWNED_PRIMARY_WEB_KNOWN_GOOD_REFERENCE_ID=""
 OWNED_RESTORE_API_REFERENCE_ID=""
 OWNED_RESTORE_AI_REFERENCE_ID=""
 OWNED_RESTORE_WEB_REFERENCE_ID=""
+RESTORE_OIDC_IMAGE_ID=""
+RESTORE_OIDC_PLATFORM_IMAGE_ID=""
+RESTORE_OIDC_OWNERSHIP=""
 
 fail() {
   echo "ERROR: $*" >&2
@@ -91,6 +102,12 @@ fi
 PRIMARY_API_REFERENCE="$PRIMARY_PROJECT-api:latest"
 PRIMARY_AI_REFERENCE="$PRIMARY_PROJECT-ai:latest"
 PRIMARY_WEB_REFERENCE="$PRIMARY_PROJECT-web:latest"
+PRIMARY_MYSQL_REFERENCE="$PRIMARY_PROJECT-mysql:latest"
+PRIMARY_OIDC_REFERENCE="$PRIMARY_PROJECT-oidc:latest"
+[[ "$PRIMARY_MYSQL_REFERENCE" =~ ^[a-z0-9][a-z0-9_.-]{2,68}:latest$ ]] || { fail "invalid project MySQL image reference"; exit 2; }
+[[ "$PRIMARY_OIDC_REFERENCE" =~ ^[a-z0-9][a-z0-9_.-]{2,68}:latest$ ]] || { fail "invalid project OIDC image reference"; exit 2; }
+export SUPPORT_COPILOT_MYSQL_IMAGE="$PRIMARY_MYSQL_REFERENCE"
+export SUPPORT_COPILOT_OIDC_IMAGE="$PRIMARY_OIDC_REFERENCE"
 PRIMARY_API_KNOWN_GOOD_REFERENCE="$PRIMARY_PROJECT-api:known-good"
 PRIMARY_AI_KNOWN_GOOD_REFERENCE="$PRIMARY_PROJECT-ai:known-good"
 PRIMARY_WEB_KNOWN_GOOD_REFERENCE="$PRIMARY_PROJECT-web:known-good"
@@ -100,7 +117,7 @@ RESTORE_WEB_REFERENCE="$RESTORE_PROJECT-web:latest"
 
 if [[ "$REQUESTED_CROSS_VERSION_ROLLBACK" == true ]]; then
   for owned_reference in \
-    "$PRIMARY_API_REFERENCE" "$PRIMARY_AI_REFERENCE" "$PRIMARY_WEB_REFERENCE" \
+    "$PRIMARY_API_REFERENCE" "$PRIMARY_AI_REFERENCE" "$PRIMARY_WEB_REFERENCE" "$PRIMARY_MYSQL_REFERENCE" "$PRIMARY_OIDC_REFERENCE" \
     "$PRIMARY_API_KNOWN_GOOD_REFERENCE" "$PRIMARY_AI_KNOWN_GOOD_REFERENCE" "$PRIMARY_WEB_KNOWN_GOOD_REFERENCE" \
     "$RESTORE_API_REFERENCE" "$RESTORE_AI_REFERENCE" "$RESTORE_WEB_REFERENCE"; do
     [[ "$PREVIOUS_API_IMAGE" != "$owned_reference" ]] || { fail "previous API image aliases a verifier-owned project image reference: $owned_reference"; exit 2; }
@@ -311,7 +328,14 @@ record_retained_image_reference() {
   local image_ids current_id inspection_exit
 
   if image_ids="$(timeout 30 docker image ls --quiet --no-trunc "$reference")"; then
-    [[ -n "$image_ids" ]] || return 0
+    if [[ -z "$image_ids" ]]; then
+      if [[ -n "$expected_id" ]]; then
+        echo "image_reference_missing=$reference"
+        echo "image_reference_expected_id=$reference:$expected_id"
+        return 1
+      fi
+      return 0
+    fi
   else
     inspection_exit=$?
     echo "image_reference_inspection_failed=$reference"
@@ -433,17 +457,21 @@ for reference in \
   assert_image_reference_absent "$reference"
 done
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
-  for service in api ai web; do
+  for service in mysql oidc api ai web; do
     image="$PRIMARY_PROJECT-$service:latest"
     image_id="$(image_reference_id "$image")" || { fail "prebuilt current image is missing or invalid: $image"; exit 2; }
     platform_image_id="$(image_platform_id "$image_id")" || { fail "could not inspect prebuilt current runtime image: $image"; exit 2; }
     case "$service" in
+      mysql) PREBUILT_MYSQL_IMAGE_ID="$image_id"; PREBUILT_MYSQL_PLATFORM_IMAGE_ID="$platform_image_id" ;;
+      oidc) PREBUILT_OIDC_IMAGE_ID="$image_id"; PREBUILT_OIDC_PLATFORM_IMAGE_ID="$platform_image_id" ;;
       api) PREBUILT_API_IMAGE_ID="$image_id"; PREBUILT_API_PLATFORM_IMAGE_ID="$platform_image_id" ;;
       ai) PREBUILT_AI_IMAGE_ID="$image_id"; PREBUILT_AI_PLATFORM_IMAGE_ID="$platform_image_id" ;;
       web) PREBUILT_WEB_IMAGE_ID="$image_id"; PREBUILT_WEB_PLATFORM_IMAGE_ID="$platform_image_id" ;;
     esac
   done
 else
+  assert_image_reference_absent "$PRIMARY_MYSQL_REFERENCE"
+  assert_image_reference_absent "$PRIMARY_OIDC_REFERENCE"
   assert_image_reference_absent "$PRIMARY_API_REFERENCE"
   assert_image_reference_absent "$PRIMARY_AI_REFERENCE"
   assert_image_reference_absent "$PRIMARY_WEB_REFERENCE"
@@ -567,13 +595,23 @@ fi
 mkdir -m 700 "$EVIDENCE_DIR"
 printf 'primary_project_absent=%s\nrestore_project_absent=%s\n' "$PRIMARY_PROJECT" "$RESTORE_PROJECT" >"$EVIDENCE_DIR/resources-before.log"
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
-  python3 - "$EVIDENCE_DIR/prebuilt-current-images.json" "$PREBUILT_API_IMAGE_ID" "$PREBUILT_AI_IMAGE_ID" "$PREBUILT_WEB_IMAGE_ID" <<'PY'
+  python3 - "$EVIDENCE_DIR/prebuilt-current-images.json" \
+    "$PRIMARY_MYSQL_REFERENCE" "$PREBUILT_MYSQL_IMAGE_ID" "$PREBUILT_MYSQL_PLATFORM_IMAGE_ID" \
+    "$PRIMARY_OIDC_REFERENCE" "$PREBUILT_OIDC_IMAGE_ID" "$PREBUILT_OIDC_PLATFORM_IMAGE_ID" \
+    "$PRIMARY_API_REFERENCE" "$PREBUILT_API_IMAGE_ID" "$PREBUILT_API_PLATFORM_IMAGE_ID" \
+    "$PRIMARY_AI_REFERENCE" "$PREBUILT_AI_IMAGE_ID" "$PREBUILT_AI_PLATFORM_IMAGE_ID" \
+    "$PRIMARY_WEB_REFERENCE" "$PREBUILT_WEB_IMAGE_ID" "$PREBUILT_WEB_PLATFORM_IMAGE_ID" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 Path(sys.argv[1]).write_text(json.dumps({
-    "api": sys.argv[2], "ai": sys.argv[3], "web": sys.argv[4],
+    service: {
+        "reference": sys.argv[offset],
+        "imageId": sys.argv[offset + 1],
+        "platformImageId": sys.argv[offset + 2],
+    }
+    for service, offset in (("mysql", 2), ("oidc", 5), ("api", 8), ("ai", 11), ("web", 14))
 }, indent=2) + "\n", encoding="utf-8")
 PY
   chmod 600 "$EVIDENCE_DIR/prebuilt-current-images.json"
@@ -630,6 +668,42 @@ compose_service_image_id() {
   printf '%s\n' "$image_id"
 }
 
+bind_current_built_images() {
+  OWNED_PRIMARY_MYSQL_REFERENCE_ID="$(image_reference_id "$PRIMARY_MYSQL_REFERENCE")" || { fail "could not bind owned primary MySQL image reference"; return 1; }
+  OWNED_PRIMARY_MYSQL_PLATFORM_IMAGE_ID="$(image_platform_id "$OWNED_PRIMARY_MYSQL_REFERENCE_ID")" || { fail "could not bind owned primary MySQL platform image"; return 1; }
+  if [[ -z "$OWNED_PRIMARY_OIDC_REFERENCE_ID" ]]; then
+    OWNED_PRIMARY_OIDC_REFERENCE_ID="$(image_reference_id "$PRIMARY_OIDC_REFERENCE")" || { fail "could not bind owned primary OIDC image reference"; return 1; }
+    OWNED_PRIMARY_OIDC_PLATFORM_IMAGE_ID="$(image_platform_id "$OWNED_PRIMARY_OIDC_REFERENCE_ID")" || { fail "could not bind owned primary OIDC platform image"; return 1; }
+  fi
+  OWNED_PRIMARY_API_REFERENCE_ID="$(image_reference_id "$PRIMARY_API_REFERENCE")" || { fail "could not bind owned primary API image reference"; return 1; }
+  OWNED_PRIMARY_AI_REFERENCE_ID="$(image_reference_id "$PRIMARY_AI_REFERENCE")" || { fail "could not bind owned primary AI image reference"; return 1; }
+  OWNED_PRIMARY_WEB_REFERENCE_ID="$(image_reference_id "$PRIMARY_WEB_REFERENCE")" || { fail "could not bind owned primary web image reference"; return 1; }
+  local api_platform_id ai_platform_id web_platform_id
+  api_platform_id="$(image_platform_id "$OWNED_PRIMARY_API_REFERENCE_ID")" || return 1
+  ai_platform_id="$(image_platform_id "$OWNED_PRIMARY_AI_REFERENCE_ID")" || return 1
+  web_platform_id="$(image_platform_id "$OWNED_PRIMARY_WEB_REFERENCE_ID")" || return 1
+  python3 - "$EVIDENCE_DIR/current-built-images.json" \
+    "$PRIMARY_MYSQL_REFERENCE" "$OWNED_PRIMARY_MYSQL_REFERENCE_ID" "$OWNED_PRIMARY_MYSQL_PLATFORM_IMAGE_ID" \
+    "$PRIMARY_OIDC_REFERENCE" "$OWNED_PRIMARY_OIDC_REFERENCE_ID" "$OWNED_PRIMARY_OIDC_PLATFORM_IMAGE_ID" \
+    "$PRIMARY_API_REFERENCE" "$OWNED_PRIMARY_API_REFERENCE_ID" "$api_platform_id" \
+    "$PRIMARY_AI_REFERENCE" "$OWNED_PRIMARY_AI_REFERENCE_ID" "$ai_platform_id" \
+    "$PRIMARY_WEB_REFERENCE" "$OWNED_PRIMARY_WEB_REFERENCE_ID" "$web_platform_id" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+Path(sys.argv[1]).write_text(json.dumps({
+    service: {
+        "reference": sys.argv[offset],
+        "imageId": sys.argv[offset + 1],
+        "platformImageId": sys.argv[offset + 2],
+    }
+    for service, offset in (("mysql", 2), ("oidc", 5), ("api", 8), ("ai", 11), ("web", 14))
+}, indent=2) + "\n", encoding="utf-8")
+PY
+  chmod 600 "$EVIDENCE_DIR/current-built-images.json"
+}
+
 cleanup() {
   local primary_exit="$1"
   local cleanup_exit=0
@@ -646,6 +720,10 @@ cleanup() {
       record_project_resources "$project" || cleanup_exit=1
     done
     if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
+      verify_prebuilt_image_reference "$PRIMARY_MYSQL_REFERENCE" "$PREBUILT_MYSQL_IMAGE_ID" \
+        "$PREBUILT_MYSQL_PLATFORM_IMAGE_ID" || prebuilt_verify_exit=1
+      verify_prebuilt_image_reference "$PRIMARY_OIDC_REFERENCE" "$PREBUILT_OIDC_IMAGE_ID" \
+        "$PREBUILT_OIDC_PLATFORM_IMAGE_ID" || prebuilt_verify_exit=1
       verify_prebuilt_image_reference "$PRIMARY_API_REFERENCE" "$PREBUILT_API_IMAGE_ID" \
         "$PREBUILT_API_PLATFORM_IMAGE_ID" || prebuilt_verify_exit=1
       verify_prebuilt_image_reference "$PRIMARY_AI_REFERENCE" "$PREBUILT_AI_IMAGE_ID" \
@@ -666,6 +744,8 @@ cleanup() {
     record_retained_image_reference "$RESTORE_AI_REFERENCE" "$OWNED_RESTORE_AI_REFERENCE_ID" || cleanup_exit=1
     record_retained_image_reference "$RESTORE_WEB_REFERENCE" "$OWNED_RESTORE_WEB_REFERENCE_ID" || cleanup_exit=1
     if [[ "$USE_PREBUILT_CURRENT_IMAGES" == false ]]; then
+      record_retained_image_reference "$PRIMARY_MYSQL_REFERENCE" "$OWNED_PRIMARY_MYSQL_REFERENCE_ID" || cleanup_exit=1
+      record_retained_image_reference "$PRIMARY_OIDC_REFERENCE" "$OWNED_PRIMARY_OIDC_REFERENCE_ID" || cleanup_exit=1
       record_retained_image_reference "$PRIMARY_API_REFERENCE" "$OWNED_PRIMARY_API_REFERENCE_ID" || cleanup_exit=1
       record_retained_image_reference "$PRIMARY_AI_REFERENCE" "$OWNED_PRIMARY_AI_REFERENCE_ID" || cleanup_exit=1
       record_retained_image_reference "$PRIMARY_WEB_REFERENCE" "$OWNED_PRIMARY_WEB_REFERENCE_ID" || cleanup_exit=1
@@ -857,16 +937,19 @@ if [[ "$COMPOSE_UP_EXIT" -ne 0 ]]; then
   exit "$COMPOSE_UP_EXIT"
 fi
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == false ]]; then
-  OWNED_PRIMARY_API_REFERENCE_ID="$(image_reference_id "$PRIMARY_API_REFERENCE")" || { fail "could not bind owned primary API image reference"; exit 1; }
-  OWNED_PRIMARY_AI_REFERENCE_ID="$(image_reference_id "$PRIMARY_AI_REFERENCE")" || { fail "could not bind owned primary AI image reference"; exit 1; }
-  OWNED_PRIMARY_WEB_REFERENCE_ID="$(image_reference_id "$PRIMARY_WEB_REFERENCE")" || { fail "could not bind owned primary web image reference"; exit 1; }
+  bind_current_built_images || exit 1
 fi
 wait_gateway "$WEB_PORT"
 compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps --format json >"$EVIDENCE_DIR/topology.json"
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
+  [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" mysql)" == "$PREBUILT_MYSQL_IMAGE_ID" ]] || fail "running MySQL does not match prebuilt current image"
+  [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" oidc)" == "$PREBUILT_OIDC_IMAGE_ID" ]] || fail "running OIDC does not match prebuilt current image"
   [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" api)" == "$PREBUILT_API_IMAGE_ID" ]] || fail "running API does not match prebuilt current image"
   [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" ai)" == "$PREBUILT_AI_IMAGE_ID" ]] || fail "running AI does not match prebuilt current image"
   [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" web)" == "$PREBUILT_WEB_IMAGE_ID" ]] || fail "running web does not match prebuilt current image"
+else
+  [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" mysql)" == "$OWNED_PRIMARY_MYSQL_REFERENCE_ID" ]] || fail "running MySQL does not match current built image"
+  [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" oidc)" == "$OWNED_PRIMARY_OIDC_REFERENCE_ID" ]] || fail "running OIDC does not match current built image"
 fi
 
 compose_for "$PRIMARY_PROJECT" "$WEB_PORT" exec -T ai python - build-artifact <<'PY' >"$EVIDENCE_DIR/artifact-build.json"
@@ -1068,6 +1151,14 @@ POST_RESTART_TICKET_ID="$(json_field "$EVIDENCE_DIR/post-restart-write.json" id)
 KNOWN_GOOD_API_IMAGE="$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" api)"
 KNOWN_GOOD_AI_IMAGE="$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" ai)"
 KNOWN_GOOD_WEB_IMAGE="$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" web)"
+REHEARSAL_MYSQL_CONTAINER="$(compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps -q mysql)"
+REHEARSAL_MYSQL_IMAGE="$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" mysql)"
+REHEARSAL_OIDC_CONTAINER="$(compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps -q oidc)"
+REHEARSAL_OIDC_IMAGE="$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" oidc)"
+[[ -n "$REHEARSAL_MYSQL_CONTAINER" ]] || fail "MySQL container is missing before same-schema rehearsal"
+[[ "$REHEARSAL_MYSQL_IMAGE" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "MySQL image is invalid before same-schema rehearsal"
+[[ -n "$REHEARSAL_OIDC_CONTAINER" ]] || fail "OIDC container is missing before same-schema rehearsal"
+[[ "$REHEARSAL_OIDC_IMAGE" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "OIDC image is invalid before same-schema rehearsal"
 CONFIG_SHA="$(sha256sum "$COMPOSE_FILE" | awk '{print $1}')"
 SCHEMA_BEFORE="$MIGRATION_ROW"
 timeout 30 docker tag "$PRIMARY_API_REFERENCE" "$PRIMARY_PROJECT-api:known-good"
@@ -1077,21 +1168,29 @@ OWNED_PRIMARY_AI_KNOWN_GOOD_REFERENCE_ID="$KNOWN_GOOD_AI_IMAGE"
 timeout 30 docker tag "$PRIMARY_WEB_REFERENCE" "$PRIMARY_PROJECT-web:known-good"
 OWNED_PRIMARY_WEB_KNOWN_GOOD_REFERENCE_ID="$KNOWN_GOOD_WEB_IMAGE"
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
-  compose_for "$PRIMARY_PROJECT" "$WEB_PORT" up --no-build --force-recreate --detach --wait >"$EVIDENCE_DIR/candidate-redeploy.log" 2>&1
+  compose_for "$PRIMARY_PROJECT" "$WEB_PORT" up --no-build --no-deps --force-recreate --detach --wait api ai web >"$EVIDENCE_DIR/candidate-redeploy.log" 2>&1
 else
-  compose_for "$PRIMARY_PROJECT" "$WEB_PORT" up --build --detach --wait >"$EVIDENCE_DIR/candidate-redeploy.log" 2>&1
-  OWNED_PRIMARY_API_REFERENCE_ID="$(image_reference_id "$PRIMARY_API_REFERENCE")" || fail "could not rebind candidate API image reference"
-  OWNED_PRIMARY_AI_REFERENCE_ID="$(image_reference_id "$PRIMARY_AI_REFERENCE")" || fail "could not rebind candidate AI image reference"
-  OWNED_PRIMARY_WEB_REFERENCE_ID="$(image_reference_id "$PRIMARY_WEB_REFERENCE")" || fail "could not rebind candidate web image reference"
+  compose_for "$PRIMARY_PROJECT" "$WEB_PORT" up --build --no-deps --force-recreate --detach --wait api ai web >"$EVIDENCE_DIR/candidate-redeploy.log" 2>&1
+  bind_current_built_images
+  [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" mysql)" == "$OWNED_PRIMARY_MYSQL_REFERENCE_ID" ]] || fail "running MySQL does not match current built image"
+  [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" oidc)" == "$OWNED_PRIMARY_OIDC_REFERENCE_ID" ]] || fail "running OIDC does not match current built image"
 fi
+[[ "$(compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps -q mysql)" == "$REHEARSAL_MYSQL_CONTAINER" ]] || fail "MySQL container changed during candidate redeploy"
+[[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" mysql)" == "$REHEARSAL_MYSQL_IMAGE" ]] || fail "MySQL image changed during candidate redeploy"
+[[ "$(compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps -q oidc)" == "$REHEARSAL_OIDC_CONTAINER" ]] || fail "OIDC container changed during candidate redeploy"
+[[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" oidc)" == "$REHEARSAL_OIDC_IMAGE" ]] || fail "OIDC image changed during candidate redeploy"
 timeout 30 docker tag "$PRIMARY_PROJECT-api:known-good" "$PRIMARY_PROJECT-api:latest"
 OWNED_PRIMARY_API_REFERENCE_ID="$KNOWN_GOOD_API_IMAGE"
 timeout 30 docker tag "$PRIMARY_PROJECT-ai:known-good" "$PRIMARY_PROJECT-ai:latest"
 OWNED_PRIMARY_AI_REFERENCE_ID="$KNOWN_GOOD_AI_IMAGE"
 timeout 30 docker tag "$PRIMARY_PROJECT-web:known-good" "$PRIMARY_PROJECT-web:latest"
 OWNED_PRIMARY_WEB_REFERENCE_ID="$KNOWN_GOOD_WEB_IMAGE"
-compose_for "$PRIMARY_PROJECT" "$WEB_PORT" up --no-build --force-recreate --detach --wait >"$EVIDENCE_DIR/known-good-reapply.log" 2>&1
+compose_for "$PRIMARY_PROJECT" "$WEB_PORT" up --no-build --no-deps --force-recreate --detach --wait api ai web >"$EVIDENCE_DIR/known-good-reapply.log" 2>&1
 wait_gateway "$WEB_PORT"
+[[ "$(compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps -q mysql)" == "$REHEARSAL_MYSQL_CONTAINER" ]] || fail "MySQL container changed during known-good reapply"
+[[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" mysql)" == "$REHEARSAL_MYSQL_IMAGE" ]] || fail "MySQL image changed during known-good reapply"
+[[ "$(compose_for "$PRIMARY_PROJECT" "$WEB_PORT" ps -q oidc)" == "$REHEARSAL_OIDC_CONTAINER" ]] || fail "OIDC container changed during known-good reapply"
+[[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" oidc)" == "$REHEARSAL_OIDC_IMAGE" ]] || fail "OIDC image changed during known-good reapply"
 echo "same-schema deployment sequencing and rollback rehearsal; this is not a real cross-version production rollback" >"$EVIDENCE_DIR/rollback-rehearsal.txt"
 [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" api)" == "$KNOWN_GOOD_API_IMAGE" ]] || fail "known-good API image was not reapplied"
 [[ "$(compose_service_image_id "$PRIMARY_PROJECT" "$WEB_PORT" ai)" == "$KNOWN_GOOD_AI_IMAGE" ]] || fail "known-good AI image was not reapplied"
@@ -1202,6 +1301,37 @@ PY
 fi
 
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
+  RESTORE_OIDC_IMAGE_ID="$PREBUILT_OIDC_IMAGE_ID"
+  RESTORE_OIDC_PLATFORM_IMAGE_ID="$PREBUILT_OIDC_PLATFORM_IMAGE_ID"
+  RESTORE_OIDC_OWNERSHIP="caller-owned-prebuilt-image"
+else
+  RESTORE_OIDC_IMAGE_ID="$OWNED_PRIMARY_OIDC_REFERENCE_ID"
+  RESTORE_OIDC_PLATFORM_IMAGE_ID="$OWNED_PRIMARY_OIDC_PLATFORM_IMAGE_ID"
+  RESTORE_OIDC_OWNERSHIP="verifier-owned-built-image"
+fi
+[[ "$RESTORE_OIDC_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "restore OIDC image ID is invalid"
+[[ "$RESTORE_OIDC_PLATFORM_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "restore OIDC platform image ID is invalid"
+[[ "$(image_reference_id "$RESTORE_OIDC_IMAGE_ID")" == "$RESTORE_OIDC_IMAGE_ID" ]] || fail "restore OIDC immutable image ID does not resolve exactly"
+[[ "$(image_platform_id "$RESTORE_OIDC_IMAGE_ID")" == "$RESTORE_OIDC_PLATFORM_IMAGE_ID" ]] || fail "restore OIDC immutable image ID does not match the captured linux/amd64 platform image"
+python3 - "$EVIDENCE_DIR/restore-oidc-identity.json" \
+  "$RESTORE_OIDC_IMAGE_ID" "$RESTORE_OIDC_PLATFORM_IMAGE_ID" "$RESTORE_OIDC_OWNERSHIP" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+identity = {
+    "reference": sys.argv[2],
+    "imageId": sys.argv[2],
+    "platformImageId": sys.argv[3],
+    "referenceKind": "immutableLocalImageId",
+    "ownership": sys.argv[4],
+}
+Path(sys.argv[1]).write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
+PY
+chmod 600 "$EVIDENCE_DIR/restore-oidc-identity.json"
+export SUPPORT_COPILOT_OIDC_IMAGE="$RESTORE_OIDC_IMAGE_ID"
+
+if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
   RESTORE_PREBUILT_API_REFERENCE="$RESTORE_PROJECT-api:latest"
   RESTORE_PREBUILT_AI_REFERENCE="$RESTORE_PROJECT-ai:latest"
   RESTORE_PREBUILT_WEB_REFERENCE="$RESTORE_PROJECT-web:latest"
@@ -1215,6 +1345,7 @@ if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
   [[ "$(image_reference_id "$RESTORE_PREBUILT_AI_REFERENCE")" == "$KNOWN_GOOD_AI_IMAGE" ]] || fail "restore AI prebuilt tag does not match current image"
   [[ "$(image_reference_id "$RESTORE_PREBUILT_WEB_REFERENCE")" == "$KNOWN_GOOD_WEB_IMAGE" ]] || fail "restore web prebuilt tag does not match current image"
   python3 - "$EVIDENCE_DIR/restore-prebuilt-images.json" \
+    "$EVIDENCE_DIR/restore-oidc-identity.json" \
     "$RESTORE_PREBUILT_API_REFERENCE" "$KNOWN_GOOD_API_IMAGE" \
     "$RESTORE_PREBUILT_AI_REFERENCE" "$KNOWN_GOOD_AI_IMAGE" \
     "$RESTORE_PREBUILT_WEB_REFERENCE" "$KNOWN_GOOD_WEB_IMAGE" <<'PY'
@@ -1223,9 +1354,10 @@ import sys
 from pathlib import Path
 
 Path(sys.argv[1]).write_text(json.dumps({
-    "api": {"reference": sys.argv[2], "imageId": sys.argv[3]},
-    "ai": {"reference": sys.argv[4], "imageId": sys.argv[5]},
-    "web": {"reference": sys.argv[6], "imageId": sys.argv[7]},
+    "api": {"reference": sys.argv[3], "imageId": sys.argv[4]},
+    "ai": {"reference": sys.argv[5], "imageId": sys.argv[6]},
+    "web": {"reference": sys.argv[7], "imageId": sys.argv[8]},
+    "oidc": json.loads(Path(sys.argv[2]).read_text(encoding="utf-8")),
 }, indent=2) + "\n", encoding="utf-8")
 PY
   chmod 600 "$EVIDENCE_DIR/restore-prebuilt-images.json"
@@ -1241,6 +1373,8 @@ RESTORE_ARGUMENTS=(--backup-dir "$EVIDENCE_DIR/backup" --compose-file "$COMPOSE_
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
   RESTORE_ARGUMENTS+=(--prebuilt-ai-image-id "$KNOWN_GOOD_AI_IMAGE")
 fi
+[[ "$(image_reference_id "$RESTORE_OIDC_IMAGE_ID")" == "$RESTORE_OIDC_IMAGE_ID" ]] || fail "restore OIDC immutable image ID changed before pilot restore"
+[[ "$(image_platform_id "$RESTORE_OIDC_IMAGE_ID")" == "$RESTORE_OIDC_PLATFORM_IMAGE_ID" ]] || fail "restore OIDC immutable image platform changed before pilot restore"
 "$ROOT_DIR/scripts/pilot-restore.sh" "${RESTORE_ARGUMENTS[@]}" >"$EVIDENCE_DIR/restore-command.log" 2>&1
 BACKUP_ARTIFACT_ID="$(json_field "$EVIDENCE_DIR/backup/manifest.json" embeddingArtifacts.activeArtifactId)"
 BACKUP_ARTIFACT_SHA="$(json_field "$EVIDENCE_DIR/backup/manifest.json" embeddingArtifacts.archiveSha256)"
@@ -1255,9 +1389,14 @@ else
 fi
 wait_gateway "$RESTORE_WEB_PORT"
 if [[ "$USE_PREBUILT_CURRENT_IMAGES" == true ]]; then
+  [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" mysql)" == "$PREBUILT_MYSQL_IMAGE_ID" ]] || fail "restored MySQL does not match original current image"
+  [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" oidc)" == "$PREBUILT_OIDC_IMAGE_ID" ]] || fail "restored OIDC does not match original current image"
   [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" api)" == "$KNOWN_GOOD_API_IMAGE" ]] || fail "restored API does not match original current image"
   [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" ai)" == "$KNOWN_GOOD_AI_IMAGE" ]] || fail "restored AI does not match original current image"
   [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" web)" == "$KNOWN_GOOD_WEB_IMAGE" ]] || fail "restored web does not match original current image"
+else
+  [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" mysql)" == "$OWNED_PRIMARY_MYSQL_REFERENCE_ID" ]] || fail "restored MySQL does not match current built image"
+  [[ "$(compose_service_image_id "$RESTORE_PROJECT" "$RESTORE_WEB_PORT" oidc)" == "$OWNED_PRIMARY_OIDC_REFERENCE_ID" ]] || fail "restored OIDC does not match current built image"
 fi
 RESTORED_ARTIFACT="$(artifact_info "$RESTORE_PROJECT" "$RESTORE_WEB_PORT")"
 [[ "$RESTORED_ARTIFACT" == "$ARTIFACT_BEFORE" ]] || fail "restored embedding artifact identity/hash/path changed"

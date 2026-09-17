@@ -69,7 +69,8 @@ mysql_runtime = value["mysqlRuntime"]
 flyway = value["flyway"]
 sentinels = value["sentinels"]
 artifacts = value["embeddingArtifacts"]
-if value["schemaVersion"] != 2 or value["dumpFile"] != "support-copilot.sql":
+schema_version = value["schemaVersion"]
+if schema_version not in {2, 3} or value["dumpFile"] != "support-copilot.sql":
     raise SystemExit(2)
 if not isinstance(value["dumpBytes"], int) or value["dumpBytes"] <= 0:
     raise SystemExit(2)
@@ -77,13 +78,36 @@ if not isinstance(value["dumpSha256"], str) or re.fullmatch(r"[a-f0-9]{64}", val
     raise SystemExit(2)
 if not isinstance(value["database"], str) or re.fullmatch(r"[A-Za-z0-9_]+", value["database"]) is None:
     raise SystemExit(2)
-if not isinstance(mysql_runtime, dict) or set(mysql_runtime) != {"imageReference", "imageId", "platform"}:
+if not isinstance(mysql_runtime, dict):
     raise SystemExit(2)
-if not isinstance(mysql_runtime["imageReference"], str) or "@sha256:" not in mysql_runtime["imageReference"]:
+expected_runtime_fields = {"imageReference", "imageId", "platform"}
+if schema_version == 3:
+    expected_runtime_fields.add("referenceKind")
+if set(mysql_runtime) != expected_runtime_fields:
     raise SystemExit(2)
+component = r"[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*"
+domain = r"(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|localhost)(?::[0-9]+)?"
+repository = rf"(?:(?:{domain})/)?{component}(?:/{component})*"
+tag = r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}"
+digest_reference = rf"{repository}(?::{tag})?@sha256:[a-f0-9]{{64}}"
+local_reference = rf"{component}-mysql:latest"
+image_reference = mysql_runtime["imageReference"]
+if not isinstance(image_reference, str):
+    raise SystemExit(2)
+is_digest = re.fullmatch(digest_reference, image_reference) is not None
+is_local = re.fullmatch(local_reference, image_reference) is not None
+if schema_version == 2 and not is_digest:
+    raise SystemExit(2)
+if schema_version == 3:
+    reference_kind = mysql_runtime["referenceKind"]
+    if not (
+        (reference_kind == "immutableDigest" and is_digest)
+        or (reference_kind == "projectLocalTag" and is_local)
+    ):
+        raise SystemExit(2)
 if not isinstance(mysql_runtime["imageId"], str) or re.fullmatch(r"sha256:[a-f0-9]{64}", mysql_runtime["imageId"]) is None:
     raise SystemExit(2)
-if not isinstance(mysql_runtime["platform"], str) or re.fullmatch(r"[a-z0-9]+/[a-z0-9_]+", mysql_runtime["platform"]) is None:
+if mysql_runtime["platform"] != "linux/amd64":
     raise SystemExit(2)
 if not isinstance(flyway, dict) or set(flyway) != {"version", "checksum"}:
     raise SystemExit(2)
@@ -183,6 +207,7 @@ regular_file "$SECRET_DIR/mysql_app_password" "MySQL password secret"
 [[ -z "$PREBUILT_AI_IMAGE_ID" || "$PREBUILT_AI_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "prebuilt AI image ID must be a sha256 image ID"
 
 PREBUILT_AI_IMAGE_REFERENCE="$COMPOSE_PROJECT-ai:latest"
+OIDC_IMAGE_REFERENCE="${SUPPORT_COPILOT_OIDC_IMAGE:-}"
 assert_prebuilt_ai_image() {
   local resolved_image_id
   resolved_image_id="$(timeout "$COMMAND_TIMEOUT_SECONDS" docker image inspect --format '{{.Id}}' "$PREBUILT_AI_IMAGE_REFERENCE")" || fail "prebuilt AI image is missing: $PREBUILT_AI_IMAGE_REFERENCE"
@@ -199,9 +224,13 @@ else
     [[ "$IMAGE_INSPECT_STATUS" -eq 1 ]] || fail "cannot inspect restore AI image tag: $PREBUILT_AI_IMAGE_REFERENCE"
   fi
 fi
+[[ -n "$OIDC_IMAGE_REFERENCE" ]] || fail "SUPPORT_COPILOT_OIDC_IMAGE is required for restore"
 
 compose() {
-  PILOT_SECRET_DIR="$SECRET_DIR" SUPPORT_COPILOT_RUN_OWNERSHIP="$RUN_OWNERSHIP" \
+  PILOT_SECRET_DIR="$SECRET_DIR" \
+    SUPPORT_COPILOT_RUN_OWNERSHIP="$RUN_OWNERSHIP" \
+    SUPPORT_COPILOT_MYSQL_IMAGE="$MYSQL_IMAGE_REFERENCE" \
+    SUPPORT_COPILOT_OIDC_IMAGE="$OIDC_IMAGE_REFERENCE" \
     timeout "$COMMAND_TIMEOUT_SECONDS" \
     docker compose --project-name "$COMPOSE_PROJECT" --file "$COMPOSE_FILE" "$@"
 }

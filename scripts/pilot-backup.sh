@@ -88,9 +88,34 @@ MYSQL_RUNTIME="$(timeout "$COMMAND_TIMEOUT_SECONDS" docker inspect --format '{{.
 MYSQL_IMAGE_REFERENCE="${MYSQL_RUNTIME%%|*}"
 MYSQL_IMAGE_ID="${MYSQL_RUNTIME#*|}"
 MYSQL_PLATFORM="$(timeout "$COMMAND_TIMEOUT_SECONDS" docker image inspect --format '{{.Os}}/{{.Architecture}}' "$MYSQL_IMAGE_ID")"
-[[ "$MYSQL_IMAGE_REFERENCE" == *@sha256:* ]] || fail "MySQL configured image reference is not digest pinned"
+if ! MYSQL_REFERENCE_KIND="$(python3 - "$MYSQL_IMAGE_REFERENCE" "$COMPOSE_PROJECT" <<'PY'
+import re
+import sys
+
+component = r"[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*"
+domain = r"(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|localhost)(?::[0-9]+)?"
+repository = rf"(?:(?:{domain})/)?{component}(?:/{component})*"
+tag = r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}"
+digest_reference = rf"{repository}(?::{tag})?@sha256:[a-f0-9]{{64}}"
+local_reference = rf"{component}-mysql:latest"
+
+reference = sys.argv[1]
+expected_local_reference = f"{sys.argv[2]}-mysql:latest"
+if re.fullmatch(digest_reference, reference) is not None:
+    print("immutableDigest")
+elif (
+    reference == expected_local_reference
+    and re.fullmatch(local_reference, reference) is not None
+):
+    print("projectLocalTag")
+else:
+    raise SystemExit(2)
+PY
+)"; then
+  fail "MySQL configured image reference is malformed or is not an approved project-local tag"
+fi
 [[ "$MYSQL_IMAGE_ID" =~ ^sha256:[a-f0-9]{64}$ ]] || fail "MySQL image identity is missing or malformed"
-[[ "$MYSQL_PLATFORM" =~ ^[a-z0-9]+/[a-z0-9_]+$ ]] || fail "MySQL image platform is missing or malformed"
+[[ "$MYSQL_PLATFORM" == "linux/amd64" ]] || fail "MySQL image platform must be linux/amd64"
 
 compose exec -T mysql sh -ceu '
   MYSQL_PWD="$(cat /run/secrets/mysql_app_password)"
@@ -145,7 +170,7 @@ DUMP_SIZE="$(wc -c <"$DUMP_PATH" | tr -d ' ')"
 ARTIFACT_SHA256="$(sha256sum "$ARTIFACT_ARCHIVE_PATH" | awk '{print $1}')"
 ARTIFACT_SIZE="$(wc -c <"$ARTIFACT_ARCHIVE_PATH" | tr -d ' ')"
 python3 - "$MANIFEST_PATH" "$DUMP_SHA256" "$DUMP_SIZE" "$DATABASE" "$MYSQL_IMAGE_REFERENCE" \
-  "$MYSQL_IMAGE_ID" "$MYSQL_PLATFORM" "$MIGRATION_VERSION" "$MIGRATION_CHECKSUM" \
+  "$MYSQL_REFERENCE_KIND" "$MYSQL_IMAGE_ID" "$MYSQL_PLATFORM" "$MIGRATION_VERSION" "$MIGRATION_CHECKSUM" \
   "$TICKET_ID" "$ANALYSIS_ID" "$AUDIT_ID" "$ARTIFACT_SHA256" "$ARTIFACT_SIZE" \
   "$ARTIFACT_ID" "$ARTIFACT_MANIFEST_PATH" <<'PY'
 import json
@@ -154,28 +179,29 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 manifest = {
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "dumpFile": "support-copilot.sql",
     "dumpSha256": sys.argv[2],
     "dumpBytes": int(sys.argv[3]),
     "database": sys.argv[4],
     "mysqlRuntime": {
         "imageReference": sys.argv[5],
-        "imageId": sys.argv[6],
-        "platform": sys.argv[7],
+        "referenceKind": sys.argv[6],
+        "imageId": sys.argv[7],
+        "platform": sys.argv[8],
     },
-    "flyway": {"version": sys.argv[8], "checksum": int(sys.argv[9])},
+    "flyway": {"version": sys.argv[9], "checksum": int(sys.argv[10])},
     "sentinels": {
-        "ticketId": sys.argv[10],
-        "analysisId": sys.argv[11],
-        "auditId": sys.argv[12],
+        "ticketId": sys.argv[11],
+        "analysisId": sys.argv[12],
+        "auditId": sys.argv[13],
     },
     "embeddingArtifacts": {
         "archiveFile": "embedding-artifacts.tar",
-        "archiveSha256": sys.argv[13],
-        "archiveBytes": int(sys.argv[14]),
-        "activeArtifactId": sys.argv[15],
-        "activeManifestPath": sys.argv[16],
+        "archiveSha256": sys.argv[14],
+        "archiveBytes": int(sys.argv[15]),
+        "activeArtifactId": sys.argv[16],
+        "activeManifestPath": sys.argv[17],
     },
 }
 path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

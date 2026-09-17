@@ -41,6 +41,7 @@ def _run_restore(
             **os.environ,
             "PATH": path,
             "SUPPORT_COPILOT_RUN_OWNERSHIP": "0" * 32,
+            "SUPPORT_COPILOT_OIDC_IMAGE": "restore-pilot-oidc:latest",
             **(extra_env or {}),
         },
         check=False,
@@ -49,21 +50,46 @@ def _run_restore(
     )
 
 
-def _write_manifest(backup_dir: Path, database: str) -> None:
+def _run_backup(
+    evidence_dir: Path,
+    *arguments: str,
+    path: str = "/usr/bin:/bin",
+    extra_env: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(BACKUP_SCRIPT), "--evidence-dir", str(evidence_dir), *arguments],
+        env={**os.environ, "PATH": path, **(extra_env or {})},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _write_manifest(
+    backup_dir: Path,
+    database: str,
+    *,
+    schema_version: Literal[2, 3] = 2,
+    image_reference: str | None = None,
+    reference_kind: Literal["immutableDigest", "projectLocalTag"] | None = None,
+) -> None:
     dump_path = backup_dir / "support-copilot.sql"
     archive_path = backup_dir / "embedding-artifacts.tar"
     artifact_id = "b" * 64
+    mysql_runtime = {
+        "imageReference": image_reference or f"mysql:test@sha256:{'c' * 64}",
+        "imageId": f"sha256:{'a' * 64}",
+        "platform": "linux/amd64",
+    }
+    if reference_kind is not None:
+        mysql_runtime["referenceKind"] = reference_kind
     manifest = {
-        "schemaVersion": 2,
+        "schemaVersion": schema_version,
         "dumpFile": dump_path.name,
         "dumpSha256": hashlib.sha256(dump_path.read_bytes()).hexdigest(),
         "dumpBytes": dump_path.stat().st_size,
         "database": database,
-        "mysqlRuntime": {
-            "imageReference": f"mysql:test@sha256:{'c' * 64}",
-            "imageId": f"sha256:{'a' * 64}",
-            "platform": "linux/amd64",
-        },
+        "mysqlRuntime": mysql_runtime,
         "flyway": {"version": "5", "checksum": 123},
         "sentinels": {
             "ticketId": "ticket-1",
@@ -104,6 +130,160 @@ def _write_valid_backup(backup_dir: Path, *, database: str = "support_copilot") 
             info.size = len(content)
             archive.addfile(info, io.BytesIO(content))
     _write_manifest(backup_dir, database)
+
+
+def test_direct_compose_project_tag_reaches_real_backup_identity_parser(tmp_path: Path) -> None:
+    # Given: the documented direct Compose project and its controlled local MySQL tag.
+    seed_backup = tmp_path / "seed-backup"
+    _write_valid_backup(seed_backup)
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    docker_log = tmp_path / "docker.log"
+    compose_file = tmp_path / "compose.yml"
+    compose_file.write_text("services: {}\n", encoding="utf-8")
+    secret_dir = tmp_path / "secrets"
+    secret_dir.mkdir(mode=0o700)
+    (secret_dir / "mysql_app_password").write_text("fixture-password\n", encoding="utf-8")
+    image_id = f"sha256:{'a' * 64}"
+    direct_project = "task15-pilot-local"
+    local_reference = f"{direct_project}-mysql:latest"
+    artifact_id = "b" * 64
+    _write_executable(fake_bin / "timeout", '#!/usr/bin/env bash\nshift\nexec "$@"\n')
+    _write_executable(
+        fake_bin / "sha256sum",
+        "#!/usr/bin/env bash\n/usr/bin/shasum -a 256 \"$1\"\n",
+    )
+    _write_executable(
+        fake_bin / "docker",
+        f"""#!/usr/bin/env bash
+printf '%s\\n' "$*" >> {docker_log!s}
+if [[ "$*" == *'--project-name restore-pilot'* ]]; then
+  [[ "$SUPPORT_COPILOT_MYSQL_IMAGE" == '{local_reference}' ]] || exit 91
+  [[ "$SUPPORT_COPILOT_OIDC_IMAGE" == 'restore-pilot-oidc:latest' ]] || exit 92
+fi
+case "$*" in
+  *'SELECT DATABASE()'*) printf 'support_copilot\\n' ;;
+  *'FROM tickets WHERE'*) printf '1\\t1\\t1\\n' ;;
+  *flyway_schema_history*) printf '5\\t123\\n' ;;
+  *information_schema.tables*) printf '0\\t0\\t0\\n' ;;
+  *' ps -q mysql') printf 'mysql-container\\n' ;;
+  'inspect --format {{{{.Config.Image}}}}|{{{{.Image}}}} mysql-container') printf '%s\\n' '{local_reference}|{image_id}' ;;
+  'image inspect --format {{{{.Os}}}}/{{{{.Architecture}}}} {image_id}') printf 'linux/amd64\\n' ;;
+  *mysqldump*) printf '%s\\n' 'CREATE DATABASE `support_copilot`;' 'USE `support_copilot`;' 'CREATE TABLE sentinel (id int);' '-- Dump completed on 2026-08-31' ;;
+  *'exec -T ai python -'*) printf '%s\\n' '{{"artifactId":"{artifact_id}","manifestPath":"{artifact_id}/manifest.json"}}' ;;
+  *'exec -T ai sh -ceu'*) cat "$FAKE_ARCHIVE" ;;
+  *'run --no-deps --rm --entrypoint python ai'*) printf '%s\\n' '{{"artifactId":"{artifact_id}","manifestPath":"{artifact_id}/manifest.json"}}' ;;
+esac
+""",
+    )
+    backup_dir = tmp_path / "backup"
+    common_env = {"FAKE_ARCHIVE": str(seed_backup / "embedding-artifacts.tar")}
+
+    # When: the real producer creates schema v3 and the real consumer imports it.
+    backup_result = _run_backup(
+        backup_dir,
+        "--compose-file", str(compose_file),
+        "--project", direct_project,
+        "--secret-dir", str(secret_dir),
+        "--sentinel-ticket-id", "ticket-1",
+        "--sentinel-analysis-id", "analysis-1",
+        "--sentinel-audit-id", "audit-1",
+        path=f"{fake_bin}:/usr/bin:/bin",
+        extra_env=common_env,
+    )
+    restore_result = _run_restore(
+        backup_dir,
+        "--compose-file", str(compose_file),
+        "--project", "restore-pilot",
+        "--secret-dir", str(secret_dir),
+        "--evidence-dir", str(tmp_path / "restore-evidence"),
+        path=f"{fake_bin}:/usr/bin:/bin",
+        extra_env=common_env,
+    )
+
+    # Then: the manifest declares the local kind and restore checks all three identities.
+    assert backup_result.returncode == 0, backup_result.stderr
+    assert restore_result.returncode == 0, restore_result.stderr
+    manifest = json.loads((backup_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schemaVersion"] == 3
+    assert manifest["mysqlRuntime"] == {
+        "imageReference": local_reference,
+        "referenceKind": "projectLocalTag",
+        "imageId": image_id,
+        "platform": "linux/amd64",
+    }
+    calls = docker_log.read_text(encoding="utf-8")
+    assert calls.count(
+        "inspect --format {{.Config.Image}}|{{.Image}} mysql-container"
+    ) == 2
+
+
+@pytest.mark.parametrize(
+    ("schema_version", "image_reference", "reference_kind"),
+    [
+        (3, "bad reference:latest", "projectLocalTag"),
+        (3, "backup-pilot-mysql:latest", "immutableDigest"),
+        (3, f"mysql:test@sha256:{'c' * 64}", "projectLocalTag"),
+        (2, "backup-pilot-mysql:latest", None),
+    ],
+    ids=["whitespace", "local-declared-digest", "digest-declared-local", "v2-local-tag"],
+)
+def test_restore_rejects_malformed_or_kind_mismatched_mysql_reference(
+    tmp_path: Path,
+    schema_version: Literal[2, 3],
+    image_reference: str,
+    reference_kind: Literal["immutableDigest", "projectLocalTag"] | None,
+) -> None:
+    # Given: a complete backup set with an invalid MySQL reference contract.
+    backup_dir = tmp_path / "backup"
+    _write_valid_backup(backup_dir)
+    _write_manifest(
+        backup_dir,
+        "support_copilot",
+        schema_version=schema_version,
+        image_reference=image_reference,
+        reference_kind=reference_kind,
+    )
+
+    # When: the real restore consumer parses the manifest boundary.
+    result = _run_restore(backup_dir)
+
+    # Then: it rejects the manifest before any Docker operation is needed.
+    assert result.returncode != 0
+    assert "manifest is malformed or has unsupported fields" in result.stderr
+
+
+def test_restore_accepts_schema_v2_digest_manifest(tmp_path: Path) -> None:
+    # Given: a legacy schema v2 manifest with an immutable digest reference.
+    backup_dir = tmp_path / "backup"
+    _write_valid_backup(backup_dir)
+
+    # When: the real restore consumer parses it before required runtime arguments.
+    result = _run_restore(backup_dir)
+
+    # Then: parsing succeeds and validation advances to the next public contract.
+    assert result.returncode != 0
+    assert "--compose-file, --project, --secret-dir, and --evidence-dir are required" in result.stderr
+
+
+def test_restore_accepts_schema_v3_immutable_digest_manifest(tmp_path: Path) -> None:
+    # Given: a schema v3 manifest whose declared kind matches its digest reference.
+    backup_dir = tmp_path / "backup"
+    _write_valid_backup(backup_dir)
+    _write_manifest(
+        backup_dir,
+        "support_copilot",
+        schema_version=3,
+        image_reference=f"registry.example.test/mysql:8.4@sha256:{'c' * 64}",
+        reference_kind="immutableDigest",
+    )
+
+    # When: the real restore consumer parses it before required runtime arguments.
+    result = _run_restore(backup_dir)
+
+    # Then: schema parsing succeeds and validation advances to the next contract.
+    assert result.returncode != 0
+    assert "--compose-file, --project, --secret-dir, and --evidence-dir are required" in result.stderr
 
 
 def test_backup_rejects_existing_evidence_directory(tmp_path: Path) -> None:

@@ -3,9 +3,11 @@
 This directory contains the bounded infrastructure fixtures used by the enterprise-pilot work.
 
 `compose.pilot.yml` defines the local five-service pilot topology: MySQL 8.4.11,
-the test-only OIDC issuer, Python AI, Java API, and the Nginx web gateway. Remote
-infrastructure images are digest pinned. This is a local verification fixture,
-not a production deployment definition.
+the test-only OIDC issuer, Python AI, Java API, and the Nginx web gateway. The
+MySQL and OIDC services use project-local derived images. OIDC copies only
+`/app` from the pinned NAV 6.0.2 image into the pinned `linux/amd64` Chainguard
+JRE manifest. This is a local verification fixture, not a production deployment
+definition.
 
 ## Canonical operations verification
 
@@ -24,8 +26,17 @@ It creates a temporary mode-`0700` secret directory, writes mode-`0600` secret
 files, generates a random run-ownership label, and removes only resources that
 still carry both the exact Compose project label and that run label. All services
 are pinned to `linux/amd64`; legacy Docker inspection must also prove that
-platform. Bearer headers enter `curl` through standard input rather than process
-arguments. Secret values are not evidence.
+platform. Both build and prebuilt modes bind the OIDC project reference,
+platform-resolved image ID, and running container image ID. Prebuilt OIDC tags
+are verified and preserved during cleanup. Bearer headers enter `curl` through
+standard input rather than process arguments. Secret values are not evidence.
+
+The derived OIDC source preserves the upstream user `65532`, `/app` workdir,
+port `8080`, Java entrypoint, `JSON_CONFIG_PATH`, issuer/token/JWKS behavior, and
+`/isalive` health contract. Its final runtime is OpenJDK 26 while the copied
+application bytecode targets Java 17. Static source checks do not prove runtime
+compatibility or a vulnerability result; both remain explicit Docker runtime
+and image-scan gates.
 
 `verify-mysql-persistence.sh` is a compatibility entry point that delegates all
 arguments to the same integrated verifier. The verifier exercises authenticated
@@ -99,15 +110,22 @@ openai_api_key
 Start the topology only when those files already exist:
 
 ```bash
+export SUPPORT_COPILOT_PILOT_PROJECT="task15-pilot-local"
 export PILOT_SECRET_DIR=/absolute/path/to/pilot-secrets
 export SUPPORT_COPILOT_RUN_OWNERSHIP="$(openssl rand -hex 16)"
 export SUPPORT_COPILOT_WEB_PORT=13080
-docker compose --project-name task15-pilot-local \
+export SUPPORT_COPILOT_MYSQL_IMAGE="${SUPPORT_COPILOT_PILOT_PROJECT}-mysql:latest"
+export SUPPORT_COPILOT_OIDC_IMAGE="${SUPPORT_COPILOT_PILOT_PROJECT}-oidc:latest"
+docker compose --project-name "$SUPPORT_COPILOT_PILOT_PROJECT" \
   --file infra/compose.pilot.yml up --build --detach --wait
 ```
 
 Keep the same `SUPPORT_COPILOT_RUN_OWNERSHIP` value for helper calls that parse
-this Compose project. The canonical verifier generates and exports it
+this Compose project. The controlled local build tags are derived from
+`SUPPORT_COPILOT_PILOT_PROJECT`; a tag itself is not immutable. The canonical
+verifier captures and validates the exact image IDs for these controlled local
+tags. Prebuilt inputs instead use immutable digest references. The canonical
+verifier generates and exports the project images and run ownership
 automatically.
 
 `pilot-backup.sh` requires the running source project, that same secret
@@ -116,7 +134,7 @@ directory, three observed sentinel IDs, and a fresh evidence directory:
 ```bash
 ./scripts/pilot-backup.sh \
   --compose-file infra/compose.pilot.yml \
-  --project task15-pilot-local \
+  --project "$SUPPORT_COPILOT_PILOT_PROJECT" \
   --secret-dir /absolute/path/to/pilot-secrets \
   --evidence-dir .omo/evidence/task-15-backup \
   --database support_copilot \
@@ -126,7 +144,9 @@ directory, three observed sentinel IDs, and a fresh evidence directory:
 ```
 
 `pilot-restore.sh` requires that backup directory and a new project/evidence
-pair. On failure it removes only resources carrying both that restore project
+pair, plus `SUPPORT_COPILOT_OIDC_IMAGE` for the test-only issuer image. The
+MySQL image reference is taken from and checked against the backup manifest.
+On failure it removes only resources carrying both that restore project
 and the same run-ownership label. Same-project resources with another ownership
 value remain untouched and make the cleanup receipt incomplete; on success its
 caller owns the restored resources.
@@ -155,19 +175,21 @@ PYTHONPATH="$PWD" services/support-copilot-ai/.venv/bin/pytest -q \
 ```
 
 Build the application images before scanning, then pass every current image to
-the scanner with a fresh output directory. Include the three project image tags
-and both digest-pinned infrastructure references from `compose.pilot.yml`:
+the scanner with a fresh output directory. Include the actual project-local
+infrastructure references selected by `SUPPORT_COPILOT_MYSQL_IMAGE` and
+`SUPPORT_COPILOT_OIDC_IMAGE`:
 
 ```bash
 PILOT_SECRET_DIR=/absolute/path/to/pilot-secrets \
 SUPPORT_COPILOT_RUN_OWNERSHIP="$(openssl rand -hex 16)" \
+SUPPORT_COPILOT_MYSQL_IMAGE=task15-scan-mysql:latest \
+SUPPORT_COPILOT_OIDC_IMAGE=task15-scan-oidc:latest \
 docker compose --project-name task15-scan \
   --file infra/compose.pilot.yml build
 
 ./scripts/scan-pilot-images.sh .omo/evidence/task-15-image-scan \
   task15-scan-api:latest task15-scan-ai:latest task15-scan-web:latest \
-  'mysql:8.4.11-oraclelinux9@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb' \
-  'ghcr.io/navikt/mock-oauth2-server:6.0.2@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff'
+  task15-scan-mysql:latest task15-scan-oidc:latest
 ```
 
 These commands describe the required runtime gates. A skipped opt-in test,

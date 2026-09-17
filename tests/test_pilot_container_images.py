@@ -1,9 +1,8 @@
 """Static production-image contracts for the Task 15 container definitions."""
 
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Final
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 DOCKERFILE_PATHS = (
@@ -13,8 +12,8 @@ DOCKERFILE_PATHS = (
 )
 DIGEST_PIN = re.compile(r"^FROM\s+[^\s@]+:[^\s@]+@sha256:[a-f0-9]{64}", re.MULTILINE)
 PYTHON_RUNTIME_BASE: Final = (
-    "python:3.11.16-slim-trixie@sha256:"
-    "1042b61448fef4ba92d16a8c7eb4996d027568ce64792a7877fd88511e0af7c6"
+    "python:3.11.16-alpine3.24@sha256:"
+    "cc19a3e1085aba7d26690cf0725d9a3e083cbea0feec34ba8133d40a8ac1d399"
 )
 NGINX_RUNTIME_BASE: Final = (
     "nginxinc/nginx-unprivileged:1.30.3-alpine-slim@sha256:"
@@ -62,7 +61,7 @@ def test_ai_image_when_built_then_installs_hash_locked_dependencies_and_serves_h
 
 
 def test_ai_image_when_checked_then_uses_current_python_base_in_both_stages() -> None:
-    """Given the AI image, when parsed, then both stages share the exact amd64 base."""
+    """Given the AI image, when parsed, then both stages share the exact Alpine base."""
     dockerfile = read_repository_file("services/support-copilot-ai/Dockerfile")
     from_images = [
         line.split()[1]
@@ -78,31 +77,27 @@ def test_ai_image_when_checked_then_hardens_only_the_runtime_before_application_
     dockerfile = read_repository_file("services/support-copilot-ai/Dockerfile")
     _, build_stage, runtime_stage = dockerfile.split(f"FROM {PYTHON_RUNTIME_BASE}")
 
-    runtime_hardening = (
-        "USER root\n"
-        "RUN apt-get update \\\n"
-        "    && apt-get upgrade --yes \\\n"
-        "    && python -m pip uninstall --yes setuptools pip \\\n"
-        "    && rm -rf /var/lib/apt/lists/*"
-    )
-    assert runtime_hardening in runtime_stage
-    assert runtime_stage.index(runtime_hardening) < runtime_stage.index("COPY --from=build")
-    assert "python -m pip uninstall --yes setuptools pip" not in build_stage
+    assert "RUN apk add --no-cache setpriv=2.42.3-r1" in runtime_stage
+    assert re.search(r"\bapk\s+(?:update|upgrade)\b", runtime_stage) is None
+    assert "python -m pip uninstall --yes pip setuptools" in runtime_stage
+    assert runtime_stage.index("RUN apk add") < runtime_stage.index("COPY --from=build")
+    assert "python -m pip uninstall --yes pip setuptools" not in build_stage
     assert re.search(r"^USER\s+10001:10001$", runtime_stage, re.MULTILINE)
 
 
 def test_ai_image_when_checked_then_declares_owned_artifact_volume() -> None:
     """Given the AI image policy, when parsed, then persistent state has one mount contract."""
     dockerfile = read_repository_file("services/support-copilot-ai/Dockerfile")
+    _, _, runtime_stage = dockerfile.split(f"FROM {PYTHON_RUNTIME_BASE}")
 
     assert "/var/lib/support-copilot-ai" in dockerfile
     assert "EMBEDDING_ARTIFACT_ROOT=/var/lib/support-copilot-ai" in dockerfile
     assert "EMBEDDING_ARTIFACT_BUILD_POLICY=require-active" in dockerfile
-    assert re.search(
-        r"install --directory --owner=10001 --group=10001 --mode=0750 "
-        r"/var/lib/support-copilot-ai",
-        dockerfile,
-    )
+    assert "addgroup -g 10001 appuser" in runtime_stage
+    assert "adduser -D -H -s /sbin/nologin -u 10001 -G appuser appuser" in runtime_stage
+    assert "mkdir -p /var/lib/support-copilot-ai" in runtime_stage
+    assert "chown appuser:appuser /var/lib/support-copilot-ai" in runtime_stage
+    assert "chmod 0750 /var/lib/support-copilot-ai" in runtime_stage
     assert re.search(r"^VOLUME\s+\[\"/var/lib/support-copilot-ai\"\]", dockerfile, re.MULTILINE)
     assert re.search(r"^USER\s+10001:10001$", dockerfile, re.MULTILINE)
 

@@ -6,6 +6,7 @@ import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 COMPOSE_PATH = REPOSITORY_ROOT / "infra" / "compose.pilot.yml"
+INFRA_README_PATH = REPOSITORY_ROOT / "infra" / "README.md"
 OIDC_CONFIG_PATH = REPOSITORY_ROOT / "infra" / "oidc" / "config.json"
 EXPECTED_SERVICES = {"mysql", "oidc", "ai", "api", "web"}
 EXPECTED_ISSUER = "http://oidc:8080/default"
@@ -50,17 +51,45 @@ def test_topology_when_parsed_has_all_pilot_services_and_network_boundaries() ->
         assert "ports" not in services[service_name]
 
 
-def test_images_when_pilot_parsed_are_exact_and_digest_pinned() -> None:
-    # Given: the Compose service definitions.
+def test_infrastructure_images_when_pilot_parsed_require_explicit_references() -> None:
+    # Given: the local Compose topology for controlled derived images.
     services = load_compose()["services"]
+    compose_source = COMPOSE_PATH.read_text(encoding="utf-8")
 
-    # When: infrastructure images are read.
-    mysql_image = services["mysql"].get("image")
-    oidc_image = services["oidc"].get("image")
+    # When: MySQL and test-only OIDC image references are inspected.
+    # Then: callers must supply one controlled reference; mutable global defaults are absent.
+    assert services["mysql"]["image"] == (
+        "${SUPPORT_COPILOT_MYSQL_IMAGE:?SUPPORT_COPILOT_MYSQL_IMAGE is required}"
+    )
+    assert services["oidc"]["image"] == (
+        "${SUPPORT_COPILOT_OIDC_IMAGE:?SUPPORT_COPILOT_OIDC_IMAGE is required}"
+    )
+    assert ":-support-copilot/mysql" not in compose_source
+    assert ":-support-copilot/oidc" not in compose_source
+    for service_name in ("mysql", "oidc"):
+        assert services[service_name]["pull_policy"] == "never"
+        assert services[service_name]["platform"] == EXPECTED_PLATFORM
 
-    # Then: the remote-resolved MySQL 8 LTS and NAV issuer references are immutable.
-    assert mysql_image == "mysql:8.4.11-oraclelinux9@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb"
-    assert oidc_image == "ghcr.io/navikt/mock-oauth2-server:6.0.2@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff"
+
+def test_direct_compose_readme_when_read_has_one_project_derived_image_contract() -> None:
+    # Given: the documented direct Compose workflow.
+    readme = INFRA_README_PATH.read_text(encoding="utf-8")
+
+    # When: its project identity and backup inputs are inspected.
+    # Then: derived image tags and the backup project come from the same identity.
+    assert 'export SUPPORT_COPILOT_PILOT_PROJECT="task15-pilot-local"' in readme
+    assert (
+        'export SUPPORT_COPILOT_MYSQL_IMAGE="${SUPPORT_COPILOT_PILOT_PROJECT}-mysql:latest"'
+        in readme
+    )
+    assert (
+        'export SUPPORT_COPILOT_OIDC_IMAGE="${SUPPORT_COPILOT_PILOT_PROJECT}-oidc:latest"'
+        in readme
+    )
+    assert '--project-name "$SUPPORT_COPILOT_PILOT_PROJECT"' in readme
+    assert '--project "$SUPPORT_COPILOT_PILOT_PROJECT"' in readme
+    assert "controlled local build tags" in readme
+    assert "tag itself is not immutable" in readme
 
 
 def test_resources_when_pilot_parsed_pin_platform_and_run_ownership() -> None:

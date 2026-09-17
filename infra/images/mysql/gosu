@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -lt 2 ] || [ "$1" != mysql ]; then
+    printf '%s\n' 'gosu-compat:invalid-invocation' >&2
+    exit 64
+fi
+
+target="$1"
+shift
+uid="$(id -u "$target")"
+gid="$(id -g "$target")"
+
+exec setpriv --reuid="$uid" --regid="$gid" --init-groups -- "$@"

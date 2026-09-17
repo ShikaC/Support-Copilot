@@ -2,8 +2,10 @@ name: support-copilot-pilot
 
 services:
   mysql:
-    image: mysql:8.4.11-oraclelinux9@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+    image: ${SUPPORT_COPILOT_MYSQL_IMAGE:?SUPPORT_COPILOT_MYSQL_IMAGE is required}
+    pull_policy: never
     platform: linux/amd64
+    build: {context: .., dockerfile: infra/images/mysql/Dockerfile}
     labels:
       io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
     restart: unless-stopped
@@ -15,16 +17,14 @@ services:
     secrets:
       - mysql_app_password
       - mysql_root_password
-    networks:
-      - backend
+    networks: [backend]
     volumes:
       - type: volume
         source: mysql-data
         target: /var/lib/mysql
     tmpfs:
       - /tmp:mode=1777,noexec,nosuid,size=64m
-    cap_drop:
-      - NET_RAW
+    cap_drop: [NET_RAW]
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -41,10 +41,13 @@ services:
       start_period: 30s
 
   oidc:
-    image: ghcr.io/navikt/mock-oauth2-server:6.0.2@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff
+    image: ${SUPPORT_COPILOT_OIDC_IMAGE:?SUPPORT_COPILOT_OIDC_IMAGE is required}
+    pull_policy: never
     platform: linux/amd64
+    build: {context: .., dockerfile: infra/images/oidc/Dockerfile}
     labels:
       io.support-copilot.run-ownership: ${SUPPORT_COPILOT_RUN_OWNERSHIP:?SUPPORT_COPILOT_RUN_OWNERSHIP is required}
+      io.support-copilot.test-only: "true"
     restart: unless-stopped
     environment:
       JSON_CONFIG_PATH: /app/config.json
