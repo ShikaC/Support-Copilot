@@ -33,9 +33,10 @@
 
 1. 当前query修复已完成；优先核对本轮diff与离线证据，不重复实现。只修改`workflow.py`的query构造，现有脱敏、权限、长度校验和失败语义不改。完整输入会增加Embedding输入，相关性、延迟、费用需要后续实测；不因离线query不同就宣称召回改善。
 2. 修正后的 development 比较方案已经预注册：`docs/verification/development-comparison-2026-09-11/PROTOCOL.md` 与 `protocol.json`，机制、判据、预算、禁止项和绑定关系都在其中；不要重新设计协议。此13题已经见过输出，只能称development复测；holdout仍未使用。下一步是作者审阅本轮 diff 后明确授权执行 `node scripts/benchmark/run-isolated.mjs --id development-comparison-20260911 --execute --comparison docs/verification/development-comparison-2026-09-11/protocol.json`。旧 runner 一次性 claim 不能删除或绕过，comparison 每个 ID 只运行一次，失败同样保留。
-3. 真人逐题审核输入与模型输出。工作表和当前操作入口见[OPERATIONS](../verification/isolated-runner-2026-09-10/OPERATIONS.md)。准确率不能由指定文档命中、跨度覆盖或词语F1代替。
-4. 后续才接入新run的质量页导入契约、提供评测人审网页闭环、开发知识正文草稿/索引/发布一致性闭环。现有知识页没有正文增删改；release元数据创建不等于上传正文。工单“记录审核”保存的是单条回复处理，不能自动改变固定评测报告。
-5. 超时改进以真实观察为依据。旧96题18个生成读取超时发生约20秒，SDK0重试、Java200fallback不重试；三组先后运行，不能因果归因于并发。优先评估输出长度/有效上下文；单独延长deadline只是多等待，不等于加速。无网关日志时不猜服务端根因，不用多层重试掩盖失败。
+3. 离线检索评测已建立：`scripts/benchmark/retrieval-eval.mjs` + 修复前基线目录 `docs/verification/retrieval-eval-2026-09-11/`（13 题共用 1 条 query、gold@3 = 0/11）。比较运行完成后立即对新的运行目录重跑本工具并 `--baseline` 指向旧报告；以后任何检索改动（分块、混合检索、重排、top_k、阈值）先在这个离线口径上比较，再决定是否花真实调用。不要把它当成事实正确率或真人审核的替代。
+4. 真人逐题审核输入与模型输出。工作表和当前操作入口见[OPERATIONS](../verification/isolated-runner-2026-09-10/OPERATIONS.md)。准确率不能由指定文档命中、跨度覆盖或词语F1代替。
+5. 后续才接入新run的质量页导入契约、提供评测人审网页闭环、开发知识正文草稿/索引/发布一致性闭环。现有知识页没有正文增删改；release元数据创建不等于上传正文。工单“记录审核”保存的是单条回复处理，不能自动改变固定评测报告。
+6. 超时改进以真实观察为依据。旧96题18个生成读取超时发生约20秒，SDK0重试、Java200fallback不重试；三组先后运行，不能因果归因于并发。优先评估输出长度/有效上下文；单独延长deadline只是多等待，不等于加速。无网关日志时不猜服务端根因，不用多层重试掩盖失败。
 
 ## 停止条件与环境保护
 

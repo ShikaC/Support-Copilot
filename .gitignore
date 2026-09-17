@@ -49,3 +49,7 @@ docs/verification/**/*-after.py.txt
 # Pre-registered comparison protocols are review material, not bulk evidence
 # output; keep them in Git even though sibling JSON is ignored above.
 !docs/verification/development-comparison-2026-09-11/protocol.json
+
+# Offline retrieval-eval reports are small, conclusion-level evidence used as a
+# frozen comparison baseline; unrelated bulk artifacts stay ignored above.
+!docs/verification/retrieval-eval-2026-09-11/**
