@@ -15,4 +15,33 @@
 # Test and tool caches
 .coverage
 .pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
 
+# Local runtime: workspace DB/logs + live experiment downloads/runs
+# (quality-runs, business-benchmark-*, public-rag-*, quality-center, …)
+.local/
+
+# Local agent evidence ledger (Task scans, reviews); not published with the repo
+.omo/
+
+# Live / benchmark verification bulk under docs/verification.
+# Keep human delivery notes (*.md), verify scripts (*.mjs), and patches on disk;
+# ignore dumps that dominate Cursor/Git review (~300k+ lines): JSON results,
+# corpus snapshots, per-trial payloads, embedded source trees, screenshots.
+docs/verification/**/source/
+docs/verification/**/run-*/
+docs/verification/**/trials/
+docs/verification/**/corpus/
+docs/verification/quality-runs/
+docs/verification/**/*.json
+docs/verification/**/*.jsonl
+docs/verification/**/*.png
+docs/verification/**/*.jpg
+docs/verification/**/*.jpeg
+docs/verification/**/*.webp
+docs/verification/**/*.snapshot
+docs/verification/**/*.diff
+docs/verification/**/*-before.py.txt
+docs/verification/**/*-after.py.txt

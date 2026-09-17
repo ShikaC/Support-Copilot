@@ -1,0 +1,23 @@
+# Mirror heavy local/live artifacts so Cursor review/index skips them.
+# Source of truth for Git remains .gitignore; this only affects the IDE.
+.local/
+.omo/
+docs/verification/**/source/
+docs/verification/**/run-*/
+docs/verification/**/trials/
+docs/verification/**/corpus/
+docs/verification/quality-runs/
+docs/verification/**/*.json
+docs/verification/**/*.jsonl
+docs/verification/**/*.log
+docs/verification/**/*.png
+docs/verification/**/*.jpg
+docs/verification/**/*.jpeg
+docs/verification/**/*.webp
+docs/verification/**/*.zip
+docs/verification/**/*.snapshot
+docs/verification/**/*.diff
+services/support-copilot-ai/.venv/
+services/support-copilot-ai/evaluation/reports/
+apps/support-copilot-web/node_modules/
+services/support-copilot-api/build/
