@@ -1,0 +1,35 @@
+{
+  "state": "BLOCKED",
+  "checkedAt": "2026-09-17T06:08:11.274Z",
+  "blockedBy": [
+    "chat-completion"
+  ],
+  "missing": [],
+  "endpoints": {
+    "chat": "3f310dfd7b96c5f1546a3d79518fc63f4550ce70001c5c8022ef9cc4906d99a3",
+    "embedding": "dcfb966d818ddf8f4d10f7397ce546e86d3fcb8afe26371506405f6978c6f661"
+  },
+  "model": "gpt-5.6-luna",
+  "protocol": "chat_completions",
+  "hasTargetModel": true,
+  "checks": [
+    {
+      "name": "chat-models",
+      "status": 200,
+      "ok": true,
+      "detail": "body-bytes=2165"
+    },
+    {
+      "name": "chat-completion",
+      "status": 503,
+      "ok": false,
+      "detail": "{\"error\":{\"message\":\"Service temporarily unavailable\",\"type\":\"api_error\"}}"
+    },
+    {
+      "name": "embedding",
+      "status": 200,
+      "ok": true,
+      "detail": "body-bytes=21938"
+    }
+  ]
+}

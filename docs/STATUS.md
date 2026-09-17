@@ -15,7 +15,8 @@
 - 绑定：旧 claim SHA-256 `8476732b…`、base run `development-live-diagnostic-20260910`、cases SHA `7e789893…`、预期源码 `workflow.py` / `grounded_reply_policy.py` / `response_language.py`。
 - 单一变量：仅 `_build_query` 由正文前 180 字符改为完整已校验标题与正文；模型、聊天协议、提示词、知识 corpus、向量 artifact 与超时预算冻结。
 - 离线验证：`node --test scripts/benchmark/comparison-protocol.test.mjs` 8 项契约测试通过；`node scripts/benchmark/isolated-runner.test.mjs` 11 项继续通过；预检 `preflight-development-comparison-20260911` 为 `PREPARED_NO_CALLS`、0 次 provider 操作、`evidenceKind=PREPARATION_UNREVIEWED`，确认 live / `chat_completions` / 1564×1024 artifact。
-- 下一步：作者审阅本轮 diff 后明确授权 `--execute --comparison`；执行后不得覆盖 base run，质量分数仍为 `null`，需真人输入确认与回答事实审核。
+- 执行状态：**阻塞**（2026-09-17）。配置与源码绑定全部通过（三处源码哈希与协议一致），但执行前探测发现 chat 端点持续返回 HTTP 503，而模型列表与 embedding 端点正常。立即执行会让 13 题生成全部失败并消耗一次性 claim，因此未执行；claim 未写入、无生成费用。证据与恢复步骤见 `docs/verification/development-comparison-2026-09-11/EXECUTION-BLOCKED.md`。
+- 下一步：用 `node scripts/benchmark/provider-probe.mjs` 确认 READY 后再执行 `--execute --comparison`；执行后不得覆盖 base run。质量分数仍为 `null`，需真人输入确认与回答事实审核。
 
 ### 2. 固化暴露并修复的门禁回归
 
@@ -39,6 +40,12 @@
 - 修复前基线（目录 `docs/verification/retrieval-eval-2026-09-11/`）：26 题计划 / 13 题已执行 / 11 题可评估；gold@1、@3、@10 均为 0，MRR 0.000；13 题共用 1 条 query、返回 1 组相同候选。结论与独立 Python 复核一致。
 - 限制：11 题样本量小，只能用于同一语料、同一评估集下的相对比较；gold 命中不代表片段包含答案，也不代表模型正确使用；本工具不替代真人回答审核。
 - 用途：比较协议执行后对新的运行目录重跑本工具并 `--baseline` 指向旧报告，即得到修复后的真实召回数字；后续检索改动先在离线评测上比较，再决定是否花真实调用。
+
+### 4. Provider 前置检查与执行阻塞
+
+新增 `scripts/benchmark/provider-probe.mjs`（8 项契约测试）：只做 3 次最小探测（模型列表、极短补全、极短嵌入），不输出密钥，给出 `READY`/`BLOCKED`、端点 sha256 与检查时间。它用于在执行一次性付费运行之前判断端点是否真实可用——`claim` 一经写入不可重跑，不能靠配置完整度代替真实探测。
+
+2026-09-17 实测：`GET /models` 200（17 个模型中包含目标 `gpt-5.6-luna`）、`POST /embeddings` 200、`POST /chat/completions` **503**；12 分钟轮询 12 次仍为 503，另一次连接错误。因此比较运行未执行，未写入 claim，未产生生成费用。
 
 ## 前一阶段：提交前工作树已固化（2026-09-11）
 
