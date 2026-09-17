@@ -32,7 +32,7 @@
 ## 第一切片与后续顺序
 
 1. 当前query修复已完成；优先核对本轮diff与离线证据，不重复实现。只修改`workflow.py`的query构造，现有脱敏、权限、长度校验和失败语义不改。完整输入会增加Embedding输入，相关性、延迟、费用需要后续实测；不因离线query不同就宣称召回改善。
-2. 下一可执行切片是在本轮diff审阅后，预注册修正后的development比较：独立实验ID、源码/预算/全部计划、失败与未执行行。此13题已经见过输出，只能称development复测；holdout仍未使用。旧runner一次性claim不能删除或绕过，必须显式设计比较协议；没有新的付费数据时保持质量结论未测。
+2. 修正后的 development 比较方案已经预注册：`docs/verification/development-comparison-2026-09-11/PROTOCOL.md` 与 `protocol.json`，机制、判据、预算、禁止项和绑定关系都在其中；不要重新设计协议。此13题已经见过输出，只能称development复测；holdout仍未使用。下一步是作者审阅本轮 diff 后明确授权执行 `node scripts/benchmark/run-isolated.mjs --id development-comparison-20260911 --execute --comparison docs/verification/development-comparison-2026-09-11/protocol.json`。旧 runner 一次性 claim 不能删除或绕过，comparison 每个 ID 只运行一次，失败同样保留。
 3. 真人逐题审核输入与模型输出。工作表和当前操作入口见[OPERATIONS](../verification/isolated-runner-2026-09-10/OPERATIONS.md)。准确率不能由指定文档命中、跨度覆盖或词语F1代替。
 4. 后续才接入新run的质量页导入契约、提供评测人审网页闭环、开发知识正文草稿/索引/发布一致性闭环。现有知识页没有正文增删改；release元数据创建不等于上传正文。工单“记录审核”保存的是单条回复处理，不能自动改变固定评测报告。
 5. 超时改进以真实观察为依据。旧96题18个生成读取超时发生约20秒，SDK0重试、Java200fallback不重试；三组先后运行，不能因果归因于并发。优先评估输出长度/有效上下文；单独延长deadline只是多等待，不等于加速。无网关日志时不猜服务端根因，不用多层重试掩盖失败。

@@ -3,7 +3,17 @@
 > 更新时间：2026-09-11
 > 状态分类：当前工作区事实（已提交，工作树 clean）
 
-## 最新：提交前工作树已固化为 6 个提交（2026-09-11）
+## 最新：修正后 development 比较已预注册（2026-09-11）
+
+`docs/verification/development-comparison-2026-09-11/` 冻结了 query 修复后的第一次真实 development 复测方案，**尚未执行任何付费调用**。这一片切片解决的问题：旧 13 题诊断已占用一次性 development claim，同一数据集不能直接重跑，也不允许删除或绕过 claim。
+
+- 机制：`scripts/benchmark/run-isolated.mjs` 新增 `--comparison <protocol.json>` 模式，复用原隔离运行器；在付费调用前逐项校验协议版本、run ID、冻结 cases SHA、holdout=0、humanInputReview=PENDING、qualityScore=null、预算完全一致、旧 claim SHA-256、旧 run manifest、预期源码哈希，并保证每个 comparisonId 只运行一次。
+- 绑定：旧 claim SHA-256 `8476732b…`、base run `development-live-diagnostic-20260910`、cases SHA `7e789893…`、预期源码 `workflow.py` / `grounded_reply_policy.py` / `response_language.py`。
+- 单一变量：仅 `_build_query` 由正文前 180 字符改为完整已校验标题与正文；模型、聊天协议、提示词、知识 corpus、向量 artifact 与超时预算冻结。
+- 离线验证：`node --test scripts/benchmark/comparison-protocol.test.mjs` 8 项契约测试通过；`node scripts/benchmark/isolated-runner.test.mjs` 11 项继续通过；预检 `preflight-development-comparison-20260911` 为 `PREPARED_NO_CALLS`、0 次 provider 操作、`evidenceKind=PREPARATION_UNREVIEWED`，确认 live / `chat_completions` / 1564×1024 artifact。
+- 下一步：作者审阅本轮 diff 后明确授权 `--execute --comparison`；执行后不得覆盖 base run，质量分数仍为 `null`，需真人输入确认与回答事实审核。
+
+## 前一阶段：提交前工作树已固化（2026-09-11）
 
 此前 342 个待提交路径（94 个修改 + 未跟踪目录下的源码、测试、文档与截图）已按主题提交到 `master`，工作树 clean，本地领先 `origin/master` 但**未推送**。固化提交范围为 `68b3aa0`..`b9215a6`，提交边界：
 
