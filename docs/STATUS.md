@@ -59,6 +59,8 @@
 
 限制：这是检索指标，不含生成、fallback、引用与人工审核；gold 是文档级匹配，chunk 级统计会低估；语料是归档文档，不是真实客服知识库；development 13 题作者已见过输出，holdout 仍未使用。`query-vectors.json`（341KB）不入库，可在同一批向量上零调用复现排序与阈值实验。
 
+**排序诊断（零调用）**：新增 `evaluation/gold_rank.py`（9 项测试）用缓存向量与 artifact 矩阵算 gold 的全库排名（见 `docs/verification/retrieval-only-2026-09-17/GOLD-RANK-DIAGNOSIS.md`）。3 道未命中题排第 4、6、6 名，全库 recall@6 = 11/11；即**召回已经够用，瓶颈在排序精度与 top_k 截断**。因此下一步优先级是重排与融合，而不是换 embedding；`top_k` 调大是成本决策，不得记作质量改进。
+
 ### 5. Provider 前置检查与执行阻塞
 
 新增 `scripts/benchmark/provider-probe.mjs`（8 项契约测试）：只做 3 次最小探测（模型列表、极短补全、极短嵌入），不输出密钥，给出 `READY`/`BLOCKED`、端点 sha256 与检查时间。它用于在执行一次性付费运行之前判断端点是否真实可用——`claim` 一经写入不可重跑，不能靠配置完整度代替真实探测。

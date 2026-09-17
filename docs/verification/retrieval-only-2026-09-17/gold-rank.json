@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-09-17T09:38:24.595183Z",
+  "artifactId": "2ecf19dd9cd4a2a63235d41bf08ad36ddcc3b4a35a1fafddeafbbc286f3953d2",
+  "corpusChunkCount": 1564,
+  "measuredCases": 11,
+  "recallAtK": {
+    "1": 6,
+    "2": 8,
+    "3": 8,
+    "4": 9,
+    "6": 11,
+    "10": 11
+  },
+  "cases": [
+    {
+      "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+      "domain": "dmv",
+      "goldChunkCount": 3,
+      "bestGoldScore": 0.791,
+      "bestGoldRank": 1,
+      "topScores": [
+        0.791,
+        0.7783,
+        0.7609
+      ],
+      "topInGold": [
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+      "domain": "dmv",
+      "goldChunkCount": 6,
+      "bestGoldScore": 0.7728,
+      "bestGoldRank": 1,
+      "topScores": [
+        0.7728,
+        0.6744,
+        0.6692
+      ],
+      "topInGold": [
+        true,
+        false,
+        true
+      ]
+    },
+    {
+      "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+      "domain": "dmv",
+      "goldChunkCount": 3,
+      "bestGoldScore": 0.7735,
+      "bestGoldRank": 1,
+      "topScores": [
+        0.7735,
+        0.7487,
+        0.7363
+      ],
+      "topInGold": [
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+      "domain": "ssa",
+      "goldChunkCount": 4,
+      "bestGoldScore": 0.7325,
+      "bestGoldRank": 1,
+      "topScores": [
+        0.7325,
+        0.682,
+        0.6617
+      ],
+      "topInGold": [
+        true,
+        false,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+      "domain": "studentaid",
+      "goldChunkCount": 8,
+      "bestGoldScore": 0.7997,
+      "bestGoldRank": 1,
+      "topScores": [
+        0.7997,
+        0.7937,
+        0.7883
+      ],
+      "topInGold": [
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+      "domain": "va",
+      "goldChunkCount": 2,
+      "bestGoldScore": 0.8977,
+      "bestGoldRank": 1,
+      "topScores": [
+        0.8977,
+        0.7435,
+        0.7285
+      ],
+      "topInGold": [
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+      "domain": "ssa",
+      "goldChunkCount": 1,
+      "bestGoldScore": 0.8159,
+      "bestGoldRank": 2,
+      "topScores": [
+        0.8224,
+        0.8159,
+        0.7105
+      ],
+      "topInGold": [
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+      "domain": "studentaid",
+      "goldChunkCount": 1,
+      "bestGoldScore": 0.6559,
+      "bestGoldRank": 2,
+      "topScores": [
+        0.7856,
+        0.6559,
+        0.6294
+      ],
+      "topInGold": [
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+      "domain": "va",
+      "goldChunkCount": 2,
+      "bestGoldScore": 0.7971,
+      "bestGoldRank": 4,
+      "topScores": [
+        0.8146,
+        0.8125,
+        0.7975
+      ],
+      "topInGold": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+      "domain": "ssa",
+      "goldChunkCount": 1,
+      "bestGoldScore": 0.6836,
+      "bestGoldRank": 6,
+      "topScores": [
+        0.7099,
+        0.7069,
+        0.7011
+      ],
+      "topInGold": [
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+      "domain": "va",
+      "goldChunkCount": 2,
+      "bestGoldScore": 0.7072,
+      "bestGoldRank": 6,
+      "topScores": [
+        0.7509,
+        0.746,
+        0.7368
+      ],
+      "topInGold": [
+        false,
+        false,
+        false
+      ]
+    }
+  ]
+}
