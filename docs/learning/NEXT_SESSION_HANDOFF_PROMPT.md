@@ -16,7 +16,7 @@
 2. 读 `docs/STATUS.md`、`docs/ROADMAP.md`、`docs/learning/READING_LOG.md`。
 3. 先读[query修复交付](../verification/query-context-fix-2026-09-10/README.md)及`change.patch`、`verification.json`；再读上一阶段[诊断交付](../verification/isolated-runner-2026-09-10/README.md)、[实际结果](../verification/quality-runs/development-live-diagnostic-20260910/RESULTS.md)、[检索截断诊断](../verification/quality-runs/development-live-diagnostic-20260910/DIAGNOSIS.md)、`query-diagnosis.json`、run的`manifest.json`及`source-hashes.json`。
 4. 再读[旧业务基准](../verification/business-benchmark-2026-09-10/README.md)、[输入审计](../verification/quality-input-audit-2026-09-10/README.md)、`PROTOCOL.md`、`AMENDMENT-1.md`、`freeze-manifest.json`。旧初版candidate中的DMV州别推断已明确废弃，不能送模型；实际输入白名单保留此前全部上下文，不含gold/目标agent回复/AI标签。
-5. 查看Git状态、分支和最近提交。2026-09-11 已把提交前工作树固化为 6 个提交：master、HEAD `c923d0e`、工作树 clean、本地领先 `origin/master` 未推送，详细边界见 `docs/STATUS.md` 顶部。仍然禁止回退或覆盖已提交历史；历史报告中的 source hash 仍绑定提交前工作树，不能因为 HEAD 变化就宣称旧证据在当前源码上复现。
+5. 查看Git状态、分支和最近提交。2026-09-11 已把提交前工作树固化为 7 个提交（提交范围 `68b3aa0`..`b9215a6`）：master、工作树 clean、本地领先 `origin/master` 未推送，详细边界见 `docs/STATUS.md` 顶部。仍然禁止回退或覆盖已提交历史；历史报告中的 source hash 仍绑定提交前工作树，不能因为 HEAD 变化就宣称旧证据在当前源码上复现。
 6. **第一条验证命令**：根目录运行 `node docs/verification/query-context-fix-2026-09-10/verify.mjs`。该验证保护本轮前工作树、旧结果和本轮授权源码/文档边界。上一阶段isolated-runner及quality验证器绑定修复前工作树，现在会因本轮授权源码/文档改变失败；保留原件，不改旧门禁。旧`verify-quality-inputs.mjs`的上一阶段整工作树门禁已因已授权产品变更过期，保留原件，不修改门禁制造通过。
 
 ## 已完成与已确认缺陷
@@ -49,6 +49,6 @@ SDK20s/Python90s/Java105s/客户端130s、35分钟批次、单并发、每类26/
 
 ## 交付与简历边界
 
-每轮交付文件/准确位置、原问题/改动层、正常及失败路径、真实命令/退出码、HEAD/dirty/运行hash、保留的失败、人工状态和剩余限制。6 个固化提交之后的未提交改动应从 `c923d0e` 起重新计数，不把已提交内容再描述为工作区改动。
+每轮交付文件/准确位置、原问题/改动层、正常及失败路径、真实命令/退出码、HEAD/dirty/运行hash、保留的失败、人工状态和剩余限制。`b9215a6` 之后的未提交改动应从该提交起重新计数，不把已提交内容再描述为工作区改动。
 
 简历可以陈述公开数据真实跨服务测量、独立实验隔离与调用计数、完整持久化重启验证，以及从13条同query定位检索截断、用先失败后通过的回归修复上下文丢失。不能写修正收益、回答准确率、真实客户解决率、节省工时、生产容量或企业运营经历。恢复后不要以AI审查冒充真人gold或作者已理解。
