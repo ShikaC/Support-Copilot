@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Final, Literal
+from typing import ClassVar, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 from pydantic_core import PydanticCustomError
 
@@ -16,7 +16,7 @@ TRACE_ID_PATTERN: Final = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$"
 class ApiModel(BaseModel):
     # Java 发送的是 camelCase JSON；Python 内部仍使用 snake_case 字段名。
     # extra="forbid" 会拒绝契约中不存在的字段，避免错误数据悄悄流入工作流。
-    model_config = ConfigDict(
+    model_config: ClassVar[ConfigDict] = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
         extra="forbid",
@@ -45,7 +45,7 @@ class SupportScope(StrEnum):
 
 
 class KnowledgeAccess(ApiModel):
-    model_config = ConfigDict(frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
     release_id: str = Field(min_length=1, pattern=r".*\S.*")
     release_version: int = Field(gt=0)
@@ -72,7 +72,7 @@ class TicketInput(ApiModel):
     id: str
     subject: str = Field(min_length=1, max_length=240)
     description: str = Field(min_length=1, max_length=4000)
-    language: str = "zh-CN"
+    language: str = Field(default="zh-CN", max_length=35, pattern=r"^(?:zh|en)(?:-[A-Za-z0-9]{2,8})*$")
     customer_tier: str = "STANDARD"
     current_category: str = "UNCLASSIFIED"
     current_priority: Priority = Priority.MEDIUM
@@ -178,7 +178,7 @@ class AnalyzeResponse(ApiModel):
 class ModelDraft(BaseModel):
     """Schema returned by the OpenAI structured-output request."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     intent: str
     category: str
@@ -190,3 +190,31 @@ class ModelDraft(BaseModel):
     warnings: list[str]
     # 模型只能引用输入证据中的 1-based 序号，系统会在回复落地前校验这些序号。
     citation_indexes: list[int] = Field(default_factory=list)
+    evidence_sufficient: bool = Field(description=(
+        "Whether knowledge supports a safe response, including a policy restriction or a request to verify prerequisites. "
+        "Missing customer approval is not missing knowledge. False only when knowledge cannot support any relevant response; then citation_indexes must be empty."
+    ))
+
+
+MODEL_CATEGORY_CODES: Final[tuple[str, ...]] = (
+    "GENERAL", "BILLING", "ACCOUNT_ACCESS", "INVOICE", "DATA_EXPORT",
+    "SUBSCRIPTION", "PRIVACY", "SECURITY", "LEGAL", "TECHNICAL", "DATA_RECOVERY",
+)
+
+
+class StructuredModelDraft(ModelDraft):
+    """External category vocabulary must match the business risk policy."""
+
+    category: str = Field(json_schema_extra={"enum": list(MODEL_CATEGORY_CODES)}, description=(
+        "Use ACCOUNT_ACCESS for login/SSO/lockout; BILLING for payment disputes/refunds; "
+        "INVOICE for invoice correction; SUBSCRIPTION for plan/seats; "
+        "PRIVACY for personal data access/deletion; DATA_EXPORT for export jobs; "
+        "TECHNICAL for client errors; DATA_RECOVERY for deleted data recovery."
+    ))
+
+    @field_validator("category")
+    @classmethod
+    def known_category(cls, value: str) -> str:
+        if value not in MODEL_CATEGORY_CODES:
+            raise PydanticCustomError("unknown_business_category", "Unknown business category")
+        return value

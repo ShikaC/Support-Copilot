@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+const root='docs/verification/query-context-fix-2026-09-10';
+const read=file=>JSON.parse(fs.readFileSync(file,'utf8'));
+const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const before=read(`${root}/workspace-before.json`);
+const receipt=read(`${root}/verification.json`);
+assert.equal(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),receipt.head);
+const changed=Object.entries(before.hashes).filter(([file,digest])=>!fs.existsSync(file)||hash(file)!==digest).map(([file])=>file);
+assert.deepEqual(changed.sort(),receipt.authorizedChanged.slice().sort());
+for(const [file,digest] of Object.entries(receipt.hashes))assert.equal(hash(file),digest,file);
+const comparison=read(`${root}/offline-query-comparison.json`);
+assert.equal(comparison.inputSha,hash('docs/verification/quality-runs/development-live-diagnostic-20260910/planned-inputs.json'));
+assert.equal(comparison.externalModelCalls,0);assert.equal(comparison.externalEmbeddingCalls,0);
+assert.equal(comparison.answerAccuracy,null);assert.equal(comparison.rows.length,13);
+assert.equal(new Set(comparison.rows.map(row=>row.beforeQuery)).size,1);
+assert.equal(new Set(comparison.rows.map(row=>row.afterQuery)).size,13);
+assert(comparison.rows.every(row=>row.fullContextPreserved&&row.endsWithLatestInput));
+const inputs=read('docs/verification/quality-runs/development-live-diagnostic-20260910/planned-inputs.json');
+for(const item of inputs){const row=comparison.rows.find(row=>row.caseId===item.id);assert(row);assert.equal(row.afterQuery,`${item.input.subject} ${item.input.description}`.trim());}
+console.log(JSON.stringify({status:'PASS',head:receipt.head,dirty:!!execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim(),preExistingFiles:Object.keys(before.hashes).length,changed,verifiedFiles:Object.keys(receipt.hashes).length,offlineQueryBefore:1,offlineQueryAfter:13,externalModelCalls:0,externalEmbeddingCalls:0,semanticQuality:'UNMEASURED'},null,2));

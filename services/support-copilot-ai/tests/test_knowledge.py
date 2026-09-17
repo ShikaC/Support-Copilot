@@ -128,8 +128,9 @@ async def test_live_vector_index_uses_independent_embedding_base_url(
             model: str | None,
             max_retries: int,
             request_timeout: float,
+            check_embedding_ctx_length: bool,
         ) -> None:
-            del model, request_timeout
+            del model, request_timeout, check_embedding_ctx_length
             captured["base_url"] = base_url
             captured["api_key"] = api_key
             captured["max_retries"] = max_retries

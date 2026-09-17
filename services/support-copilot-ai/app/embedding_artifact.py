@@ -1,11 +1,11 @@
-from dataclasses import dataclass
-from hashlib import sha256
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import tempfile
+from dataclasses import dataclass
+from hashlib import sha256
+from pathlib import Path
 
 import anyio
 import numpy as np
@@ -13,12 +13,6 @@ from pydantic import ValidationError
 
 from app.config import Settings
 from app.data_redaction import redact_sensitive_text
-from app.embedding_artifact_models import (
-    ActiveArtifactPointer,
-    ArtifactChunkMetadata,
-    ArtifactDocumentRecord,
-    EmbeddingArtifactManifest,
-)
 from app.embedding_artifact_identity import (
     canonical_bytes,
     chunk_checksum,
@@ -26,8 +20,14 @@ from app.embedding_artifact_identity import (
     fsync_directory,
     provider_identity,
 )
-from app.embedding_provider import EmbeddingProvider
-from app.knowledge_source import KnowledgeChunk, KnowledgeCorpus
+from app.embedding_artifact_models import (
+    ActiveArtifactPointer,
+    ArtifactChunkMetadata,
+    ArtifactDocumentRecord,
+    EmbeddingArtifactManifest,
+)
+from app.embedding_provider import EMBEDDING_INPUT_FORMAT, EmbeddingProvider
+from app.knowledge_source import KnowledgeCorpus
 
 
 class EmbeddingArtifactError(RuntimeError):
@@ -104,6 +104,7 @@ class EmbeddingArtifactStore:
                     corpus_checksum=self._corpus.corpus_checksum,
                     provider_identity=self._provider_identity,
                     embedding_model=self._model,
+                    input_format=EMBEDDING_INPUT_FORMAT,
                     vector_dimension=matrix.shape[1],
                     chunking_version=self._chunking_version,
                     row_count=matrix.shape[0],
@@ -188,6 +189,8 @@ class EmbeddingArtifactStore:
         return LoadedEmbeddingArtifact(manifest=manifest, matrix=matrix, metadata=metadata)
 
     def _require_compatible(self, manifest: EmbeddingArtifactManifest, metadata: tuple[ArtifactChunkMetadata, ...], matrix: np.ndarray) -> None:
+        if manifest.input_format != EMBEDDING_INPUT_FORMAT:
+            raise EmbeddingArtifactError("artifact-input-format-incompatible")
         expected = (self._corpus.release_id, self._corpus.release_version, self._corpus.corpus_checksum, self._provider_identity, self._model, self._chunking_version)
         actual = (manifest.release_id, manifest.release_version, manifest.corpus_checksum, manifest.provider_identity, manifest.embedding_model, manifest.chunking_version)
         if actual != expected:
@@ -220,6 +223,7 @@ class EmbeddingArtifactStore:
             "corpus_checksum": self._corpus.corpus_checksum,
             "provider_identity": self._provider_identity,
             "embedding_model": self._model,
+            "input_format": EMBEDDING_INPUT_FORMAT,
             "vector_dimension": dimension,
             "chunking_version": self._chunking_version,
             "metadata_sha256": sha256(self._metadata_bytes(metadata)).hexdigest(),

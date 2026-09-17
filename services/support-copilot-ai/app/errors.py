@@ -1,7 +1,6 @@
 from enum import StrEnum
 from typing import Literal
 
-
 ExternalAiOperation = Literal["embedding", "structured_generation"]
 ExternalAiFailureKind = Literal[
     "api_error",
@@ -49,10 +48,10 @@ class RecoverableAiError(Exception):
         fallback_reason: FallbackReason,
         model_response_failure_kind: ModelResponseFailureKind | None = None,
     ) -> None:
-        self.operation = operation
-        self.failure_kind = failure_kind
-        self.fallback_reason = fallback_reason
-        self.model_response_failure_kind = model_response_failure_kind
+        self.operation: ExternalAiOperation = operation
+        self.failure_kind: ExternalAiFailureKind = failure_kind
+        self.fallback_reason: FallbackReason = fallback_reason
+        self.model_response_failure_kind: ModelResponseFailureKind | None = model_response_failure_kind
         super().__init__(f"External AI {operation} failed ({failure_kind})")
 
 

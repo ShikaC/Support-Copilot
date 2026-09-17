@@ -78,6 +78,7 @@ def one_retrieval_hit() -> list[RetrievalHit]:
 
 def successful_draft() -> ModelDraft:
     return ModelDraft(
+        evidence_sufficient=True,
         intent="Restore enterprise account access",
         category="ACCOUNT_ACCESS",
         priority="HIGH",

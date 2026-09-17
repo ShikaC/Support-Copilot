@@ -3,8 +3,8 @@ from collections.abc import Callable
 from typing import Literal, TypeAlias
 
 import httpx
-from openai import AsyncOpenAI
 import pytest
+from openai import AsyncOpenAI
 
 from app.config import Settings
 from app.errors import InvalidModelResponseError, ModelResponseFailureKind
@@ -16,7 +16,6 @@ from app.models import (
     TicketInput,
 )
 from app.openai_provider import OpenAIProvider
-
 
 JsonValue: TypeAlias = (
     str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
@@ -32,6 +31,7 @@ DRAFT_PAYLOAD: dict[str, JsonValue] = {
     "reply_content": "Please follow the identity recovery steps.",
     "warnings": [],
     "citation_indexes": [1],
+    "evidence_sufficient": True,
 }
 
 

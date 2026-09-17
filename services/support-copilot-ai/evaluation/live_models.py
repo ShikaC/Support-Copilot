@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
-from app.models import PromptVersion
+from app.models import Classification, Decision, PromptVersion, RetrievalHit
+from evaluation.live_reply_checks import compile_reply_pattern
 
 Sha256 = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 GitCommit = Annotated[str, Field(pattern=r"^[a-f0-9]{40,64}$")]
@@ -12,7 +13,7 @@ FactualSupport = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "NOT_REVIEWED"]
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", frozen=True)
 
 
 class HumanReview(StrictModel):
@@ -26,6 +27,7 @@ class LiveTicket(StrictModel):
     subject: str = Field(min_length=1, max_length=240)
     description: str = Field(min_length=1, max_length=4000)
     customer_tier: str = "STANDARD"
+    language: str = Field(default="zh-CN", min_length=1, max_length=35)
 
 
 class RetrievalExpectation(StrictModel):
@@ -40,7 +42,18 @@ class LiveEvaluationCase(StrictModel):
     ticket: LiveTicket
     expected_retrieval: RetrievalExpectation
     allowed_chunk_ids: tuple[str, ...]
+    expected_categories: tuple[str, ...] = ()
+    expected_escalation: bool | None = None
     human_review: HumanReview = HumanReview()
+    expected_language: Literal["zh", "en"] | None = None
+    forbidden_reply_patterns: tuple[str, ...] = Field(default=(), max_length=16)
+
+    @field_validator("forbidden_reply_patterns")
+    @classmethod
+    def validate_reply_patterns(cls, patterns: tuple[str, ...]) -> tuple[str, ...]:
+        for pattern in patterns:
+            _ = compile_reply_pattern(pattern)
+        return patterns
 
 
 class LiveDataset(StrictModel):
@@ -71,6 +84,7 @@ class RunProvenance(StrictModel):
     top_n: int = Field(gt=0)
     top_k: int = Field(gt=0)
     config_fingerprint: Sha256
+    runtime_source_sha256: Sha256 | None = None
 
 
 class EmbeddingArtifactProvenance(StrictModel):
@@ -137,6 +151,17 @@ class LiveCaseResult(StrictModel):
     usage: TokenUsage
     cost: CostRecord | None
     human_review: HumanReview
+    trace_id: str | None = None
+    actual_classification: Classification | None = None
+    actual_decision: Decision | None = None
+    classification_correct: bool | None = None
+    escalation_correct: bool | None = None
+    retrieval_methods: tuple[str, ...] = ()
+    citation_labels: tuple[str, ...] = ()
+    live_retrieval: tuple[RetrievalHit, ...] | None = None
+    language_correct: bool | None = None
+    policy_violations: tuple[str, ...] = ()
+    reply_warnings: tuple[str, ...] = ()
 
 
 class LiveSummary(StrictModel):
@@ -152,6 +177,7 @@ class LiveSummary(StrictModel):
     fallback_count: int = Field(ge=0)
     average_latency_ms: float = Field(ge=0)
     p95_latency_ms: int = Field(ge=0)
+    p95_method: Literal["legacy-rounded-index", "nearest-rank"] = "legacy-rounded-index"
     human_reviewed_count: int = Field(ge=0)
     publishable: bool
     gate_reasons: tuple[str, ...]
@@ -171,6 +197,7 @@ class LiveConfiguration(StrictModel):
     top_n: int = Field(gt=0)
     top_k: int = Field(gt=0)
     config_fingerprint: Sha256
+    runtime_source_sha256: Sha256 | None = None
     chat_provider_identity: str
     chat_model: str
     chat_protocol: Literal["responses", "chat_completions"]
@@ -193,6 +220,7 @@ class VerificationContext(StrictModel):
     worktree_dirty: bool
     known_chunk_ids: frozenset[str]
     configuration: LiveConfiguration
+    expected_cases: tuple[LiveEvaluationCase, ...] = ()
 
 
 class ReviewEntry(StrictModel):

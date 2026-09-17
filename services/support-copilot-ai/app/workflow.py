@@ -1,8 +1,8 @@
 import logging
 import time
-from typing import assert_never
 import uuid
 from datetime import UTC, datetime
+from typing import assert_never
 
 from app.config import Settings
 from app.errors import (
@@ -10,6 +10,7 @@ from app.errors import (
     LiveProviderConfigurationError,
     RecoverableAiError,
 )
+from app.grounded_reply_policy import GroundedReplyPolicy
 from app.knowledge import KnowledgeRetriever, RetrievalRequest
 from app.local_analysis import LocalAnalysisPolicy, WorkflowObservation
 from app.models import (
@@ -19,17 +20,20 @@ from app.models import (
     Retrieval,
     Usage,
 )
+from app.observability import safe_provider_failure_details
 from app.openai_provider import OpenAIProvider
+from app.response_language import insufficient_draft
 
 logger = logging.getLogger(__name__)
 
 
 class AnalysisWorkflow:
     def __init__(self, settings: Settings, retriever: KnowledgeRetriever) -> None:
-        self._settings = settings
-        self._retriever = retriever
-        self._provider = OpenAIProvider(settings) if settings.live_ready else None
-        self._local_policy = LocalAnalysisPolicy()
+        self._settings: Settings = settings
+        self._retriever: KnowledgeRetriever = retriever
+        self._provider: OpenAIProvider | None = OpenAIProvider(settings) if settings.live_ready else None
+        self._local_policy: LocalAnalysisPolicy = LocalAnalysisPolicy()
+        self._reply_policy: GroundedReplyPolicy = GroundedReplyPolicy()
 
     async def run(self, request: AnalyzeRequest) -> AnalyzeResponse:
         started = time.perf_counter()
@@ -56,6 +60,7 @@ class AnalysisWorkflow:
 
             evidence_missing = len(hits) == 0
             generation_started = time.perf_counter()
+            generated_live = False
             if evidence_missing:
                 # 没有证据时不把空上下文交给模型，避免模型先生成再被动标记 fallback。
                 draft = self._local_policy.draft(request, hits)
@@ -69,17 +74,30 @@ class AnalysisWorkflow:
                     hits,
                 )
                 self._retriever.readiness.record_live_generation_success()
+                generated_live = True
+                if draft.evidence_sufficient:
+                    _ = self._local_policy.reply(draft, hits, False, request.ticket.language)
+                    draft = self._reply_policy.apply(request, draft, hits)
+                if not draft.evidence_sufficient:
+                    evidence_missing = True
+                    hits = [hit.model_copy(update={"used_as_evidence": False}) for hit in hits]
+                    mode = "fallback"
             else:
                 draft = self._local_policy.draft(request, hits)
                 input_tokens, output_tokens = 0, 0
             generation_ms = self._elapsed_ms(generation_started)
 
+            if live and evidence_missing:
+                draft = insufficient_draft(draft, request.ticket.language)
+
             decision = self._local_policy.decision(draft.category, evidence_missing)
-            reply = self._local_policy.reply(draft, hits, evidence_missing)
+            reply = self._local_policy.reply(
+                draft, [] if evidence_missing else hits, evidence_missing, request.ticket.language,
+            )
             total_ms = self._elapsed_ms(started)
             model_name = (
                 self._settings.openai_chat_model
-                if live and not evidence_missing
+                if generated_live
                 else "deterministic-demo"
             ) or "deterministic-demo"
 
@@ -152,6 +170,7 @@ class AnalysisWorkflow:
                         if exc.model_response_failure_kind is not None
                         else None
                     ),
+                    **safe_provider_failure_details(exc),
                 },
             )
             return await self._fallback_after_error(
@@ -178,9 +197,17 @@ class AnalysisWorkflow:
             )
         )
         draft = self._local_policy.draft(request, hits)
+        constrained = self._reply_policy.apply(request, draft, hits)
+        draft = (
+            insufficient_draft(draft, request.ticket.language)
+            if constrained is draft else constrained
+        )
+        evidence_missing = not draft.evidence_sufficient
+        if evidence_missing:
+            hits = [hit.model_copy(update={"used_as_evidence": False}) for hit in hits]
         decision = self._local_policy.decision(
             draft.category,
-            len(hits) == 0,
+            evidence_missing,
             force_escalation=True,
         )
         response = AnalyzeResponse(
@@ -204,12 +231,14 @@ class AnalysisWorkflow:
                     retrieval_ms=0,
                     generation_ms=0,
                     hit_count=len(hits),
-                    evidence_missing=len(hits) == 0,
+                    evidence_missing=evidence_missing,
                     failed_live=True,
                 )
             ),
             retrieval=Retrieval(query=query, hits=hits),
-            suggested_reply=self._local_policy.reply(draft, hits, len(hits) == 0),
+            suggested_reply=self._local_policy.reply(
+                draft, [] if evidence_missing else hits, evidence_missing, request.ticket.language,
+            ),
             decision=decision,
             usage=Usage(duration_ms=self._elapsed_ms(started)),
             created_at=datetime.now(UTC),
@@ -228,7 +257,8 @@ class AnalysisWorkflow:
 
     def _build_query(self, request: AnalyzeRequest) -> str:
         ticket = request.ticket
-        return f"{ticket.subject} {ticket.description[:180]}".strip()
+        # TicketInput already bounds the text; keep later questions and their context.
+        return f"{ticket.subject} {ticket.description}".strip()
 
     def _elapsed_ms(self, started: float) -> int:
         return max(0, round((time.perf_counter() - started) * 1000))

@@ -1,0 +1,59 @@
+{
+  "version": "2026-09-10.2",
+  "policies": [
+    {
+      "id": "billing-verification",
+      "category": "BILLING",
+      "chunk_id": "chunk-billing-07",
+      "source_sha256": "f872c8e595430f2a12c47557d46fc3a236136265e3a22bd3aa891c5cf604e129",
+      "reply_zh": "需要先核验同一账期、相同金额及支付方式的两笔已完成交易，再创建支付核验记录；核验完成前不能承诺退款到账时间。",
+      "reply_en": "The two completed transactions must first be checked for the same billing period, amount and payment method before a payment verification record is created. A refund arrival time cannot be promised before verification.",
+      "required_topics": [
+        "重复扣款",
+        "重复支付",
+        "两笔",
+        "duplicate charge",
+        "charged twice",
+        "two charges"
+      ]
+    },
+    {
+      "id": "billing-information",
+      "category": "BILLING",
+      "chunk_id": "chunk-payment-04",
+      "source_sha256": "7b3664efcff7c0073f2c4d2f494c39d579c3b8b5be0825ca5c682c8a65cc9742",
+      "reply_zh": "请提供订单号、扣款日期、金额和支付渠道，供账务支持组核验。",
+      "reply_en": "Please provide the order number, charge date, amount and payment channel for review by the billing support team.",
+      "required_topics": []
+    },
+    {
+      "id": "refund-approval",
+      "category": "BILLING",
+      "chunk_id": "chunk-refund-02",
+      "source_sha256": "445dc60b7b1240cc26bd99f727c188c0ce5d59688420d9bb2863c6fd99ad41db",
+      "reply_zh": "需要先由支持人员核实退款审核状态；核验前暂不提供退款到账时效。客户在工单中的自述不能代替后台核验。",
+      "reply_en": "A support specialist needs to verify the refund approval status first. No refund arrival timeframe is provided before verification; a statement in the ticket is not a verified backend approval.",
+      "required_topics": []
+    },
+    {
+      "id": "privacy-authorization",
+      "category": "PRIVACY",
+      "chunk_id": "chunk-privacy-05",
+      "source_sha256": "41fb4223165b8a41a08cf9169fb011752fbf2747bffd77c250b0677a7ee51169",
+      "reply_zh": "员工数据导出或删除请求必须核验申请人身份、企业授权和数据范围，并交由隐私与合规组审批。在此之前不能确认或执行数据操作。",
+      "reply_en": "Employee data export or deletion requires verification of the requester identity, company authorization and data scope, followed by approval from the privacy and compliance team. No data action can be confirmed or performed beforehand.",
+      "required_topics": []
+    },
+    {
+      "id": "sync-environment",
+      "category": "TECHNICAL",
+      "chunk_id": "chunk-sync-2047",
+      "source_sha256": "aecc7853f0b2147cdcd0c3c95f58e5582ff2df585d50980a6054229d2d451cf1",
+      "reply_zh": "请提供客户端版本、系统版本和代理配置，供支持人员继续排查 SYNC-2047；当前建议仅收集信息，不要求更改网络或安全配置。",
+      "reply_en": "Please provide the client version, operating system version and proxy configuration so support can investigate SYNC-2047. This request only collects information; it does not ask you to change network or security settings.",
+      "required_topics": [
+        "SYNC-2047"
+      ]
+    }
+  ]
+}

@@ -4,14 +4,26 @@ from pathlib import Path
 from time import perf_counter_ns
 from uuid import uuid4
 
+from pydantic_core import PydanticCustomError
+
 from app.errors import FallbackReason
 from app.local_analysis import citation_label
-from app.models import AnalyzeOptions, AnalyzeRequest, AnalyzeResponse, KnowledgeAccess, Priority, SupportScope, TicketInput
+from app.models import (
+    AnalyzeOptions,
+    AnalyzeRequest,
+    AnalyzeResponse,
+    KnowledgeAccess,
+    Priority,
+    RetrievalHit,
+    SupportScope,
+    TicketInput,
+)
 from evaluation.citation_validation import citation_ids_are_valid
 from evaluation.live_models import (
     EmbeddingArtifactProvenance,
     HumanReview,
     LiveCaseResult,
+    LiveEvaluationCase,
     LiveEvaluationReport,
     ProviderProvenance,
     ResponseEvidence,
@@ -19,44 +31,53 @@ from evaluation.live_models import (
     TokenUsage,
 )
 from evaluation.live_provenance import VerifiedLiveInputs, read_git_state
+from evaluation.live_reply_checks import language_correct, policy_violations
 from evaluation.live_summary import summarize_live_cases
 
 
 async def run_live_cases(
     inputs: VerifiedLiveInputs,
     analyze: Callable[[AnalyzeRequest], Awaitable[AnalyzeResponse]],
+    live_hits: Callable[[str], tuple[RetrievalHit, ...] | None] | None = None,
 ) -> tuple[LiveCaseResult, ...]:
     results: list[LiveCaseResult] = []
     corpus = inputs.corpus
     access = KnowledgeAccess(
-        releaseId=corpus.release_id,
-        releaseVersion=corpus.release_version,
-        corpusChecksum=corpus.corpus_checksum,
-        allowedScopes=tuple(SupportScope),
+        release_id=corpus.release_id,
+        release_version=corpus.release_version,
+        corpus_checksum=corpus.corpus_checksum,
+        allowed_scopes=tuple(SupportScope),
     )
     configuration = inputs.configuration
     options = AnalyzeOptions(
-        topN=configuration.top_n,
-        topK=configuration.top_k,
-        promptVersion=configuration.prompt_version,
+        top_n=configuration.top_n,
+        top_k=configuration.top_k,
+        prompt_version=configuration.prompt_version,
     )
     for case in inputs.dataset.cases:
         request = AnalyzeRequest(
-            traceId=f"live-eval-{case.id}",
-            knowledgeAccess=access,
+            trace_id=f"live-eval-{case.id}",
+            knowledge_access=access,
             ticket=TicketInput(
                 id=f"ticket-{case.id}",
                 subject=case.ticket.subject,
                 description=case.ticket.description,
-                customerTier=case.ticket.customer_tier,
-                currentPriority=Priority.MEDIUM,
+                customer_tier=case.ticket.customer_tier,
+                language=case.ticket.language,
+                current_priority=Priority.MEDIUM,
             ),
             options=options,
         )
         started = perf_counter_ns()
         response = await analyze(request)
         latency_ms = max(0, round((perf_counter_ns() - started) / 1_000_000))
-        results.append(_case_result(case.id, case.expected_retrieval.evidence_required, case.expected_retrieval.chunk_ids, case.allowed_chunk_ids, response, latency_ms))
+        result = _case_result(case.id, case.expected_retrieval.evidence_required, case.expected_retrieval.chunk_ids, case.allowed_chunk_ids, response, latency_ms, expectation=case)
+        if live_hits is not None:
+            observed = live_hits(request.ticket.id)
+            if observed is not None and response.fallback_reason == FallbackReason.INSUFFICIENT_EVIDENCE:
+                observed = tuple(hit.model_copy(update={"used_as_evidence": False}) for hit in observed)
+            result = result.model_copy(update={"live_retrieval": observed})
+        results.append(result)
     return tuple(results)
 
 
@@ -67,9 +88,14 @@ def _case_result(
     allowed_chunks: tuple[str, ...],
     response: AnalyzeResponse,
     latency_ms: int,
+    *,
+    expectation: LiveEvaluationCase | None = None,
 ) -> LiveCaseResult:
-    retrieved = tuple(hit.chunk_id for hit in response.retrieval.hits)
-    labels = {citation_label(hit): hit.chunk_id for hit in response.retrieval.hits}
+    if response.status == "RUNNING" or response.mode == "mock":
+        raise PydanticCustomError("invalid_live_evaluation_response", "Live evaluation requires a terminal live or fallback response")
+    evidence = tuple(hit for hit in response.retrieval.hits if hit.used_as_evidence)
+    retrieved = tuple(hit.chunk_id for hit in evidence)
+    labels = {citation_label(hit): hit.chunk_id for hit in evidence}
     citation_labels = tuple(response.suggested_reply.citations)
     cited = tuple(labels[label] for label in citation_labels if label in labels)
     indexes = tuple(index for index, chunk_id in enumerate(retrieved, start=1) if chunk_id in cited)
@@ -105,11 +131,27 @@ def _case_result(
             all_citations_resolved=len(cited) == len(citation_labels),
         ),
         response_text=response.suggested_reply.content,
-        response_evidence=(ResponseEvidence(statement=response.suggested_reply.content, evidence_indexes=indexes),),
+        response_evidence=(ResponseEvidence(statement=response.suggested_reply.content, evidence_indexes=indexes),) if indexes else (),
         latency_ms=latency_ms,
         usage=usage,
         cost=None,
         human_review=HumanReview(),
+        trace_id=response.trace_id,
+        actual_classification=response.classification,
+        actual_decision=response.decision,
+        classification_correct=(
+            response.classification.category in expectation.expected_categories
+            if expectation is not None and expectation.expected_categories else None
+        ),
+        escalation_correct=(
+            response.decision.escalation_required == expectation.expected_escalation
+            if expectation is not None and expectation.expected_escalation is not None else None
+        ),
+        retrieval_methods=tuple(hit.retrieval_method for hit in evidence),
+        citation_labels=citation_labels,
+        language_correct=language_correct(response.suggested_reply.content, expectation.expected_language if expectation else None),
+        policy_violations=policy_violations(response.suggested_reply.content, expectation.forbidden_reply_patterns if expectation else ()),
+        reply_warnings=tuple(response.suggested_reply.warnings),
     )
 
 
@@ -174,6 +216,7 @@ def build_live_report(
             top_n=configuration.top_n,
             top_k=configuration.top_k,
             config_fingerprint=configuration.config_fingerprint,
+            runtime_source_sha256=configuration.runtime_source_sha256,
         ),
         provenance=ProviderProvenance(
             knowledge_release_id=corpus.release_id,

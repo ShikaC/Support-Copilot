@@ -153,6 +153,7 @@ async def test_live_workflow_never_sends_forbidden_chunks_to_providers(
         model_inputs.append(kwargs["input"])
         return SimpleNamespace(
             output_parsed=ModelDraft(
+                evidence_sufficient=True,
                 intent="billing_investigation",
                 category="BILLING",
                 priority=Priority.HIGH,

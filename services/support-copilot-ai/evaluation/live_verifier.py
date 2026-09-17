@@ -3,8 +3,15 @@ import re
 from math import isfinite
 from typing import Final
 
-from evaluation.live_models import LiveEvaluationReport, VerificationContext
-from evaluation.live_summary import summarize_live_cases
+from evaluation.citation_validation import citation_ids_are_valid
+from evaluation.live_models import (
+    LiveCaseResult,
+    LiveEvaluationCase,
+    LiveEvaluationReport,
+    VerificationContext,
+)
+from evaluation.live_reply_checks import language_correct, policy_violations
+from evaluation.live_summary import review_is_complete, summarize_live_cases
 
 SENSITIVE_PATTERNS: Final = (
     re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}"),
@@ -50,6 +57,8 @@ def verify_live_report(
         reasons.append("top-n-mismatch")
     if run.top_k != expected.top_k:
         reasons.append("top-k-mismatch")
+    if run.runtime_source_sha256 != expected.runtime_source_sha256:
+        reasons.append("runtime-source-mismatch")
     if run.config_fingerprint != expected.config_fingerprint:
         reasons.append("config-fingerprint-mismatch")
     if provenance.chat_provider_identity != expected.chat_provider_identity:
@@ -67,9 +76,18 @@ def verify_live_report(
             reasons.append("embedding-dimension-mismatch")
         if artifact.chunking_version != expected.embedding_chunking_version:
             reasons.append("embedding-chunking-version-mismatch")
-    if report.summary != summarize_live_cases(report.cases):
+    if report.summary != summarize_live_cases(report.cases, p95_method=report.summary.p95_method):
         reasons.append("summary-mismatch")
+    expected_cases = {case.id: case for case in context.expected_cases}
+    if expected_cases and (
+        len(report.cases) != len(expected_cases)
+        or {case.case_id for case in report.cases} != set(expected_cases)
+    ):
+        reasons.append("dataset-case-ids-mismatch")
     for case in report.cases:
+        expected_case = expected_cases.get(case.case_id)
+        if expected_case is not None:
+            reasons.extend(_verify_case_expectations(case, expected_case))
         retrieved = set(case.retrieved_chunk_ids)
         allowed = set(case.allowed_chunk_ids)
         cited = set(case.cited_chunk_ids)
@@ -84,10 +102,11 @@ def verify_live_report(
         usage = case.usage
         values = (usage.input_tokens, usage.output_tokens, usage.total_tokens)
         if usage.availability == "available":
-            complete = all(value is not None and value >= 0 for value in values)
-            if not complete:
-                reasons.append("usage-total-invalid")
-            elif usage.total_tokens != usage.input_tokens + usage.output_tokens:
+            if (
+                usage.input_tokens is None or usage.output_tokens is None or usage.total_tokens is None
+                or any(value is not None and value < 0 for value in values)
+                or usage.total_tokens != usage.input_tokens + usage.output_tokens
+            ):
                 reasons.append("usage-total-invalid")
         elif any(value is not None for value in values):
             reasons.append("usage-total-invalid")
@@ -97,12 +116,54 @@ def verify_live_report(
     serialized = json.dumps(report.model_dump(mode="json"), ensure_ascii=False)
     if any(pattern.search(serialized) for pattern in SENSITIVE_PATTERNS):
         reasons.append("sensitive-content-detected")
+    if require_human and any(not review_is_complete(case) for case in report.cases):
+        reasons.append("human-review-incomplete")
     if require_human and any(
-        case.human_review.factual_support == "NOT_REVIEWED"
-        or not case.human_review.reviewer
-        or not case.human_review.decision_note
-        or case.human_review.reviewed_at is None
+        case.human_review.factual_support in ("PARTIAL", "UNSUPPORTED")
         for case in report.cases
     ):
-        reasons.append("human-review-incomplete")
+        reasons.append("human-review-not-supported")
     return tuple(dict.fromkeys(reasons))
+
+
+def _verify_case_expectations(case: LiveCaseResult, expected: LiveEvaluationCase) -> tuple[str, ...]:
+    reasons: list[str] = []
+    chunks = expected.expected_retrieval.chunk_ids
+    evidence_required = expected.expected_retrieval.evidence_required
+    expected_rank = next((rank for rank, chunk in enumerate(case.retrieved_chunk_ids, 1) if chunk in chunks), None)
+    retrieval_success = (
+        bool(set(chunks) & set(case.retrieved_chunk_ids)) if evidence_required
+        else not case.retrieved_chunk_ids and case.fallback_reason == "insufficient_evidence"
+    )
+    citations_valid = (
+        citation_ids_are_valid(chunks, case.cited_chunk_ids, case.retrieved_chunk_ids, expected.allowed_chunk_ids)
+        if evidence_required
+        else not case.cited_chunk_ids and case.fallback_reason == "insufficient_evidence"
+    )
+    if case.citation_labels:
+        citations_valid = citations_valid and len(case.cited_chunk_ids) == len(case.citation_labels)
+    if case.allowed_chunk_ids != expected.allowed_chunk_ids:
+        reasons.append("allowed-chunks-mismatch")
+    if case.retrieval_success != retrieval_success:
+        reasons.append("retrieval-success-mismatch")
+    if case.first_relevant_rank != expected_rank:
+        reasons.append("retrieval-rank-mismatch")
+    if (case.citation_valid and not citations_valid) or (case.citation_labels and case.citation_valid != citations_valid):
+        reasons.append("citation-validity-mismatch")
+    classification_correct = (
+        case.actual_classification is not None and case.actual_classification.category in expected.expected_categories
+        if expected.expected_categories else None
+    )
+    escalation_correct = (
+        case.actual_decision is not None and case.actual_decision.escalation_required == expected.expected_escalation
+        if expected.expected_escalation is not None else None
+    )
+    if case.classification_correct != classification_correct:
+        reasons.append("classification-result-mismatch")
+    if case.escalation_correct != escalation_correct:
+        reasons.append("escalation-result-mismatch")
+    if case.language_correct != language_correct(case.response_text, expected.expected_language):
+        reasons.append("language-result-mismatch")
+    if case.policy_violations != policy_violations(case.response_text, expected.forbidden_reply_patterns):
+        reasons.append("policy-result-mismatch")
+    return tuple(reasons)

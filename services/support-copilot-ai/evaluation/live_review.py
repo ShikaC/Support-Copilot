@@ -4,7 +4,12 @@ from typing import Annotated
 
 import typer
 
-from evaluation.live_models import HumanReview, LiveEvaluationReport, ReviewEntry, ReviewWorksheet
+from evaluation.live_models import (
+    HumanReview,
+    LiveEvaluationReport,
+    ReviewEntry,
+    ReviewWorksheet,
+)
 from evaluation.live_summary import summarize_live_cases
 
 app = typer.Typer(add_completion=False)
@@ -24,7 +29,10 @@ def create_review_worksheet(report: LiveEvaluationReport) -> ReviewWorksheet:
         run_id=report.run.run_id,
         report_sha256=_report_checksum(report),
         reviews=tuple(
-            ReviewEntry(case_id=case.case_id, **case.human_review.model_dump())
+            ReviewEntry(case_id=case.case_id, reviewer=case.human_review.reviewer,
+                        factual_support=case.human_review.factual_support,
+                        decision_note=case.human_review.decision_note,
+                        reviewed_at=case.human_review.reviewed_at)
             for case in report.cases
         ),
     )
@@ -48,7 +56,7 @@ def apply_review_worksheet(
         for case in report.cases
     )
     return report.model_copy(
-        update={"cases": cases, "summary": summarize_live_cases(cases)}
+        update={"cases": cases, "summary": summarize_live_cases(cases, p95_method=report.summary.p95_method)}
     )
 
 
@@ -58,7 +66,7 @@ def worksheet(
     output: Annotated[Path, typer.Option()],
 ) -> None:
     report = LiveEvaluationReport.model_validate_json(report_path.read_text(encoding="utf-8"))
-    output.write_text(create_review_worksheet(report).model_dump_json(indent=2), encoding="utf-8")
+    _ = output.write_text(create_review_worksheet(report).model_dump_json(indent=2), encoding="utf-8")
     typer.echo(f"worksheet={output}")
 
 
@@ -70,7 +78,7 @@ def apply(
 ) -> None:
     report = LiveEvaluationReport.model_validate_json(report_path.read_text(encoding="utf-8"))
     sheet = ReviewWorksheet.model_validate_json(worksheet_path.read_text(encoding="utf-8"))
-    output.write_text(apply_review_worksheet(report, sheet).model_dump_json(indent=2), encoding="utf-8")
+    _ = output.write_text(apply_review_worksheet(report, sheet).model_dump_json(indent=2), encoding="utf-8")
     typer.echo(f"reviewed_report={output}")
 
 

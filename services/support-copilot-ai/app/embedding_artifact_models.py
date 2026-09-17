@@ -36,6 +36,7 @@ class EmbeddingArtifactManifest(BaseModel):
     corpus_checksum: str = Field(pattern=SHA256_PATTERN)
     provider_identity: str = Field(min_length=1)
     embedding_model: str = Field(min_length=1)
+    input_format: Literal["legacy-tokenized-v1", "raw-text-v1"] = "legacy-tokenized-v1"
     vector_dimension: int = Field(gt=0)
     chunking_version: str = Field(min_length=1)
     row_count: int = Field(gt=0)

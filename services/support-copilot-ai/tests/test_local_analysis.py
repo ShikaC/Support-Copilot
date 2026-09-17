@@ -44,6 +44,7 @@ def test_reply_preserves_unique_retrieval_provenance() -> None:
         usedAsEvidence=True,
     )
     draft = ModelDraft(
+        evidence_sufficient=True,
         intent="sso_login_issue",
         category="ACCOUNT_ACCESS",
         priority="HIGH",
@@ -97,6 +98,7 @@ def test_reply_citation_identifies_selected_chunk_when_visible_labels_collide() 
         ),
     ]
     draft = ModelDraft(
+        evidence_sufficient=True,
         intent="sso_login_issue",
         category="ACCOUNT_ACCESS",
         priority="HIGH",

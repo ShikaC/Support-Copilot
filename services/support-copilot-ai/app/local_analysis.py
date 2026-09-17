@@ -66,6 +66,7 @@ class LocalAnalysisPolicy:
         }
 
         return ModelDraft(
+            evidence_sufficient=not no_evidence,
             intent=self._intent(category),
             category=category,
             priority=priority,
@@ -107,6 +108,7 @@ class LocalAnalysisPolicy:
         draft: ModelDraft,
         hits: list[RetrievalHit],
         evidence_missing: bool,
+        language: str = "zh-CN",
     ) -> SuggestedReply:
         citation_hits = self._citation_hits(draft.citation_indexes, hits)
         citations = [citation_label(hit) for hit in citation_hits]
@@ -114,8 +116,12 @@ class LocalAnalysisPolicy:
             f"[{index}]" for index in range(1, len(citations) + 1)
         )
         warnings = list(draft.warnings)
-        if evidence_missing and "证据不足，禁止承诺处理结果。" not in warnings:
-            warnings.append("证据不足，禁止承诺处理结果。")
+        warning = (
+            "Insufficient evidence; do not promise an outcome."
+            if language.lower().startswith("en") else "证据不足，禁止承诺处理结果。"
+        )
+        if evidence_missing and warning not in warnings:
+            warnings.append(warning)
         return SuggestedReply(
             content=draft.reply_content + citation_markers,
             citations=citations,
@@ -200,7 +206,7 @@ class LocalAnalysisPolicy:
     def _classify(self, text: str, current_category: str) -> str:
         lowered = text.lower()
         rules = [
-            ("BILLING", ("重复扣款", "重复支付", "两笔扣款", "账单")),
+            ("BILLING", ("重复扣款", "重复支付", "两笔扣款", "账单", "退款", "refund", "duplicate charge")),
             ("ACCOUNT_ACCESS", ("sso", "登录", "账号锁定")),
             ("INVOICE", ("发票", "抬头")),
             ("PRIVACY", ("数据删除", "离职员工", "隐私", "授权材料")),

@@ -1,0 +1,227 @@
+from pathlib import Path
+from typing import Never
+
+import pytest
+from pydantic import ValidationError
+
+from app.config import Settings
+from app.knowledge_source import load_knowledge_corpus
+from app.models import AnalyzeRequest
+from evaluation.live_dataset import load_live_dataset
+from evaluation.live_models import LiveEvaluationCase, LiveEvaluationReport
+from evaluation.live_provenance import VerifiedLiveInputs, expected_live_configuration
+from evaluation.live_runner import run_live_cases
+from evaluation.live_summary import summarize_live_cases
+from evaluation.live_verifier import verify_live_report
+from tests.test_live_evaluation import _context, _report_payload
+from tests.test_live_provenance import SHA, _artifact
+
+
+def _expected() -> LiveEvaluationCase:
+    return LiveEvaluationCase.model_validate({
+        "id": "live-sso-001", "classification": "SYNTHETIC",
+        "ticket": {"subject": "SSO login", "description": "Cannot sign in", "language": "en-US"},
+        "expected_retrieval": {"evidence_required": True, "chunk_ids": ["kb-sso-login-001"]},
+        "allowed_chunk_ids": ["kb-sso-login-001"], "expected_language": "en",
+        "forbidden_reply_patterns": [r"3\s{0,3}至\s{0,3}7"],
+    })
+
+
+@pytest.mark.parametrize("size,expected", [(1, 1), (16, 16), (20, 19), (100, 95)])
+def test_p95_uses_nearest_rank_when_sample_is_small(size: int, expected: int) -> None:
+    # Given independent ordered latency samples.
+    case = LiveEvaluationReport.model_validate(_report_payload()).cases[0]
+    cases = tuple(case.model_copy(update={"latency_ms": index}) for index in range(1, size + 1))
+    # When summarizing newly generated results.
+    summary = summarize_live_cases(cases)
+    # Then ceil(n * .95) selects the observed sample.
+    assert summary.p95_latency_ms == expected
+
+
+@pytest.mark.parametrize("field,value", [("language_correct", False), ("policy_violations", ("refund-window",))])
+def test_machine_gate_rejects_failed_reply_checks(field: str, value: bool | tuple[str, ...]) -> None:
+    # Given a result that otherwise passed machine checks.
+    case = LiveEvaluationReport.model_validate(_report_payload()).cases[0].model_copy(update={field: value})
+    # When the machine gate runs.
+    summary = summarize_live_cases((case,))
+    # Then the additional failure cannot be hidden behind valid citations.
+    assert "machine-gate-failed" in summary.gate_reasons
+
+
+def test_verifier_recomputes_policy_and_language_from_original_response() -> None:
+    # Given a report whose declared checks lie about a Chinese refund-window reply.
+    expected = _expected()
+    report = LiveEvaluationReport.model_validate(_report_payload())
+    case = report.cases[0].model_copy(update={"response_text": "退款预计需要 3 至 7 个工作日。", "language_correct": True, "policy_violations": ()})
+    report = report.model_copy(update={"cases": (case,), "summary": summarize_live_cases((case,))})
+    # When verified against the dataset expectations.
+    reasons = verify_live_report(report, _context().model_copy(update={"expected_cases": (expected,)}), require_human=False)
+    # Then the forged checks are rejected independently.
+    assert "language-result-mismatch" in reasons
+    assert "policy-result-mismatch" in reasons
+
+
+@pytest.mark.parametrize("pattern", ["(", "(a+)+$", "a{0,999999}", "a*", "a" * 513])
+def test_dataset_rejects_invalid_or_unbounded_policy_pattern(pattern: str) -> None:
+    # Given an invalid or potentially expensive dataset regex.
+    payload = _expected().model_dump()
+    payload["forbidden_reply_patterns"] = (pattern,)
+    # When parsing the dataset boundary, then the pattern is rejected.
+    with pytest.raises(ValidationError):
+        _ = LiveEvaluationCase.model_validate(payload)
+
+
+@pytest.mark.anyio
+async def test_runner_forwards_dataset_language_to_runtime() -> None:
+    # Given an English dataset case and real configured evaluation inputs.
+    settings = Settings.model_validate({})
+    artifact = _artifact()
+    dataset = load_live_dataset(Path(__file__).parents[1] / "evaluation/data/live-v1.json")
+    inputs = VerifiedLiveInputs(dataset=dataset.model_copy(update={"cases": (_expected(),)}), dataset_checksum=SHA,
+        corpus=load_knowledge_corpus(settings.knowledge_path, None), artifact=artifact,
+        artifact_manifest_sha256=SHA, configuration=expected_live_configuration(settings, artifact))
+    observed: list[str] = []
+
+    async def capture(request: AnalyzeRequest) -> Never:
+        observed.append(request.ticket.language)
+        raise RuntimeError
+
+    # When the real runner builds its request.
+    with pytest.raises(RuntimeError):
+        _ = await run_live_cases(inputs, capture)
+    # Then language is no longer silently replaced by the Chinese default.
+    assert observed == ["en-US"]
+
+
+def test_runtime_provenance_changes_when_prompt_or_schema_source_changes(tmp_path: Path) -> None:
+    # Given an isolated runtime source tree, excluding generated bytecode.
+    from evaluation.live_provenance import runtime_source_sha256
+
+    source = tmp_path / "models.py"
+    _ = source.write_text("schema = 1\n")
+    first = runtime_source_sha256(tmp_path)
+    _ = source.write_text("schema = 2\n")
+    # When the schema source changes without a Git commit.
+    second = runtime_source_sha256(tmp_path)
+    # Then report provenance distinguishes the dirty runtime versions.
+    assert second != first
+
+
+def test_config_fingerprint_binds_runtime_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Given identical settings/artifact but two different runtime source digests.
+    from evaluation import live_provenance
+
+    monkeypatch.setattr(live_provenance, "runtime_source_sha256", lambda: "a" * 64)
+    first = live_provenance.config_fingerprint(Settings.model_validate({}), _artifact())
+    monkeypatch.setattr(live_provenance, "runtime_source_sha256", lambda: "b" * 64)
+    # When deriving the second configuration identity.
+    second = live_provenance.config_fingerprint(Settings.model_validate({}), _artifact())
+    # Then equal prompt-version labels cannot hide changed runtime behavior.
+    assert second != first
+
+
+@pytest.mark.parametrize("text,expected,correct", [
+    ("Please check the SSO settings.", "en", True),
+    ("请检查 SSO 配置。", "en", False),
+    ("请检查 SSO 配置。", "zh", True),
+    ("Please check your settings.", "zh", False),
+    ("1234", "en", False),
+])
+def test_reply_language_script_check_is_explicit(text: str, expected: str, correct: bool) -> None:
+    from evaluation.live_reply_checks import language_correct
+
+    # Given a typed dataset language expectation.
+    case = _expected().model_copy(update={"expected_language": expected})
+    # When applying the documented script heuristic.
+    actual = language_correct(text, case.expected_language)
+    # Then script mismatches are detected without claiming semantic verification.
+    assert actual is correct
+
+
+def test_legacy_report_keeps_its_p95_algorithm_when_verified() -> None:
+    # Given a historical schema-v1 report lacking an explicit algorithm field.
+    report = LiveEvaluationReport.model_validate(_report_payload())
+    cases = tuple(report.cases[0].model_copy(update={"latency_ms": i}) for i in range(1, 17))
+    legacy = summarize_live_cases(cases, p95_method="legacy-rounded-index")
+    report = report.model_copy(update={"cases": cases, "summary": legacy})
+    # When validating historical summary integrity.
+    reasons = verify_live_report(report, _context(), require_human=False)
+    # Then old p95=15 is not silently rewritten to new p95=16.
+    assert legacy.p95_latency_ms == 15
+    assert "summary-mismatch" not in reasons
+
+
+@pytest.mark.anyio
+async def test_result_capture_preserves_reply_warnings_and_new_quality_outcomes() -> None:
+    from app.knowledge import KnowledgeRetriever
+    from app.models import BUNDLED_KNOWLEDGE_ACCESS, TicketInput
+    from app.workflow import AnalysisWorkflow
+    from evaluation.live_runner import _case_result
+
+    # Given an actual local response used only as a deterministic evaluator fixture.
+    settings = Settings.model_validate({"ai_mode": "mock"})
+    request = AnalyzeRequest(trace_id="capture", knowledge_access=BUNDLED_KNOWLEDGE_ACCESS,
+        ticket=TicketInput(id="capture", subject="SSO 登录失败", description="无法登录"))
+    response = await AnalysisWorkflow(settings, KnowledgeRetriever(settings)).run(request)
+    response = response.model_copy(update={"mode": "live", "suggested_reply": response.suggested_reply.model_copy(update={
+        "content": "3 至 7 个工作日退款。", "warnings": ["review-required"],
+    })})
+    expected = _expected()
+    # When the production evaluator captures the result.
+    result = _case_result(expected.id, True, expected.expected_retrieval.chunk_ids,
+                          expected.allowed_chunk_ids, response, 10, expectation=expected)
+    # Then the original warning and computed failures survive serialization.
+    parsed = type(result).model_validate_json(result.model_dump_json())
+    assert parsed.reply_warnings == ("review-required",)
+    assert parsed.language_correct is False
+    assert parsed.policy_violations == expected.forbidden_reply_patterns
+
+
+def test_runtime_provenance_includes_policy_json_changes(tmp_path: Path) -> None:
+    from evaluation.live_provenance import runtime_source_sha256
+
+    # Given Python behavior and policy data in the same runtime tree.
+    _ = (tmp_path / "rules.py").write_text("rules = 1\n")
+    policy = tmp_path / "policies.json"
+    _ = policy.write_text('{"revision": 1}')
+    first = runtime_source_sha256(tmp_path)
+    _ = policy.write_text('{"revision": 2}')
+    # When only the policy content changes, then provenance changes too.
+    assert runtime_source_sha256(tmp_path) != first
+
+
+@pytest.mark.anyio
+async def test_rejected_evidence_keeps_observed_candidates_without_claiming_they_were_used() -> None:
+    from app.errors import FallbackReason
+    from app.knowledge import KnowledgeRetriever
+    from app.models import BUNDLED_KNOWLEDGE_ACCESS, AnalyzeResponse, TicketInput
+    from app.workflow import AnalysisWorkflow
+
+    # Given a real retrieved candidate set later rejected as insufficient evidence.
+    settings = Settings.model_validate({"ai_mode": "mock"})
+    request = AnalyzeRequest(trace_id="candidate-capture", knowledge_access=BUNDLED_KNOWLEDGE_ACCESS,
+        ticket=TicketInput(id="candidate-capture", subject="SSO 登录失败", description="无法登录"))
+    response = await AnalysisWorkflow(settings, KnowledgeRetriever(settings)).run(request)
+    candidates = tuple(response.retrieval.hits)
+    assert candidates
+    rejected = response.model_copy(update={"mode": "fallback", "status": "FALLBACK",
+        "fallback_reason": FallbackReason.INSUFFICIENT_EVIDENCE,
+        "retrieval": response.retrieval.model_copy(update={"hits": []}),
+        "suggested_reply": response.suggested_reply.model_copy(update={"citations": []})})
+    artifact = _artifact()
+    dataset = load_live_dataset(Path(__file__).parents[1] / "evaluation/data/live-v1.json")
+    inputs = VerifiedLiveInputs(dataset=dataset.model_copy(update={"cases": (dataset.cases[0],)}), dataset_checksum=SHA,
+        corpus=load_knowledge_corpus(settings.knowledge_path, None), artifact=artifact,
+        artifact_manifest_sha256=SHA, configuration=expected_live_configuration(settings, artifact))
+
+    async def analyze(_: AnalyzeRequest) -> AnalyzeResponse:
+        return rejected
+
+    # When capturing both final response evidence and raw retrieval observations.
+    results = await run_live_cases(inputs, analyze, lambda _: candidates)
+    # Then diagnostics retain candidates but do not claim that the model used them.
+    observed = results[0].live_retrieval
+    assert observed is not None
+    assert tuple(hit.chunk_id for hit in observed) == tuple(hit.chunk_id for hit in candidates)
+    assert all(not hit.used_as_evidence for hit in observed)
+    assert results[0].retrieved_chunk_ids == ()

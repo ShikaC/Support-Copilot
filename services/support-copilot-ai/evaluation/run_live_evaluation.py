@@ -1,6 +1,6 @@
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
-import sys
 from typing import Annotated
 
 import anyio
@@ -12,13 +12,14 @@ if str(SERVICE_DIR) not in sys.path:
 
 from app.analysis_runner import AnalysisRunner
 from app.config import Settings
-from app.knowledge import KnowledgeRetriever
 from app.observability import configure_structured_logging
 from app.workflow import AnalysisWorkflow
 from evaluation.live_markdown import render_live_markdown
+from evaluation.live_models import LiveSummary
+from evaluation.live_observation import ObservedKnowledgeRetriever
+from evaluation.live_pricing import apply_pricing
 from evaluation.live_provenance import load_verified_live_inputs
 from evaluation.live_review import create_review_worksheet
-from evaluation.live_pricing import apply_pricing
 from evaluation.live_runner import build_live_report, run_live_cases
 
 REPO_ROOT = SERVICE_DIR.parents[1]
@@ -30,10 +31,10 @@ async def run(dataset_path: Path, report_dir: Path, pricing_path: Path | None) -
     configure_structured_logging()
     settings = Settings(ai_mode="live")
     inputs = load_verified_live_inputs(dataset_path, settings)
-    retriever = KnowledgeRetriever(settings)
+    retriever = ObservedKnowledgeRetriever(settings)
     workflow = AnalysisWorkflow(settings, retriever)
     runner = AnalysisRunner(settings, workflow)
-    cases = await run_live_cases(inputs, runner.run)
+    cases = await run_live_cases(inputs, runner.run, retriever.take_live_hits)
     cases = apply_pricing(cases, pricing_path, settings.openai_chat_model or "unconfigured")
     report = build_live_report(inputs, REPO_ROOT, cases)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -43,15 +44,19 @@ async def run(dataset_path: Path, report_dir: Path, pricing_path: Path | None) -
     worksheet_path = report_dir / f"live-evaluation-{stamp}-review.json"
     latest_path = report_dir / "live-latest.json"
     json = report.model_dump_json(indent=2)
-    json_path.write_text(json, encoding="utf-8")
-    latest_path.write_text(json, encoding="utf-8")
-    markdown_path.write_text(render_live_markdown(report), encoding="utf-8")
-    worksheet_path.write_text(create_review_worksheet(report).model_dump_json(indent=2), encoding="utf-8")
+    _ = json_path.write_text(json, encoding="utf-8")
+    _ = latest_path.write_text(json, encoding="utf-8")
+    _ = markdown_path.write_text(render_live_markdown(report), encoding="utf-8")
+    _ = worksheet_path.write_text(create_review_worksheet(report).model_dump_json(indent=2), encoding="utf-8")
     typer.echo(f"report={json_path}")
     typer.echo(f"markdown={markdown_path}")
     typer.echo(f"worksheet={worksheet_path}")
     typer.echo(f"cases={report.summary.total_cases} publishable={str(report.summary.publishable).lower()}")
-    return 0 if report.summary.succeeded_cases == report.summary.total_cases else 1
+    return evaluation_exit_code(report.summary)
+
+
+def evaluation_exit_code(summary: LiveSummary) -> int:
+    return int("machine-gate-failed" in summary.gate_reasons)
 
 
 def main(

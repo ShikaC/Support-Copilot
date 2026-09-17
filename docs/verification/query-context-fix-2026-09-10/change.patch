@@ -1,0 +1,12 @@
+--- before/app/workflow.py
++++ after/app/workflow.py
+@@ -257,7 +257,8 @@
+ 
+     def _build_query(self, request: AnalyzeRequest) -> str:
+         ticket = request.ticket
+-        return f"{ticket.subject} {ticket.description[:180]}".strip()
++        # TicketInput already bounds the text; keep later questions and their context.
++        return f"{ticket.subject} {ticket.description}".strip()
+ 
+     def _elapsed_ms(self, started: float) -> int:
+         return max(0, round((time.perf_counter() - started) * 1000))

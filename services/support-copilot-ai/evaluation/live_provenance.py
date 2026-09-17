@@ -1,8 +1,8 @@
+import json
+import subprocess
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 from pathlib import Path
-import subprocess
 
 from app.config import Settings
 from app.embedding_artifact import EmbeddingArtifactStore
@@ -62,6 +62,7 @@ def expected_live_configuration(
         top_n=settings.retrieval_top_n,
         top_k=settings.retrieval_top_k,
         config_fingerprint=config_fingerprint(settings, artifact),
+        runtime_source_sha256=runtime_source_sha256(),
         chat_provider_identity=provider_identity(settings.openai_base_url),
         chat_model=settings.openai_chat_model or "unconfigured",
         chat_protocol=settings.openai_chat_protocol,
@@ -85,6 +86,7 @@ def config_fingerprint(
         "embedding_dimension": artifact.vector_dimension,
         "embedding_chunking_version": artifact.chunking_version,
         "prompt_version": CURRENT_PROMPT_VERSION,
+        "runtime_source_sha256": runtime_source_sha256(),
         "top_n": settings.retrieval_top_n,
         "top_k": settings.retrieval_top_k,
         "retrieval_min_score": settings.live_retrieval_min_score,
@@ -113,6 +115,7 @@ def build_verification_context(
             chunk.chunk_id for chunk in inputs.corpus.chunks
         ),
         configuration=inputs.configuration,
+        expected_cases=inputs.dataset.cases,
     )
 
 
@@ -132,3 +135,17 @@ def _git(repo_root: Path, arguments: tuple[str, ...]) -> str:
         text=True,
     )
     return result.stdout.strip()
+
+
+def runtime_source_sha256(runtime_root: Path | None = None) -> str:
+    """Bind dirty runtime behavior, schemas and prompt sources without recording secrets."""
+    root = runtime_root or Path(__file__).parents[1] / "app"
+    files = tuple(sorted(path for path in root.rglob("*") if path.is_file() and path.suffix in (".py", ".json")))
+    if not files:
+        raise FileNotFoundError(root)
+    digest = sha256()
+    for source in files:
+        digest.update(source.relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(sha256(source.read_bytes()).digest())
+    return digest.hexdigest()

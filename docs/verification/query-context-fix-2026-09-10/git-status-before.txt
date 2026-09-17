@@ -1,0 +1,205 @@
+ M .gitignore
+ M AGENTS.md
+ M README.md
+ M apps/support-copilot-web/e2e/mock-api.mjs
+ M apps/support-copilot-web/e2e/pilot-workflows.spec.ts
+ M apps/support-copilot-web/scripts/bundle-budget.json
+ M apps/support-copilot-web/src/App.analysisWorkflow.test.tsx
+ M apps/support-copilot-web/src/App.authWorkflows.test.tsx
+ M apps/support-copilot-web/src/App.characterization.test.tsx
+ M apps/support-copilot-web/src/App.css
+ M apps/support-copilot-web/src/App.staleUpdate.test.tsx
+ M apps/support-copilot-web/src/App.tsx
+ M apps/support-copilot-web/src/features/analysis/AnalysisColumn.tsx
+ M apps/support-copilot-web/src/features/analysis/EvidencePanel.tsx
+ M apps/support-copilot-web/src/features/analysis/ReplyReview.rendered.test.tsx
+ M apps/support-copilot-web/src/features/analysis/ReplyReview.tsx
+ M apps/support-copilot-web/src/features/analysis/WorkflowPanel.tsx
+ M apps/support-copilot-web/src/features/audit/AuditView.tsx
+ M apps/support-copilot-web/src/features/overview/OverviewView.accessibility.test.tsx
+ M apps/support-copilot-web/src/features/overview/OverviewView.tsx
+ M apps/support-copilot-web/src/features/quality/QualityView.test.tsx
+ M apps/support-copilot-web/src/features/quality/QualityView.tsx
+ M apps/support-copilot-web/src/features/tickets/StatusStrip.tsx
+ M apps/support-copilot-web/src/features/tickets/TicketDetail.tsx
+ M apps/support-copilot-web/src/features/tickets/TicketQueue.tsx
+ M apps/support-copilot-web/src/features/workbench/WorkbenchView.tsx
+ M apps/support-copilot-web/src/features/workbench/useTicketWorkflow.ts
+ M apps/support-copilot-web/src/index.css
+ M apps/support-copilot-web/src/services/api.ts
+ M apps/support-copilot-web/src/services/resourceSchemas.ts
+ M docs/PILOT_OPERATIONS.md
+ M docs/learning/LIVE_RAG_COMPLETION_CRITERIA.md
+ M infra/README.md
+ M infra/compose.pilot.yml
+ M scripts/pilot-backup.sh
+ M scripts/pilot-restore.sh
+ M scripts/tests/test_pilot_backup_restore.py
+ M scripts/tests/test_pilot_operations.py
+ M scripts/verify-pilot-operations.sh
+ M services/support-copilot-ai/Dockerfile
+ M services/support-copilot-ai/app/embedding_artifact.py
+ M services/support-copilot-ai/app/embedding_artifact_models.py
+ M services/support-copilot-ai/app/embedding_provider.py
+ M services/support-copilot-ai/app/errors.py
+ M services/support-copilot-ai/app/local_analysis.py
+ M services/support-copilot-ai/app/models.py
+ M services/support-copilot-ai/app/observability.py
+ M services/support-copilot-ai/app/openai_provider.py
+ M services/support-copilot-ai/app/prompts.py
+ M services/support-copilot-ai/app/workflow.py
+ M services/support-copilot-ai/evaluation/live_markdown.py
+ M services/support-copilot-ai/evaluation/live_models.py
+ M services/support-copilot-ai/evaluation/live_provenance.py
+ M services/support-copilot-ai/evaluation/live_review.py
+ M services/support-copilot-ai/evaluation/live_runner.py
+ M services/support-copilot-ai/evaluation/live_summary.py
+ M services/support-copilot-ai/evaluation/live_verifier.py
+ M services/support-copilot-ai/evaluation/run_live_evaluation.py
+ M services/support-copilot-ai/tests/test_knowledge.py
+ M services/support-copilot-ai/tests/test_knowledge_access.py
+ M services/support-copilot-ai/tests/test_local_analysis.py
+ M services/support-copilot-ai/tests/test_openai_provider_protocols.py
+ M services/support-copilot-ai/tests/test_runtime_readiness.py
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/analysis/AnalysisPersistenceService.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/analysis/AnalysisRun.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/audit/AuditAction.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/audit/AuditEventController.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/audit/AuditEventRecorder.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/audit/AuditMetadata.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/config/RuntimeProfileApplicationContextInitializer.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/config/SecurityConfig.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/config/WebConfig.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/idempotency/CommandRequestFactory.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/idempotency/CommandType.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/metrics/MetricsService.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/Ticket.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketController.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketRepository.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketService.java
+ M services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketStateConflictException.java
+ M services/support-copilot-api/src/main/resources/application-demo.properties
+ M services/support-copilot-api/src/main/resources/application.properties
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/analysis/AnalysisPersistenceServiceTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/audit/AuditEventMySqlIntegrationTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/config/MySqlProfileIntegrationTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/config/RuntimeProfileIntegrationTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/idempotency/CommandIdempotencyMySqlIntegrationTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/knowledge/KnowledgeReleaseMigrationIntegrationTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/knowledge/KnowledgeReleaseMySqlIntegrationTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/metrics/MetricsServiceTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketServiceListTests.java
+ M services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketUpdateContractTests.java
+ M tests/test_pilot_compose_contract.py
+ M tests/test_pilot_container_images.py
+?? .local/
+?? DESIGN.md
+?? apps/support-copilot-web/scripts/verify-workspace-flow.mjs
+?? apps/support-copilot-web/scripts/verify-workspace.mjs
+?? apps/support-copilot-web/src/components/CommandPalette.test.tsx
+?? apps/support-copilot-web/src/components/CommandPalette.tsx
+?? apps/support-copilot-web/src/features/analysis/EvidencePanel.rendered.test.tsx
+?? apps/support-copilot-web/src/features/quality/LegacyQualityMetrics.tsx
+?? apps/support-copilot-web/src/features/quality/QualityFailures.tsx
+?? apps/support-copilot-web/src/features/quality/QualityReportPanel.tsx
+?? apps/support-copilot-web/src/features/quality/quality.css
+?? apps/support-copilot-web/src/features/quality/qualityTestFixture.ts
+?? apps/support-copilot-web/src/features/tickets/CreateTicketDialog.tsx
+?? apps/support-copilot-web/src/features/tickets/EditTicketDialog.tsx
+?? apps/support-copilot-web/src/features/tickets/TicketActivity.test.tsx
+?? apps/support-copilot-web/src/features/tickets/TicketActivity.tsx
+?? apps/support-copilot-web/src/features/tickets/TicketNotes.tsx
+?? apps/support-copilot-web/src/features/tickets/TicketQueue.test.tsx
+?? apps/support-copilot-web/src/features/tickets/ticketLifecycle.ts
+?? apps/support-copilot-web/src/features/workbench/queueConsistency.test.ts
+?? apps/support-copilot-web/src/features/workbench/ticketSnapshots.test.ts
+?? apps/support-copilot-web/src/services/qualityReports.test.ts
+?? apps/support-copilot-web/src/services/qualityReports.ts
+?? apps/support-copilot-web/src/services/ticketWorkspace.test.ts
+?? apps/support-copilot-web/src/services/ticketWorkspaceSchemas.ts
+?? apps/support-copilot-web/src/workspace.css
+?? docs/ROADMAP.md
+?? docs/STATUS.md
+?? docs/decisions/
+?? docs/enterprise-workspace/
+?? docs/learning/NEXT_SESSION_HANDOFF_PROMPT.md
+?? docs/learning/READING_LOG.md
+?? docs/optimizations/v1-round-1/71-mysql-three-skipped-tests-remediation.md
+?? docs/verification/ai-quality-fixes-2026-09-10/
+?? docs/verification/business-benchmark-2026-09-10/
+?? docs/verification/isolated-runner-2026-09-10/
+?? docs/verification/live-baseline-2026-09-09/
+?? docs/verification/live-quality-page-2026-09-10/
+?? docs/verification/live-workbench-2026-09-10/
+?? docs/verification/product-quality-center-2026-09-10/
+?? docs/verification/public-rag-experiment-2026-09-10/
+?? docs/verification/public-rag-pilot-2026-09-10/
+?? docs/verification/quality-input-audit-2026-09-10/
+?? docs/verification/quality-runs/
+?? docs/verification/query-context-fix-2026-09-10/
+?? infra/images/
+?? scripts/benchmark/
+?? scripts/dev-workspace.sh
+?? scripts/quality/
+?? scripts/tests/test_workspace_data.py
+?? scripts/tests/workspace-data.test.sh
+?? scripts/workspace-data.sh
+?? scripts/workspace_data.py
+?? services/support-copilot-ai/app/data/response_policies.json
+?? services/support-copilot-ai/app/grounded_reply_policy.py
+?? services/support-copilot-ai/app/response_language.py
+?? services/support-copilot-ai/evaluation/build_benchmark_index.py
+?? services/support-copilot-ai/evaluation/business_benchmark_app.py
+?? services/support-copilot-ai/evaluation/data/live-quality-v1.json
+?? services/support-copilot-ai/evaluation/data/live-quality-v2.json
+?? services/support-copilot-ai/evaluation/isolated_benchmark_app.py
+?? services/support-copilot-ai/evaluation/isolated_observation.py
+?? services/support-copilot-ai/evaluation/isolated_preflight.py
+?? services/support-copilot-ai/evaluation/live_observation.py
+?? services/support-copilot-ai/evaluation/live_reply_checks.py
+?? services/support-copilot-ai/evaluation/public_pilot_data.py
+?? services/support-copilot-ai/evaluation/public_pilot_trial.py
+?? services/support-copilot-ai/evaluation/run_public_pilot.py
+?? services/support-copilot-ai/tests/test_benchmark_index.py
+?? services/support-copilot-ai/tests/test_embedding_input_compatibility.py
+?? services/support-copilot-ai/tests/test_embedding_provider_wire.py
+?? services/support-copilot-ai/tests/test_evidence_sufficiency.py
+?? services/support-copilot-ai/tests/test_grounded_reply_policy.py
+?? services/support-copilot-ai/tests/test_isolated_observation.py
+?? services/support-copilot-ai/tests/test_live_accepted_evidence.py
+?? services/support-copilot-ai/tests/test_live_category_contract.py
+?? services/support-copilot-ai/tests/test_live_evaluation_gates.py
+?? services/support-copilot-ai/tests/test_live_outcome_capture.py
+?? services/support-copilot-ai/tests/test_live_quality_checks.py
+?? services/support-copilot-ai/tests/test_live_retrieval_observation.py
+?? services/support-copilot-ai/tests/test_provider_diagnostics.py
+?? services/support-copilot-ai/tests/test_public_pilot.py
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/metrics/OperationalMetrics.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/quality/
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketAssignmentController.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketCreationController.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketCreationTransaction.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketNote.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketNoteController.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketNoteRepository.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketNoteService.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketQueueCursor.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketQueueQuery.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketQueueRepository.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/TicketQueueRepositoryImpl.java
+?? services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/ticket/activity/
+?? services/support-copilot-api/src/main/resources/db/migration/V6__ticket_internal_notes.sql
+?? services/support-copilot-api/src/main/resources/db/migration/V7__operational_metric_facts.sql
+?? services/support-copilot-api/src/main/resources/workspace-defaults.properties
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/metrics/OperationalMetricsIntegrationTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/metrics/OperationalMetricsMySqlIntegrationTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/quality/
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketNoteApiTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketNoteMySqlIntegrationTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketQueueCursorTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketQueueIntegrationTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/TicketWorkspaceCommandTests.java
+?? services/support-copilot-api/src/test/java/com/cyagent/supportcopilot/ticket/activity/
+?? tests/test_pilot_ai_image_contract.py
+?? tests/test_pilot_mysql_image_contract.py
+?? tests/test_pilot_oidc_image_contract.py

@@ -1,8 +1,10 @@
-from typing import Protocol
+from typing import Final, Protocol
 
 from langchain_openai import OpenAIEmbeddings
 
 from app.config import Settings
+
+EMBEDDING_INPUT_FORMAT: Final = "raw-text-v1"
 
 
 class EmbeddingProvider(Protocol):
@@ -17,6 +19,7 @@ class OpenAIEmbeddingProvider:
             api_key=settings.embedding_api_key,
             base_url=settings.embedding_base_url,
             model=settings.openai_embedding_model,
+            check_embedding_ctx_length=False,
             max_retries=0,
             request_timeout=settings.openai_timeout_seconds,
         )
