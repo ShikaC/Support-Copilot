@@ -67,6 +67,8 @@ public class Ticket {
 	@Column(nullable = false)
 	private Instant updatedAt;
 
+	private Instant resolvedAt;
+
 	@Version
 	private long version;
 }

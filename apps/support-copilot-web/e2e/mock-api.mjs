@@ -115,6 +115,17 @@ const server = createServer(async (request, response) => {
   } else if (url.pathname === '/api/metrics') {
     if (!requireMethod(request, response, 'GET')) return
     payload = scenario === 'malformed' ? { summary: 'invalid' } : metrics
+  } else if (url.pathname === '/api/quality-reports') {
+    if (!requireMethod(request, response, 'GET')) return
+    payload = { liveEvaluation: { status: 'NOT_CONFIGURED', report: null }, businessBenchmark: { status: 'NOT_CONFIGURED', report: null } }
+  }
+  else if (/^\/api\/tickets\/[^/]+\/activity$/.test(url.pathname)) {
+    if (!requireMethod(request, response, 'GET')) return
+    payload = { items: [], nextCursor: null }
+  }
+  else if (url.pathname === '/api/tickets/ticket-10042/notes') {
+    if (!requireMethod(request, response, 'GET')) return
+    payload = []
   }
   else if (url.pathname === '/api/tickets/ticket-10042/analyze') {
     if (!requireMethod(request, response, 'POST') || !requireCommandHeaders(request, response)) return
@@ -144,12 +155,14 @@ const server = createServer(async (request, response) => {
     if (!requireMethod(request, response, 'POST') || !requireCommandHeaders(request, response)) return
     const input = await requestBody(request)
     if (!input.ok || typeof input.value.reason !== 'string' || input.value.reason.trim().length === 0) return contractError(response, 422, 'INVALID_COMMAND', 'A non-empty rejection reason is required.')
-    payload = { id: 'review-rejected', ticketId: 'ticket-10042', analysisId: 'analysis-success', action: 'REJECTED', reviewerType: 'AUTHENTICATED_JWT', reviewerLabel: 'reviewer-42', originalReplyContent: '我们会先核验交易记录。[1]', reviewedReplyContent: null, reason: input.value.reason, ticketVersion: 6, traceId: 'trace-review-reject', createdAt: '2026-08-27T03:00:00Z' }
+    payload = { id: 'review-rejected', ticketId: 'ticket-10042', analysisId: 'analysis-success', action: 'REJECTED', reviewerType: 'AUTHENTICATED_JWT', reviewerLabel: 'reviewer-42', originalReplyContent: '我们会先核验交易记录。[1]', reviewedReplyContent: null, reason: input.value.reason, ticketVersion: currentTicket.version, traceId: 'trace-review-reject', createdAt: '2026-08-27T03:00:00Z' }
+    currentTicket = { ...currentTicket, version: payload.ticketVersion, latestReview: payload }
   } else if (url.pathname.endsWith('/reviews') && request.method === 'POST') {
     if (!requireCommandHeaders(request, response)) return
     const input = await requestBody(request)
     if (!input.ok || typeof input.value.replyContent !== 'string' || input.value.replyContent.trim().length === 0) return contractError(response, 422, 'INVALID_COMMAND', 'A non-empty reply is required.')
-    payload = { id: 'review-approved', ticketId: 'ticket-10042', analysisId: 'analysis-success', action: 'APPROVED', reviewerType: 'AUTHENTICATED_JWT', reviewerLabel: 'reviewer-42', originalReplyContent: '我们会先核验交易记录。[1]', reviewedReplyContent: input.value.replyContent, reason: null, ticketVersion: 6, traceId: 'trace-review-save', createdAt: '2026-08-27T03:00:00Z' }
+    payload = { id: 'review-approved', ticketId: 'ticket-10042', analysisId: 'analysis-success', action: 'APPROVED', reviewerType: 'AUTHENTICATED_JWT', reviewerLabel: 'reviewer-42', originalReplyContent: '我们会先核验交易记录。[1]', reviewedReplyContent: input.value.replyContent, reason: null, ticketVersion: currentTicket.version, traceId: 'trace-review-save', createdAt: '2026-08-27T03:00:00Z' }
+    currentTicket = { ...currentTicket, version: payload.ticketVersion, latestReview: payload }
   } else if (url.pathname.endsWith('/reviews')) {
     if (!requireMethod(request, response, 'GET')) return
     payload = []

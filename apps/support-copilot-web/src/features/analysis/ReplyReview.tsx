@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Check, History, Link2, XCircle } from 'lucide-react'
 import { Button, Input, Tooltip } from 'antd'
 
 import { ApiError, type ApiClient } from '../../services/api'
 import type { AnalysisResult, AnalysisReview, Ticket } from '../../types'
 import { AnalysisReviewHistory } from './AnalysisReviewHistory'
-import { RejectReviewDialog } from './RejectReviewDialog'
 
 type ReplyReviewProps = {
   readonly ticket: Ticket
@@ -49,6 +48,7 @@ function reviewerCopy(review: AnalysisReview) {
 }
 
 export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onReviewSaved, onToast }: ReplyReviewProps) {
+  const [RejectReviewDialog] = useState(() => lazy(() => import('./RejectReviewDialog').then((module) => ({ default: module.RejectReviewDialog }))))
   const initialReview = matchingReview(analysis, ticket.latestReview ?? null)
   const [reply, setReply] = useState(() => reviewedReply(analysis, initialReview))
   const [review, setReview] = useState<AnalysisReview | null>(initialReview)
@@ -264,7 +264,7 @@ export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onRevie
         />
       )}
 
-      <RejectReviewDialog
+      {rejectDialogOpen && <Suspense fallback={<p role="status">正在打开审核窗口…</p>}><RejectReviewDialog
         open={rejectDialogOpen}
         confirming={submitting}
         errorMessage={rejectErrorMessage}
@@ -273,7 +273,7 @@ export function ReplyReview({ ticket, analysis, client, onRefreshTicket, onRevie
           if (!submitting) setRejectDialogOpen(false)
         }}
         onConfirm={submitRejection}
-      />
+      /></Suspense>}
     </div>
   )
 }

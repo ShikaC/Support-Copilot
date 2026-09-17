@@ -1,0 +1,15 @@
+{
+  "ticketId": "ticket-bbe11e2b-2634-4043-91e2-5f0385ecd640",
+  "mode": "real Java + real Python deterministic mock",
+  "create": true,
+  "trustedClaim": true,
+  "edit": true,
+  "notePersistenceAfterReload": true,
+  "analysis": true,
+  "review": true,
+  "resolvedAndClosed": true,
+  "staleWriteRejected": true,
+  "closedNoteRejected": true,
+  "auditEvents": 8,
+  "browserErrors": []
+}

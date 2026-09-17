@@ -23,7 +23,7 @@ import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketService;
 
 @EnabledIfEnvironmentVariable(named = "SUPPORT_COPILOT_RUN_MYSQL_TESTS", matches = "true")
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class AuditEventMySqlIntegrationTests {
 
 	@Container

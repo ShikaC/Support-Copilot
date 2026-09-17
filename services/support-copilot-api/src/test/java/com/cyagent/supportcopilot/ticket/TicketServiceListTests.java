@@ -2,7 +2,6 @@ package com.cyagent.supportcopilot.ticket;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Pageable;
 
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.AnalysisService;
@@ -46,9 +44,7 @@ class TicketServiceListTests {
 			null,
 			Instant.parse("2026-07-28T07:32:00Z")
 		);
-		when(ticketRepository.findFirstPage(
-			anySet(), eq(false), anySet(), eq(false), anySet(), eq(false), eq(""), any(Pageable.class)
-		)).thenReturn(List.of(ticket));
+		when(ticketRepository.findQueuePage(any(TicketQueueQuery.class), eq(null), eq(21))).thenReturn(List.of(ticket));
 		when(analysisService.latestForTickets(List.of("ticket-1"))).thenReturn(Map.of("ticket-1", analysis));
 		when(analysisReviewService.latestForAnalyses(List.of("analysis-1"))).thenReturn(Map.of());
 

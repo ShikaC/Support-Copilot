@@ -1,6 +1,8 @@
 import * as z from 'zod'
+import { qualityReportsSchema } from './qualityReports'
 
 import { configuredAuthMode, createAuthSession, type AuthSession } from '../auth/authSession'
+import { createTicketSchema, ticketActivitySchema, ticketNoteSchema, ticketNotesSchema, type CreateTicketInput, type TicketQueueQuery } from './ticketWorkspaceSchemas'
 import type { AnalysisResult, PersistedTicketStatus, Ticket } from '../types'
 import {
   analysisReviewListSchema,
@@ -73,7 +75,7 @@ export class ApiRequestError extends Error {
 
 type RequestOptions = { readonly signal?: AbortSignal }
 type ClientOptions = { readonly auth: AuthSession; readonly baseUrl: string; readonly timeoutMs: number }
-type TicketUpdate = Partial<Pick<Ticket, 'priority' | 'category' | 'assigneeName'>> & {
+export type TicketUpdate = Partial<Pick<Ticket, 'priority' | 'category' | 'assigneeName'>> & {
   readonly status?: PersistedTicketStatus
 }
 export type ReleaseAction = 'approve' | 'publish' | 'rollback'
@@ -105,6 +107,8 @@ export function createApiClient(options: ClientOptions) {
     path: string,
     schema: Schema,
     init: RequestInit = {},
+    onHeaders?: (headers: Headers) => void,
+    timeoutMs = options.timeoutMs,
   ): Promise<z.output<Schema>> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     const token = options.auth.accessToken()
@@ -120,7 +124,7 @@ export function createApiClient(options: ClientOptions) {
       response = await fetch(`${options.baseUrl}${path}`, {
         ...init,
         headers,
-        signal: requestSignal(options.timeoutMs, callerSignal),
+        signal: requestSignal(timeoutMs, callerSignal),
       })
     } catch (error: unknown) {
       const classified = classifyRequestError(error, callerSignal)
@@ -150,6 +154,7 @@ export function createApiClient(options: ClientOptions) {
     }
     const parsed = schema.safeParse(payload)
     if (!parsed.success) throw new ApiContractError(path, contractIssues(parsed.error))
+    onHeaders?.(response.headers)
     return parsed.data
   }
 
@@ -158,18 +163,43 @@ export function createApiClient(options: ClientOptions) {
     path: string,
     schema: Schema,
     init: RequestInit,
+    timeoutMs = options.timeoutMs,
   ): Promise<z.output<Schema>> {
     const key = uncertainKeys.get(fingerprint) ?? crypto.randomUUID()
     uncertainKeys.set(fingerprint, key)
     const result = await request(path, schema, {
       ...init,
       headers: { ...init.headers, 'Idempotency-Key': key },
-    })
+    }, undefined, timeoutMs)
     uncertainKeys.delete(fingerprint)
     return result
   }
 
   return {
+    getQualityReports: (requestOptions: RequestOptions = {}) =>
+      request('/api/quality-reports', qualityReportsSchema, { signal: requestOptions.signal }),
+    async fetchTicketPage(query: TicketQueueQuery = {}, requestOptions: RequestOptions = {}) {
+      const params = new URLSearchParams()
+      for (const [key, value] of Object.entries(query)) if (value) params.set(key, value)
+      const suffix = params.size > 0 ? '?' + params : ''
+      let nextCursor: string | null = null
+      let totalCount: number | null = null
+      const items = await request('/api/tickets' + suffix, ticketResponseListSchema,
+        { signal: requestOptions.signal }, (headers) => { nextCursor = headers.get('X-Next-Cursor'); const raw = headers.get('X-Total-Count'); if (raw !== null) totalCount = z.coerce.number().int().nonnegative().parse(raw) })
+      return { items, nextCursor, totalCount }
+    },
+    createTicket: (input: CreateTicketInput) => {
+      const body = JSON.stringify(createTicketSchema.parse(input))
+      return command('CREATE:' + body, '/api/tickets/commands/create', ticketResponseSchema, { method: 'POST', body })
+    },
+    fetchTicketActivity: (ticketId: string, cursor?: string, signal?: AbortSignal) =>
+      request('/api/tickets/' + encodeURIComponent(ticketId) + '/activity' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''), ticketActivitySchema, { signal }),
+    fetchTicketNotes: (ticketId: string, signal?: AbortSignal) =>
+      request('/api/tickets/' + encodeURIComponent(ticketId) + '/notes', ticketNotesSchema, { signal }),
+    addTicketNote: (ticketId: string, content: string, expectedVersion: number, noteId: string) =>
+      request('/api/tickets/' + encodeURIComponent(ticketId) + '/notes', ticketNoteSchema, {
+        method: 'POST', body: JSON.stringify({ content, expectedVersion, noteId }),
+      }),
     fetchTickets: (requestOptions: RequestOptions = {}) =>
       request('/api/tickets', ticketResponseListSchema, { signal: requestOptions.signal }),
     fetchTicket: (ticketId: string, requestOptions: RequestOptions = {}) =>
@@ -184,6 +214,7 @@ export function createApiClient(options: ClientOptions) {
         `/api/tickets/${ticketId}/analyze`,
         analysisResultSchema,
         { method: 'POST', signal: requestOptions.signal },
+        120_000,
       )
       const tracked = pending.finally(() => {
         if (inFlightAnalyses.get(ticketId) === tracked) inFlightAnalyses.delete(ticketId)
@@ -194,6 +225,10 @@ export function createApiClient(options: ClientOptions) {
     updateTicket: (ticketId: string, update: TicketUpdate, expectedVersion: number) =>
       request(`/api/tickets/${ticketId}`, ticketResponseSchema, {
         method: 'PATCH', body: JSON.stringify({ ...update, expectedVersion }),
+      }),
+    claimTicket: (ticketId: string, expectedVersion: number) =>
+      request(`/api/tickets/${ticketId}/claim`, ticketResponseSchema, {
+        method: 'POST', body: JSON.stringify({ expectedVersion }),
       }),
     unassignTicket: (ticketId: string, expectedVersion: number) =>
       request(`/api/tickets/${ticketId}/unassign`, ticketResponseSchema, {
@@ -246,3 +281,5 @@ export const unassignTicket = (ticketId: string, version: number) => defaultClie
 export const reviewAnalysisReply = (ticketId: string, analysisId: string, content: string) => defaultClient.reviewAnalysisReply(ticketId, analysisId, content)
 export const rejectAnalysisReply = (ticketId: string, analysisId: string, reason: string) => defaultClient.rejectAnalysisReply(ticketId, analysisId, reason)
 export const fetchAnalysisReviews = (ticketId: string, analysisId: string) => defaultClient.fetchAnalysisReviews(ticketId, analysisId)
+
+export const getQualityReports = (signal?: AbortSignal) => defaultClient.getQualityReports({ signal })

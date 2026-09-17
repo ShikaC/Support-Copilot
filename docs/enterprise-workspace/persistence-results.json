@@ -1,0 +1,163 @@
+{
+  "ticketId": "ticket-7866c260-3be1-4ea1-b812-ae08ee339ded",
+  "ticketNo": "SC-86D85ECB0F6A43ED88B7ABA9CD43B",
+  "noteId": "708269ac-0aeb-4cf7-b018-80c1e5b4638a",
+  "backupVersion": 1,
+  "steps": [
+    {
+      "step": "create-ticket-and-note",
+      "result": "PASS",
+      "at": "2026-09-09T07:57:07.930Z",
+      "version": 1
+    },
+    {
+      "step": "online-backup-refusal",
+      "result": "PASS",
+      "command": "./scripts/workspace-data.sh backup",
+      "reason": "Workspace data is in use. Stop the workspace before backup/restore. Inspect /Users/shika/Documents/Support-Copilot/.local/workspace/.data-operation.lock manually if a previous process crashed."
+    },
+    {
+      "step": "restart-readback",
+      "result": "PASS",
+      "at": "2026-09-09T07:57:41.898Z",
+      "version": 1,
+      "noteCount": 1
+    },
+    {
+      "step": "post-backup-mutation",
+      "result": "PASS",
+      "at": "2026-09-09T07:57:41.985Z",
+      "noteId": "7cf89417-0873-4f10-96ad-05ccdf5b8de2"
+    },
+    {
+      "step": "restore-readback",
+      "result": "PASS",
+      "at": "2026-09-09T07:58:19.468Z",
+      "version": 1,
+      "noteCount": 1,
+      "postBackupNoteAbsent": true
+    },
+    {
+      "step": "final-os-lock-backup-restore-readback",
+      "result": "PASS",
+      "at": "2026-09-09T08:30:10.084Z",
+      "capturedBeforeStopAt": "2026-09-09T08:28:43.409Z",
+      "ticketCount": 12,
+      "allTicketIdsAndVersionsPreserved": true,
+      "persistenceTicketId": "ticket-7866c260-3be1-4ea1-b812-ae08ee339ded",
+      "persistenceTicketVersion": 1,
+      "persistenceNoteCount": 1,
+      "allPersistenceNoteFieldsPreserved": true,
+      "freshStoppedDatabaseBackup": "/Users/shika/Documents/Support-Copilot/.local/workspace/backups/backup-20260909T082855Z-at0w42hh",
+      "backupSha256": "8d5f546eb7e260c1f3a4bad4fcaae35cf11b57fb0e7ee7af2713411e9e8b1236  support-copilot.mv.db",
+      "restoredFileChecksumEqualBeforeRestart": true,
+      "restoreOutput": "Preserved previous database:\n/Users/shika/Documents/Support-Copilot/.local/workspace/backups/before-restore-20260909T082855Z-qpetos4o\nRestored /Users/shika/Documents/Support-Copilot/.local/workspace/backups/backup-20260909T082855Z-at0w42hh. Start ./scripts/dev-workspace.sh to validate migrations.",
+      "schemaVersion": 7,
+      "lockInteropEvidence": ".omo/evidence/workspace-lock-results.json"
+    },
+    {
+      "step": "final-loopback-startup-readback",
+      "result": "PASS",
+      "at": "2026-09-09T09:29:03.352529+00:00",
+      "ticketCount": 13,
+      "allTicketIdsAndVersionsPreserved": true,
+      "persistenceTicketVersion": 1,
+      "persistenceNoteCount": 1,
+      "originalNoteIdPreserved": true,
+      "schemaVersion": 7,
+      "additionalConfiguration": "classpath:workspace-defaults.properties",
+      "scope": "Readback after final loopback guard and workspace configuration rename; prior offline backup/restore stages retain their original source hashes."
+    }
+  ],
+  "gitSha": "4df3bf44907c34318132496929bad4a3974ad88b",
+  "dirty": true,
+  "afterBackupNoteId": "7cf89417-0873-4f10-96ad-05ccdf5b8de2",
+  "scope": "Real local file H2, mock AI, anonymous local demo. Tests persistence across graceful application restart and offline backup/restore; does not prove host-loss disaster recovery or production access control.",
+  "backup": {
+    "directory": "/Users/shika/Documents/Support-Copilot/.local/workspace/backups/backup-20260909T075724Z-XhdACyUD",
+    "restoreOutput": "Preserved previous database:\n/Users/shika/Documents/Support-Copilot/.local/workspace/backups/before-restore-20260909T075801Z-aoNq7jKR\nRestored /Users/shika/Documents/Support-Copilot/.local/workspace/backups/backup-20260909T075724Z-XhdACyUD. Start ./scripts/dev-workspace.sh to run migration validation and open the workspace.",
+    "sha256": "466f6867ce71d42dd83a392ea90795e2cb1cc23278d3a90106026151c817da60  support-copilot.mv.db"
+  },
+  "runtime": {
+    "url": "http://127.0.0.1:18173",
+    "api": "http://127.0.0.1:18080",
+    "ai": "http://127.0.0.1:18000",
+    "profile": "demo",
+    "additionalConfiguration": "classpath:workspace-defaults.properties",
+    "database": "file H2",
+    "ddl": "validate",
+    "flyway": true,
+    "finalLauncherSession": 39243,
+    "launcherPid": "59096",
+    "schemaVersion": 7
+  },
+  "commands": [
+    "./scripts/dev-workspace.sh",
+    "node /tmp/support-persistence-drill.mjs create",
+    "./scripts/workspace-data.sh backup (running: rejected)",
+    "kill -TERM <verified launcher PID>",
+    "./scripts/workspace-data.sh backup",
+    "./scripts/dev-workspace.sh",
+    "node /tmp/support-persistence-drill.mjs restart",
+    "kill -TERM <verified launcher PID>",
+    "./scripts/workspace-data.sh restore <verified backup directory>",
+    "./scripts/dev-workspace.sh",
+    "node /tmp/support-persistence-drill.mjs restored",
+    "bash -n scripts/dev-workspace.sh",
+    "bash scripts/tests/workspace-data.test.sh",
+    "Final: stop verified launcher → workspace-data.sh backup → restore that newly-created backup → dev-workspace.sh (fresh bootJar) → compare all ticket IDs/versions and full persistence-note fields"
+  ],
+  "sourceHashes": {
+    "scripts/dev-workspace.sh": "40bdbf82d52123eaadb9e0610f9f5deed5d5cf96ccac5ba56519725d46bea74a",
+    "scripts/workspace-data.sh": "ce6a0bac9e0287dbd74a79dee3c4898d5a48df7701d95f3bd0d4814fd0ab6c5e",
+    "scripts/workspace_data.py": "60f5ed5de84e58c1ee5e9ec27dffa17be3784c29a4b8b799d356c48948c123c4",
+    "scripts/tests/workspace-data.test.sh": "d4ff9e1a802dc49eb8b3f8ba4578085a5b950fed36ba1f9741676c3a85f36d95",
+    "scripts/tests/test_workspace_data.py": "f2f1ca05270011dd9ddbe9a52468d1c17879fd1dd1c8eb351b0374b5cb5a8f1f",
+    "services/support-copilot-api/src/main/resources/workspace-defaults.properties": "6a0cb72f8d76415797f3d39becfd0117059070c21e9159ba590009a47851eb10",
+    "services/support-copilot-api/build/libs/support-copilot-api-0.0.1-SNAPSHOT.jar": "d99c1e55dfaa180f91ee7f817966e5f08a4403d7f522895c4b8ebc6763262e1d",
+    "services/support-copilot-api/src/main/resources/application-demo.properties": "1d8f6764ff13c5bbc397531defe4505280f17eb0694b254a1e34549d88a9a2ea",
+    "services/support-copilot-api/src/main/java/com/cyagent/supportcopilot/config/RuntimeProfileApplicationContextInitializer.java": "c427b6b0faa3ece9a2d9c81400bd1a385482ab4194f36c2654f0879a3a7dd6d4"
+  },
+  "startupIssueResolved": "Existing runtime profile guard rejects multiple active profiles; preserved that guard and load workspace settings as explicit additional config under the single demo profile.",
+  "previousRuntime": {
+    "url": "http://127.0.0.1:18173",
+    "api": "http://127.0.0.1:18080",
+    "ai": "http://127.0.0.1:18000",
+    "profile": "demo",
+    "additionalConfiguration": "classpath:application-workspace.properties",
+    "database": "file H2",
+    "ddl": "validate",
+    "flyway": true,
+    "finalLauncherSession": 85558,
+    "launcherPid": "44917"
+  },
+  "previousSourceHashes": {
+    "scripts/dev-workspace.sh": "50719aedf3eeae4acb84b8bd5eb0ffcb1bab02c8d7d5ab0a607c7c5793740875",
+    "scripts/workspace-data.sh": "1bbad888c1e9c8026ae544a33db40cd1cbc6c4fe007c11a9771c9bb8ddfd9509",
+    "scripts/tests/workspace-data.test.sh": "4abab6fc400d8a5da7d347e4ebc6150a92dabcdbdbc0979ac5a010c9922a1b43",
+    "services/support-copilot-api/src/main/resources/application-workspace.properties": "6a0cb72f8d76415797f3d39becfd0117059070c21e9159ba590009a47851eb10",
+    "services/support-copilot-api/build/libs/support-copilot-api-0.0.1-SNAPSHOT.jar": "976e11002a966858da9e12e53d01bec0cef836b94a3eab0fd7975582f079b537"
+  },
+  "preLoopbackRuntime": {
+    "url": "http://127.0.0.1:18173",
+    "api": "http://127.0.0.1:18080",
+    "ai": "http://127.0.0.1:18000",
+    "profile": "demo",
+    "additionalConfiguration": "classpath:application-workspace.properties",
+    "database": "file H2",
+    "ddl": "validate",
+    "flyway": true,
+    "finalLauncherSession": 68031,
+    "launcherPid": "53096",
+    "schemaVersion": 7
+  },
+  "preLoopbackSourceHashes": {
+    "scripts/dev-workspace.sh": "50719aedf3eeae4acb84b8bd5eb0ffcb1bab02c8d7d5ab0a607c7c5793740875",
+    "scripts/workspace-data.sh": "ce6a0bac9e0287dbd74a79dee3c4898d5a48df7701d95f3bd0d4814fd0ab6c5e",
+    "scripts/workspace_data.py": "60f5ed5de84e58c1ee5e9ec27dffa17be3784c29a4b8b799d356c48948c123c4",
+    "scripts/tests/workspace-data.test.sh": "d4ff9e1a802dc49eb8b3f8ba4578085a5b950fed36ba1f9741676c3a85f36d95",
+    "scripts/tests/test_workspace_data.py": "f2f1ca05270011dd9ddbe9a52468d1c17879fd1dd1c8eb351b0374b5cb5a8f1f",
+    "services/support-copilot-api/src/main/resources/application-workspace.properties": "6a0cb72f8d76415797f3d39becfd0117059070c21e9159ba590009a47851eb10",
+    "services/support-copilot-api/build/libs/support-copilot-api-0.0.1-SNAPSHOT.jar": "252a2fec23d8574aa58ca72556e79429dd61ef477792d1accf7500f241c70f1f"
+  }
+}

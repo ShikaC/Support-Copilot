@@ -34,7 +34,7 @@ export function AnalysisColumn(props: AnalysisColumnProps) {
     </div>
     <div className="analysis-scroll"><Tabs className="analysis-tabs" defaultActiveKey="workflow" items={[
       { key: 'workflow', label: '处理轨迹', children: <WorkflowPanel analysis={analysis} /> },
-      { key: 'evidence', label: `知识依据 ${analysis.retrieval.hits.length}`, children: <EvidencePanel analysis={analysis} /> },
+      { key: 'evidence', label: `知识依据 ${analysis.retrieval.hits.filter((hit) => hit.usedAsEvidence).length}`, children: <EvidencePanel analysis={analysis} /> },
       { key: 'reply', label: '回复建议', children: <ReplyReview ticket={ticket} analysis={analysis} client={client} onRefreshTicket={onRefreshTicket} onReviewSaved={onReviewSaved} onToast={onToast} /> },
     ]} /></div>
   </section>

@@ -3,9 +3,9 @@ import type { Metrics } from '../../types'
 
 export function StatusStrip({ metrics }: { readonly metrics: Metrics | null }) {
   const items = [
-    { label: '待处理工单', value: metrics?.summary.openTickets ?? '--', delta: metrics ? '当前 H2 快照' : '指标暂不可用', icon: Inbox, tone: '' },
+    { label: '待处理工单', value: metrics?.summary.openTickets ?? '--', delta: metrics ? '当前服务队列' : '指标暂不可用', icon: Inbox, tone: '' },
     { label: '紧急优先级', value: metrics?.summary.urgentTickets ?? '--', delta: metrics ? '当前工单快照' : '指标暂不可用', icon: AlertTriangle, tone: 'danger' },
-    { label: 'SLA 风险', value: metrics?.summary.slaRiskTickets ?? '--', delta: metrics ? '按优先级计算' : '指标暂不可用', icon: Clock3, tone: 'warning' },
+    { label: 'SLA 风险', value: metrics?.summary.slaRiskTickets ?? '--', delta: metrics ? '已超时或距截止 ≤ 2h' : '指标暂不可用', icon: Clock3, tone: 'warning' },
     {
       label: '分析成功率',
       value: metrics?.summary.analysisSuccessRate == null ? '--' : `${(metrics.summary.analysisSuccessRate * 100).toFixed(1)}%`,

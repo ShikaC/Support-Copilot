@@ -1,0 +1,36 @@
+[
+  {
+    "scenario": "sort-NEWEST",
+    "expected": "SC-3356667E454344CC9D96E32591BD8",
+    "first": "SC-78E7E3E92DE34B928070BCDA0DB18"
+  },
+  {
+    "scenario": "sort-SLA",
+    "expected": "SC-10041",
+    "first": "SC-78E7E3E92DE34B928070BCDA0DB18"
+  },
+  {
+    "scenario": "sort-PRIORITY",
+    "expected": "SC-10041",
+    "first": "SC-10041"
+  },
+  {
+    "scenario": "assignee-未分配负责人",
+    "expectedRows": 4,
+    "actualRows": 4
+  },
+  {
+    "scenario": "assignee-全部负责人",
+    "expectedRows": 10,
+    "actualRows": 11
+  },
+  {
+    "scenario": "assignee-named",
+    "actualRows": 1,
+    "hasTicket": 2
+  },
+  {
+    "error": "TimeoutError: locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByPlaceholder('搜索工单、客户或页面…')\u001b[22m\n",
+    "stack": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog').getByPlaceholder('搜索工单、客户或页面…')\u001b[22m\n\n    at /Users/shika/Documents/Support-Copilot/apps/support-copilot-web/[eval1]:7:123"
+  }
+]

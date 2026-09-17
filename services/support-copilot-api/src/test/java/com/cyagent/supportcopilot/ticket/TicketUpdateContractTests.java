@@ -290,6 +290,7 @@ class TicketUpdateContractTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value(to))
 			.andExpect(jsonPath("$.version").value(ticket.getVersion() + 1));
+        if (to.equals("RESOLVED")) assertThat(ticketRepository.findById(ticket.getId()).orElseThrow().getResolvedAt()).isNotNull();
 	}
 
 	@Test

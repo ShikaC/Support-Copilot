@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import App from './App'
 import { metricsResponsePayload, ticketResponsePayload } from './test/apiFixtures'
 
-vi.mock('echarts-for-react', () => ({ default: () => null }))
+vi.mock('echarts-for-react/esm/core', () => ({ default: () => null }))
 
 class TestResizeObserver {
   observe() {}
@@ -25,8 +25,11 @@ it('preserves the established four-view console structure before extraction', as
     'fetch',
     vi.fn((input: string | URL | Request) => {
       const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-      if (path === '/api/tickets') {
+      if (path.split('?')[0] === '/api/tickets') {
         return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload]), { status: 200 }))
+      }
+      if (path === '/api/quality-reports') {
+        return Promise.resolve(new Response(JSON.stringify({ liveEvaluation: { status: 'NOT_CONFIGURED', report: null }, businessBenchmark: { status: 'NOT_CONFIGURED', report: null } }), { status: 200 }))
       }
       if (path === '/api/metrics') {
         return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload), { status: 200 }))
@@ -57,8 +60,11 @@ it('renders the user-menu toast within the sticky topbar', async () => {
     'fetch',
     vi.fn((input: string | URL | Request) => {
       const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-      if (path === '/api/tickets') {
+      if (path.split('?')[0] === '/api/tickets') {
         return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload]), { status: 200 }))
+      }
+      if (path === '/api/quality-reports') {
+        return Promise.resolve(new Response(JSON.stringify({ liveEvaluation: { status: 'NOT_CONFIGURED', report: null }, businessBenchmark: { status: 'NOT_CONFIGURED', report: null } }), { status: 200 }))
       }
       if (path === '/api/metrics') {
         return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload), { status: 200 }))

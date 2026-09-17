@@ -51,6 +51,7 @@ public class AuditEventRecorder {
 
 	private void requireAllowedMetadata(AuditEventCommand command) {
 		var valid = switch (command.action()) {
+			case TICKET_NOTE_ADDED -> command.metadata() instanceof AuditMetadata.Note;
 			case TICKET_CREATED -> command.metadata() instanceof AuditMetadata.None;
 			case TICKET_UPDATED, TICKET_UNASSIGNED ->
 				command.metadata() instanceof AuditMetadata.TicketChange;

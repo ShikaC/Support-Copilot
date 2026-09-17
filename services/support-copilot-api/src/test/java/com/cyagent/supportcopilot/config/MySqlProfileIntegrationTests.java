@@ -6,6 +6,13 @@ import static com.cyagent.supportcopilot.common.MySqlTestSupport.startContext;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 
@@ -15,11 +22,18 @@ import org.hibernate.tool.schema.spi.SchemaManagementException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestReporter;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
+
+import tools.jackson.databind.ObjectMapper;
 
 import com.cyagent.supportcopilot.analysis.AnalysisRun;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
@@ -34,7 +48,7 @@ import com.cyagent.supportcopilot.ticket.TicketDomain.CustomerTier;
 import com.cyagent.supportcopilot.ticket.TicketService;
 
 @EnabledIfEnvironmentVariable(named = "SUPPORT_COPILOT_RUN_MYSQL_TESTS", matches = "true")
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class MySqlProfileIntegrationTests {
 	private static final int MYSQL_TEXT_MAX_BYTES = 65_535;
 	private static final int LARGE_PAYLOAD_BYTES = 100_000;
@@ -48,9 +62,9 @@ class MySqlProfileIntegrationTests {
 			var flyway = context.getBean(Flyway.class);
 			var jdbc = context.getBean(JdbcTemplate.class);
 
-			assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+			assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("7");
 			assertThat(flyway.info().applied())
-				.hasSize(5)
+				.hasSize(7)
 				.allSatisfy(migration -> assertThat(migration.getChecksum()).isNotNull());
 			assertThat(jdbc.queryForObject("select count(*) from tickets", Long.class)).isZero();
 		}
@@ -119,6 +133,71 @@ class MySqlProfileIntegrationTests {
 	}
 
 	@Test
+	void migrationChecksumIsStableAndSecondMigrateIsANoOp() {
+		var connection = createDatabase(MYSQL, "support_copilot_migration_repeat");
+		var first = migrate(connection);
+		var jdbc = jdbc(connection);
+		var historyBefore = jdbc.queryForList("""
+			select version, checksum, success
+			from flyway_schema_history
+			order by installed_rank
+			""");
+
+		var second = migrate(connection);
+
+		assertThat(first.info().current().getVersion().getVersion()).isEqualTo("7");
+		assertThat(second.info().current().getVersion().getVersion()).isEqualTo("7");
+		assertThat(jdbc.queryForList("""
+			select version, checksum, success
+			from flyway_schema_history
+			order by installed_rank
+			"""))
+			.isEqualTo(historyBefore);
+	}
+
+	@Test
+	void httpTicketCreateAndReadUseMySqlAfterApplicationRestart() throws Exception {
+		var connection = createDatabase(MYSQL, "support_copilot_http");
+		var createRequest = """
+			{"channel":"EMAIL","customerName":"MySQL HTTP Customer","customerCompany":"MySQL HTTP Company",
+			"customerTier":"STANDARD","subject":"HTTP persistence","description":"Synthetic HTTP MySQL integration test.",
+			"language":"en-US"}
+			""";
+		String ticketId;
+
+		try (var context = startContext(connection)) {
+			var mockMvc = mockMvc(context);
+			var response = mockMvc.perform(post("/api/tickets")
+					.with(jwt().jwt(jwt -> jwt.subject("mysql-http-agent"))
+						.authorities(new SimpleGrantedAuthority("ROLE_SUPPORT_AGENT")))
+					.header("X-Trace-Id", "trace-mysql-http-create")
+					.contentType(APPLICATION_JSON)
+					.content(createRequest))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.customerName").value("MySQL HTTP Customer"))
+				.andExpect(jsonPath("$.customerCompany").value("MySQL HTTP Company"))
+				.andExpect(jsonPath("$.category").value("UNCLASSIFIED"))
+				.andExpect(jsonPath("$.status").value("NEW"))
+				.andReturn();
+			ticketId = context.getBean(ObjectMapper.class)
+				.readTree(response.getResponse().getContentAsString())
+				.get("id")
+				.asString();
+		}
+
+		try (var restarted = startContext(connection)) {
+			mockMvc(restarted).perform(get("/api/tickets/{id}", ticketId)
+					.with(jwt().jwt(jwt -> jwt.subject("mysql-http-agent"))
+						.authorities(new SimpleGrantedAuthority("ROLE_SUPPORT_AGENT"))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(ticketId))
+				.andExpect(jsonPath("$.subject").value("HTTP persistence"))
+				.andExpect(jsonPath("$.description").value("Synthetic HTTP MySQL integration test."))
+				.andExpect(jsonPath("$.language").value("en-US"));
+		}
+	}
+
+	@Test
 	void tamperedMigrationHistoryPreventsPilotStartup() {
 		var connection = createDatabase(MYSQL, "support_copilot_checksum");
 		migrate(connection);
@@ -165,5 +244,11 @@ class MySqlProfileIntegrationTests {
 			database.username(),
 			database.password()
 		));
+	}
+
+	private MockMvc mockMvc(ConfigurableApplicationContext context) {
+		return MockMvcBuilders.webAppContextSetup((WebApplicationContext) context)
+			.apply(springSecurity())
+			.build();
 	}
 }

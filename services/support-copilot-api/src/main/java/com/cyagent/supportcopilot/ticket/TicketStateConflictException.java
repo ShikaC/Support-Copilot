@@ -7,7 +7,7 @@ public class TicketStateConflictException extends RuntimeException {
 	private final String requestedStatus;
 
 	public TicketStateConflictException(String ticketId, String currentStatus) {
-		super("当前工单状态不允许取消负责人。", null);
+		super("当前工单状态不允许此操作。", null);
 		this.ticketId = ticketId;
 		this.currentStatus = currentStatus;
 		this.requestedStatus = null;

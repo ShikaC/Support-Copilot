@@ -13,6 +13,6 @@ public class WebConfig implements WebMvcConfigurer {
 			.allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173")
 			.allowedMethods("GET", "POST", "PATCH", "OPTIONS")
 			.allowedHeaders("*")
-			.exposedHeaders("X-Trace-Id");
+			.exposedHeaders("X-Trace-Id", "X-Next-Cursor", "X-Page-Limit", "X-Total-Count");
 	}
 }

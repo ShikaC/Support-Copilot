@@ -7,7 +7,7 @@ import com.cyagent.supportcopilot.analysis.FallbackReason;
 
 public sealed interface AuditMetadata permits AuditMetadata.None,
 	AuditMetadata.TicketChange, AuditMetadata.Analysis, AuditMetadata.Review,
-	AuditMetadata.KnowledgeRelease {
+	AuditMetadata.KnowledgeRelease, AuditMetadata.Note {
 
 	enum AnalysisMode {
 		FALLBACK,
@@ -40,6 +40,10 @@ public sealed interface AuditMetadata permits AuditMetadata.None,
 		APPROVED,
 		EDITED,
 		REJECTED
+	}
+
+	record Note(String noteId) implements AuditMetadata {
+		public Note { requireResultId(noteId); }
 	}
 
 	record None() implements AuditMetadata {

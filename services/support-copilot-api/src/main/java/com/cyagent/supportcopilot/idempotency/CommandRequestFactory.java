@@ -24,6 +24,11 @@ public class CommandRequestFactory {
 		this.objectMapper = objectMapper;
 	}
 
+	public CommandRequest creation(IdempotencyKey key, com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest payload) {
+		return request(key, CommandType.CREATE_TICKET, "POST:/api/tickets/commands/create", null, null,
+			new String(serialize(payload), StandardCharsets.UTF_8));
+	}
+
 	public CommandRequest analysis(IdempotencyKey key, String ticketId) {
 		return request(key, CommandType.ANALYZE_TICKET, ANALYZE_ROUTE, ticketId, null, null);
 	}
@@ -68,7 +73,7 @@ public class CommandRequestFactory {
 		return new CommandRequest(key, commandType, routeScope, sha256(serialize(canonical)));
 	}
 
-	private byte[] serialize(CanonicalCommand command) {
+	private byte[] serialize(Object command) {
 		try {
 			return objectMapper.writeValueAsString(command).getBytes(StandardCharsets.UTF_8);
 		} catch (JacksonException exception) {

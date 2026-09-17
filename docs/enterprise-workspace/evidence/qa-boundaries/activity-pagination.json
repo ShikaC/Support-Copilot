@@ -1,0 +1,64 @@
+{
+  "first": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "audit-c71b731e-d8cd-4274-b7ce-e2716738654b",
+          "action": "TICKET_UPDATED",
+          "actorLabel": "匿名演示操作人",
+          "createdAt": "2026-09-09T08:08:10.786490Z",
+          "traceId": "trace_672631d87fbf",
+          "ticketVersion": 8,
+          "detail": "更新状态"
+        },
+        {
+          "id": "audit-fe22ce38-6f43-42c7-ba09-43c671637e7a",
+          "action": "TICKET_UPDATED",
+          "actorLabel": "匿名演示操作人",
+          "createdAt": "2026-09-09T08:08:10.756582Z",
+          "traceId": "trace_c03b71eb9977",
+          "ticketVersion": 7,
+          "detail": "更新状态"
+        }
+      ],
+      "nextCursor": "eyJ0aWNrZXRJZCI6InRpY2tldC0yN2ZlMzgxMy0yMTg3LTQ3YzAtODYzNS1jZmY1NmY1NGQwNDgiLCJjcmVhdGVkQXQiOiIyMDI2LTA5LTA5VDA4OjA4OjEwLjc1NjU4MloiLCJpZCI6ImF1ZGl0LWZlMjJjZTM4LTZmNDMtNDJjNy1iYTA5LTQzYzY3MTYzN2U3YSJ9"
+    }
+  },
+  "second": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "audit-3b073c7a-8361-4c11-a214-bdf5490b150e",
+          "action": "TICKET_UPDATED",
+          "actorLabel": "匿名演示操作人",
+          "createdAt": "2026-09-09T08:08:10.603657Z",
+          "traceId": "trace_46adf1f8eabb",
+          "ticketVersion": 6,
+          "detail": "更新状态"
+        },
+        {
+          "id": "audit-9c6804ad-cb85-48cc-b174-905c7609f1dd",
+          "action": "TICKET_UPDATED",
+          "actorLabel": "匿名演示操作人",
+          "createdAt": "2026-09-09T08:02:35.207205Z",
+          "traceId": "trace_e7176fb7b208",
+          "ticketVersion": 5,
+          "detail": "更新优先级"
+        }
+      ],
+      "nextCursor": "eyJ0aWNrZXRJZCI6InRpY2tldC0yN2ZlMzgxMy0yMTg3LTQ3YzAtODYzNS1jZmY1NmY1NGQwNDgiLCJjcmVhdGVkQXQiOiIyMDI2LTA5LTA5VDA4OjAyOjM1LjIwNzIwNVoiLCJpZCI6ImF1ZGl0LTljNjgwNGFkLWNiODUtNDhjYy1iMTc0LTkwNWM3NjA5ZjFkZCJ9"
+    }
+  },
+  "bad": {
+    "status": 400,
+    "body": {
+      "code": "INVALID_TICKET_CURSOR",
+      "message": "工单游标无效。",
+      "traceId": "trace_885575eeed48",
+      "timestamp": "2026-09-09T08:08:30.563720Z",
+      "details": {}
+    }
+  }
+}

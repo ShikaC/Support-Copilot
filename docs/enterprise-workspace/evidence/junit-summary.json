@@ -1,0 +1,753 @@
+{
+  "head": "4df3bf44907c34318132496929bad4a3974ad88b",
+  "workingTree": "dirty",
+  "totals": {
+    "tests": 273,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "classes": [
+    {
+      "name": "com.cyagent.supportcopilot.SupportCopilotApiApplicationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "contextLoads()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AiErrorEnvelopeContractTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "[1] path = \"/auth\", code = \"AI_SERVICE_AUTHENTICATION_FAILED\"",
+        "[2] path = \"/request\", code = \"AI_SERVICE_REQUEST_REJECTED\"",
+        "[3] path = \"/contract\", code = \"AI_SERVICE_CONTRACT_ERROR\""
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AiResilienceContractTests",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "timeoutCancelsTheAttemptWithoutRetrying()",
+        "pythonProcessingDeadlineIsTerminalAndNeverRetried()",
+        "boundedServerErrorRetryRecovers()",
+        "circuitOpensAndSubsequentCallFailsWithoutReachingTheWire()",
+        "boundedRateLimitRetryRecoversAndRecordsMetrics()",
+        "tracePropagatesAndLogsExcludePayloadAndCredentials()",
+        "[1] status = 400",
+        "[2] status = 401",
+        "[3] status = 403",
+        "[4] status = 422",
+        "malformedSuccessPayloadSurfacesAsContractErrorWithoutFallback()",
+        "bulkheadRejectsConcurrentCallWithoutReachingTheWire()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AiServiceClientTests",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "responseWithADifferentPolicyVersionIsRejected()",
+        "slowPythonResponseStopsWithinTheConfiguredJavaBudget()",
+        "pythonProcessingTimeoutHasItsOwnFallbackReason()",
+        "pythonRequestValidationFailureIsNotConvertedToFallback()",
+        "pythonAuthenticationFailureIsNotConvertedToFallback()",
+        "runtimeKnowledgeReleaseMismatchIsTypedAndNeverConvertedToFallback()",
+        "analyzeRequestSendsInternalCredentialAndPreservesJavaPythonShapeAndTrace()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AiServicePropertiesValidationTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "defaultTwoTotalAttemptsBindsSuccessfully()",
+        "configuredThreeTotalAttemptsFailsBindingValidation()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AnalysisPersistenceServiceTests",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rejectsAnalysisWhenTicketVersionHasChanged()",
+        "savesAnalysisAndTicketTogetherWithSourceVersion()",
+        "rollsBackTicketUpdateWhenAnalysisRunCannotBeSaved()",
+        "[1] field = \"category\", value = \"ARBITRARY_CATEGORY\"",
+        "[2] field = \"priority\", value = \"CRITICAL\"",
+        "[3] field = \"status\", value = \"RUNNING\""
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AnalysisServiceTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "programmingFailureIsNotHiddenAsFallback()",
+        "concurrentRequestsForTheSameTicketVersionOnlyAnalyzeAndPersistOnce()",
+        "namedAiServiceFailureIsPersistedAsFallback()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.AnalysisSingleFlightCoordinatorTests",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "joinedCallerReceivesTheOwnersProgrammingFailure()",
+        "completedAnalysisReleasesTheKeyForAnExplicitRetry()",
+        "failedExecutionReleasesTheKeyForRetry()",
+        "concurrentRequestsForTheSameAnalysisShareOneExecution()",
+        "analysisForAnotherTicketDoesNotWaitForTheActiveExecution()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.KnowledgeAccessForwardingTests",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "missingTrustedScopesRemainEmptyInProviderPayload()",
+        "localPilotJwtWithoutSupportScopesRemainsEmpty()",
+        "explicitEmptyTrustedScopesRemainEmptyInProviderPayload()",
+        "ticketPayloadCannotExpandJwtScopesAndActiveReleaseIdentityIsForwarded()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.MockAnalysisFactoryTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "explicitFallbackIsNotReportedAsSuccessfulAnalysis()",
+        "missingRecoveryEvidenceFallsBackToManualReview()",
+        "billingTicketsRequireEscalationAndReturnEvidence()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.review.AnalysisReviewApiTests",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "returnsStructuredConflictForStaleAnalysisReview()",
+        "requiresIdempotencyKeyForRejection()",
+        "rejectsBlankRejectionReasonBeforeCallingTheService()",
+        "requiresIdempotencyKeyForReviewedReply()",
+        "recordsRejectionWithRequiredReason()",
+        "recordsReviewedReplyThroughExplicitCommand()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.review.AnalysisReviewServiceTests",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "recordsRejectionReasonWithoutTreatingTheSuggestionAsReviewedContent()",
+        "rejectsSameContentRetryWhenTicketChangedAfterReview()",
+        "reviewPersistsTheAuthenticatedJwtSubject()",
+        "recordsApprovalWhenReplyIsUnchanged()",
+        "rejectsReviewWhenTicketChangedAfterAnalysis()",
+        "returnsExistingRejectionWhenTheSameReasonIsRetried()",
+        "rejectsRejectionWhenTicketChangedAfterAnalysis()",
+        "waitsForConcurrentTicketUpdateBeforeCheckingReviewVersion()",
+        "recordsOriginalAndEditedReply()",
+        "preservesRejectionReasonInTheRefreshedTicketEvent()",
+        "returnsExistingReviewWhenTheSameContentIsRetried()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.analysis.review.ReviewActorIdentityContractTests",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "[1] scenario = \"missing-reviewer\", role = \"SUPPORT_REVIEWER\", subject = null",
+        "[2] scenario = \"missing-admin\", role = \"SUPPORT_ADMIN\", subject = null",
+        "[3] scenario = \"empty-reviewer\", role = \"SUPPORT_REVIEWER\", subject = \"\"",
+        "[4] scenario = \"empty-admin\", role = \"SUPPORT_ADMIN\", subject = \"\"",
+        "[5] scenario = \"whitespace-reviewer\", role = \"SUPPORT_REVIEWER\", subject = \"   \"",
+        "[6] scenario = \"whitespace-admin\", role = \"SUPPORT_ADMIN\", subject = \"   \"",
+        "signedReviewRoleWithNonBlankSubjectPersistsTrustedActor()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.audit.AuditAppendOnlyContractTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "auditControllerHasNoWriteUpdateOrDeleteEndpoint()",
+        "applicationRepositoryExposesInsertAndQueryOnly()",
+        "auditEntityHasNoMutableFieldApiAndColumnsAreNotUpdatable()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.audit.AuditEventIntegrationTests",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "outerBusinessRollbackRemovesAnEventInsertedEarlierInTheTransaction()",
+        "auditInsertConstraintFailureRollsBackTheBusinessWrite()",
+        "actualTicketUpdateCreatesOneEventWhileNoOpAndStaleWritesCreateNone()",
+        "actualUnassignCreatesOneEventWhileReplayCreatesNone()",
+        "malformedAuditCursorFilterAndLimitReturnStableBadRequest()",
+        "auditQueryRequiresReviewerAndReturnsStableRedactedKeysetPages()",
+        "fallbackAnalysisPersistenceCreatesOneRedactedEventAndConflictCreatesNone()",
+        "eachNewReviewDecisionCreatesOneEventWhileSameContentReplayCreatesNone()",
+        "authenticatedTicketCreatePersistsOneTrustedAuditRow()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.audit.AuditEventMySqlIntegrationTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "auditInsertFailureRollsBackTicketWithoutAnOrphanEvent()",
+        "trustedTicketMutationAndItsSingleAuditEventSurviveApplicationRestart()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.common.TraceIdFilterTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "generatesTraceIdWhenRequestDoesNotProvideOne()",
+        "preservesIncomingTraceIdAcrossResponseAndMdc()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.DemoProfileIntegrationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "startsWithDemoFixturesAndH2ConsoleEnabled()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.DemoSecurityCharacterizationTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "demoBusinessApiIsPublicWithoutCredentials()",
+        "demoUsesAnExplicitAnonymousDemoActor()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.ExternalJwtDecoderTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "directJwkSetDecoderRequiresConfiguredIssuerAndAudience()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.FlywayMigrationContractTests",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "auditMigrationCreatesAppendOnlyQueryIndexesWithoutDestructiveStatements()",
+        "baselineCreatesCurrentJpaSchemaWithoutDestructiveStatements()",
+        "idempotencyMigrationCreatesUniqueLeaseIndexedRecordsWithoutDestructiveStatements()",
+        "ticketMigrationAddsDomainChecksAndQueueIndexesWithoutDestructiveStatements()",
+        "knowledgeReleaseMigrationCreatesImmutableHistoryAndSingletonPointerWithoutDestructiveStatements()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.JwtClaimValidationIntegrationTests",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "signedTokenWithWrongAudienceIsUnauthorized()",
+        "signedTokenWithoutIssuerIsUnauthorized()",
+        "signedSupportAgentRetainsAuthorizedOutcome()",
+        "signedTokenWithoutAudienceIsUnauthorized()",
+        "signedTokenWithWrongIssuerIsUnauthorized()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.MySqlProfileIntegrationTests",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "missingKnowledgeActivePointerColumnPreventsPilotStartup()",
+        "httpTicketCreateAndReadUseMySqlAfterApplicationRestart()",
+        "migrationChecksumIsStableAndSecondMigrateIsANoOp()",
+        "migratedPilotSchemaStartsWithoutDemoTickets()",
+        "largeAnalysisAndReviewPayloadsRoundTripExactlyAfterRestart(TestReporter)",
+        "tamperedMigrationHistoryPreventsPilotStartup()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.PilotSecurityContractTests",
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "[1] role = \"SUPPORT_REVIEWER\", subject = \"reviewer-subject\"",
+        "[2] role = \"SUPPORT_ADMIN\", subject = \"admin-subject\"",
+        "[1] role = \"SUPPORT_AGENT\", endpoint = \"/api/tickets\"",
+        "[2] role = \"SUPPORT_AGENT\", endpoint = \"/api/knowledge/search?query=sso\"",
+        "[3] role = \"SUPPORT_AGENT\", endpoint = \"/api/metrics\"",
+        "[4] role = \"SUPPORT_REVIEWER\", endpoint = \"/api/tickets\"",
+        "[5] role = \"SUPPORT_REVIEWER\", endpoint = \"/api/knowledge/search?query=sso\"",
+        "[6] role = \"SUPPORT_REVIEWER\", endpoint = \"/api/metrics\"",
+        "[7] role = \"SUPPORT_ADMIN\", endpoint = \"/api/tickets\"",
+        "[8] role = \"SUPPORT_ADMIN\", endpoint = \"/api/knowledge/search?query=sso\"",
+        "[9] role = \"SUPPORT_ADMIN\", endpoint = \"/api/metrics\"",
+        "authorizedStaleWritePreservesCanonicalConflictAndTraceId()",
+        "[1] endpoint = \"/actuator/health/liveness\"",
+        "[2] endpoint = \"/actuator/health/readiness\"",
+        "explicitTestDecoderMapsSignedRolesClaim()",
+        "corsPreflightDoesNotOpenTheBusinessRequest()",
+        "onlyAdminCanReadNonHealthActuatorEndpoints()",
+        "authenticatedWrongRoleReturnsStableForbiddenJson()",
+        "healthIsPublicAndMinimal()",
+        "malformedBearerTokenReturnsUnauthorizedWithoutCredentialEcho()",
+        "anonymousBusinessRequestReturnsStableTraceableUnauthorizedJson()",
+        "reviewActorComesFromJwtSubjectAndIgnoresSpoofingHeader()",
+        "agentCannotReadReviews()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.ProfileConfigurationTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "isolatesDatabaseBehaviorAcrossNamedProfiles()",
+        "rejectsBlankRequiredDatabaseSettings()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.RuntimeProfileIntegrationTests",
+      "tests": 24,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "\"no active profile\"",
+        "\"explicit default profile\"",
+        "\"unsupported profile\"",
+        "\"multiple runtime profiles\"",
+        "demoDefaultsToAnExplicitLoopbackListener()",
+        "demoRejectsAnEnvironmentWithoutAnEffectiveListenerAddress()",
+        "\"local\": \"missing internal token\"",
+        "\"pilot\": \"blank internal token\"",
+        "\"local\": \"missing issuer with JWK configured\"",
+        "\"pilot\": \"blank issuer with JWK configured\"",
+        "\"local\": \"missing audience\"",
+        "\"pilot\": \"blank audience\"",
+        "[1] address = \"0.0.0.0\"",
+        "[2] address = \"::\"",
+        "[3] address = \"[::]\"",
+        "[4] address = \"192.0.2.10\"",
+        "[5] address = \"example.com\"",
+        "[6] address = \"\"",
+        "authenticatedPilotAndTestProfilesRetainTheirListenerPolicy()",
+        "[1] address = \"127.0.0.1\"",
+        "[2] address = \"::1\"",
+        "[3] address = \"[::1]\"",
+        "[4] address = \"0:0:0:0:0:0:0:1\"",
+        "[5] address = \"localhost\""
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.config.TestProfileIntegrationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "startsWithAnIsolatedEmptyH2Database()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.idempotency.CommandIdempotencyIntegrationTests",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "reviewRejectsAMalformedIdempotencyKeyBeforeInvokingTheCommand()",
+        "analysisRequiresAnIdempotencyKeyBeforeInvokingTheCommand()",
+        "expiredOwnerIsRecoverableAndCompletionFailureRollsBackBusinessData()",
+        "migrationEnforcesGlobalKeyUniquenessAndCreatesOperationalIndexes()",
+        "concurrentContextsConvergeAndRestartReplaysWithoutNewEffects()",
+        "reviewReplayAndFingerprintConflictCreateOneReviewAndAuditEvent()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.idempotency.CommandIdempotencyMySqlIntegrationTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "expiredOwnerLeaseIsRecoveredAfterApplicationRestart()",
+        "concurrentSameKeyReusesOneResultAndRestartRejectsAConflictingFingerprint()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.idempotency.IdempotencyKeyTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "acceptsConservativeAsciiKeysAtBothLengthBoundaries()",
+        "rejectsBlankShortLongWhitespaceAndNonAsciiKeys()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.idempotency.LongResponseCommandIdempotencyIntegrationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "responseLargerThanOrdinaryVarcharSurvivesCompletionAndRestartReplayExactly(TestReporter)"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStoreTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rejectsContentTamperingEvenWhenTheDeclaredChecksumIsUnchanged()",
+        "loadsTheSameReleaseAndChunkIdsUsedByPython()",
+        "rejectsUnknownCorpusFieldsBeforeSearchCanUseThem()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.knowledge.KnowledgeReleaseIntegrationTests",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rollbackAuditFailureLeavesActivePointerAndReleaseStatesUnchangedWithNoEvent()",
+        "createApprovePublishAndRollbackAreImmutableAtomicAndAudited()",
+        "releaseRoutesEnforceAuthenticationAndReviewerMutationRoles()",
+        "staleIllegalMissingAndInvalidRequestsReturnStableErrorsWithoutAudit()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.knowledge.KnowledgeReleaseMigrationIntegrationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "flywayV6MigratesH2AndBaselineActivationPassesHibernateValidation()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.knowledge.KnowledgeReleaseMySqlIntegrationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "publishAndRollbackActivePointerSurvivesApplicationRestart()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.knowledge.KnowledgeSearchAccessIntegrationTests",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "generalScopeDoesNotInventEntriesMissingFromTheCanonicalCorpus()",
+        "unauthenticatedKnowledgeSearchReturnsUnauthorized()",
+        "unavailableActiveReleaseFailsClosedWithTheExistingKnowledgeAccessError()",
+        "activeReleaseScopeIntersectionCanDenyAnOtherwiseTrustedCatalogScope()",
+        "activeReleaseChecksumDriftFailsClosedBeforeReturningCanonicalHits()",
+        "missingTrustedScopesReturnNoKnowledgeDespiteBrowserScopeAndForbiddenIdHints()",
+        "[1] trustedScope = \"BILLING\", expectedChunkId = \"chunk-billing-07\"",
+        "[2] trustedScope = \"ACCOUNT\", expectedChunkId = \"chunk-account-sso-01\"",
+        "[3] trustedScope = \"PRIVACY\", expectedChunkId = \"chunk-privacy-05\"",
+        "[4] trustedScope = \"TECHNICAL\", expectedChunkId = \"chunk-sync-2047\""
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.metrics.EvaluationReportReaderTests",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "treatsOutOfRangeMetricsAsUnavailable(Path)",
+        "treatsMalformedReportsAsUnavailable(Path)",
+        "readsLiveEvaluationSummaryWithoutTreatingItAsProductionAccuracy(Path)",
+        "readsTheStableFieldsUsedByTheQualityPage(Path)",
+        "treatsMissingReportsAsUnavailable(Path)"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.metrics.MetricsServiceTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "calculatesOperationalRatesFromDatabaseAggregates()",
+        "exposesOnlyTheMetricsRecordedByTheEvaluationReport()",
+        "doesNotInventAnalysisQualityMetricsWithoutRecordedRuns()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.metrics.OperationalMetricsIntegrationTests",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "createdAndRecordedResolvedCountsComeFromPersistedDates()",
+        "slaRiskUsesDeadlinesAndExcludesTerminalTicketsInsteadOfCountingPriority()",
+        "latencyUsesRecordedSamplesAndNearestRankPercentile()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.metrics.OperationalMetricsMySqlIntegrationTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "actualDeadlineCalendarAndLatencyFactsSurviveMysqlRestart()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketAnalysisConflictApiTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "exposesExplicitUnassignCommand()",
+        "returnsStructuredConflictWhenAnalysisUsesAnOldTicketVersion()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketCursorTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "roundTripsTheStableSortKeyWithoutExposingItsWireFormat()",
+        "rejectsMalformedAndAmbiguousCursors()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketNoteApiTests",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "closedTicketRejectsNotes()",
+        "requiresAuthenticationAndSupportRole()",
+        "rejectsBlankNoteAndClientSuppliedActor()",
+        "persistsTrustedNoteAndReplaysWithoutAnotherVersionIncrement()",
+        "staleCommandDoesNotCreateNote()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketNoteMySqlIntegrationTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "sameRequestIdOnDifferentTicketsCreatesIndependentNotes()",
+        "concurrentReplayPersistsOneNoteAndAuditAcrossApplicationRestart()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketPaginationIntegrationTests",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "returnsStableErrorsForInvalidPaginationParameters()",
+        "appliesCategoryAndKeywordFiltersBeforePaging()",
+        "returnsStableKeysetPagesAndContinuationHeader()",
+        "treatsLikeMetacharactersAsLiteralKeywordText()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketQueueCursorTests",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "bindsNormalizedFiltersRegardlessOfCaseOrderAndWhitespace()",
+        "rejectsOversizedAndMalformedCursorWithoutInterpretingItAsAFirstPage()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketQueueIntegrationTests",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "filtersDescriptionAndAssignmentAcrossWholeQueue()",
+        "crossOriginClientsCanReadMatchingTotalAndContinuation()",
+        "rejectsUnsupportedSortAndLegacyCursorWithStableClientErrors()",
+        "[1] sort = \"SLA\"",
+        "[2] sort = \"PRIORITY\"",
+        "[1] sort = \"NEWEST\"",
+        "[2] sort = \"SLA\"",
+        "[3] sort = \"PRIORITY\"",
+        "rejectsCursorUsedForDifferentSortOrFilters()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketServiceListTests",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "loadsListAnalysisAndReviewDataInBatches()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketUnassignServiceTests",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "rejectsUnassignForTerminalTicket()",
+        "rejectsOldVersionWithoutClearingNewAssignee()",
+        "clearsAssigneeAndIncrementsVersion()",
+        "repeatedUnassignIsIdempotent()",
+        "updateReturnsTheVersionCommittedToTheDatabase()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketUpdateContractTests",
+      "tests": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "[1] invalidPriority = \"CRITICAL\"",
+        "[2] invalidPriority = \"\"",
+        "treatsNullOptionalFieldsAsNoOp()",
+        "concurrentPatchesProduceOneConflictAndNoLostUpdate()",
+        "translatesJpaOptimisticLockFailureToVersionConflictContract()",
+        "rejectsUnknownPatchFieldWithoutMutatingTicket()",
+        "preservesAssignmentOnlyPatchWithCurrentVersion()",
+        "rejectsPatchWhenExpectedVersionIsMissingWithoutMutatingTicket()",
+        "exposesCurrentVersionForJpaOptimisticLockConflict()",
+        "[1] category = \"SECURITY\"",
+        "[2] category = \"LEGAL\"",
+        "[1] from = \"NEW\", to = \"RESOLVED\"",
+        "[2] from = \"IN_PROGRESS\", to = \"CLOSED\"",
+        "[3] from = \"WAITING_CUSTOMER\", to = \"RESOLVED\"",
+        "[4] from = \"RESOLVED\", to = \"IN_PROGRESS\"",
+        "[5] from = \"CLOSED\", to = \"IN_PROGRESS\"",
+        "rejectsOverlongAssigneeWithoutMutatingTicket()",
+        "updatesWithCurrentVersionAndReturnsIncrementedVersion()",
+        "[1] from = \"NEW\", to = \"IN_PROGRESS\"",
+        "[2] from = \"READY_FOR_REVIEW\", to = \"IN_PROGRESS\"",
+        "[3] from = \"READY_FOR_MANUAL_REVIEW\", to = \"IN_PROGRESS\"",
+        "[4] from = \"NEEDS_ESCALATION\", to = \"IN_PROGRESS\"",
+        "[5] from = \"IN_PROGRESS\", to = \"WAITING_CUSTOMER\"",
+        "[6] from = \"IN_PROGRESS\", to = \"RESOLVED\"",
+        "[7] from = \"WAITING_CUSTOMER\", to = \"IN_PROGRESS\"",
+        "[8] from = \"RESOLVED\", to = \"CLOSED\"",
+        "[1] invalidTier = \"VIP\"",
+        "[2] invalidTier = \"UNKNOWN\"",
+        "rejectsStaleVersionWithDetailsAndNoFieldMutation()",
+        "[1] invalidStatus = \"ANALYZING\"",
+        "[2] invalidStatus = \"UNKNOWN_STATUS\"",
+        "[1] invalidCategory = \"MADE_UP\"",
+        "[2] invalidCategory = \"\"",
+        "[1] invalidChannel = \"SMS\"",
+        "[2] invalidChannel = \"UNKNOWN\""
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.TicketWorkspaceCommandTests",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "simultaneousSameTicketReplayWritesOneNoteAndOneAuditEvent()",
+        "creationReplayReturnsSameTicketAndChangedPayloadConflicts()",
+        "sameRequestIdOnDifferentTicketsIsIndependentlyScoped()",
+        "claimUsesTrustedIdentityAndRejectsAStaleVersion()"
+      ]
+    },
+    {
+      "name": "com.cyagent.supportcopilot.ticket.activity.TicketActivityApiTests",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        "returnsEveryDurableBusinessActionWithoutSensitiveContentsOrUnrelatedTickets()",
+        "usesTicketPermissionsAndReturnsNotFoundForMissingTicket()",
+        "rejectsInvalidPageCursorAndCrossTicketCursor()",
+        "cursorPaginatesEqualTimestampsWithoutDuplicatesOrGaps()"
+      ]
+    }
+  ]
+}

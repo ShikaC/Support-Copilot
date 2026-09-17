@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-09-09T08:12:33.630089+00:00",
+  "h2Version": "2.4.240",
+  "runningWorkspaceReadOnlyLockProbe": "PASS: LOCK_SH|LOCK_NB rejected by active H2 FileChannel lock, no data changed",
+  "reverseInterop": {
+    "initialH2Open": "PASS",
+    "H2OpenDuringHelperLock": "REFUSED",
+    "H2OpenAfterHelperLock": "PASS",
+    "refusalExcerpt": "Exception in thread \"main\" org.h2.jdbc.JdbcSQLNonTransientConnectionException: Database may be already in use: \"/private/var/folders/0w/8nhty7090hq95p4w8xw6vfc80000gn/T/support-h2-os-lock-cz39smpe/database.mv.db\". Possible solutions: close all other connection(s); use the server mode [90020-240]"
+  },
+  "deterministicCopyReplaceTests": "3 passed; separate OS processes rejected during backup copy, restore copy, before replace and after replace",
+  "scope": "macOS local filesystem POSIX record locks; running workspace was not stopped or modified",
+  "sourceHashes": {
+    "scripts/workspace-data.sh": "ce6a0bac9e0287dbd74a79dee3c4898d5a48df7701d95f3bd0d4814fd0ab6c5e",
+    "scripts/workspace_data.py": "60f5ed5de84e58c1ee5e9ec27dffa17be3784c29a4b8b799d356c48948c123c4",
+    "scripts/tests/workspace-data.test.sh": "d4ff9e1a802dc49eb8b3f8ba4578085a5b950fed36ba1f9741676c3a85f36d95",
+    "scripts/tests/test_workspace_data.py": "f2f1ca05270011dd9ddbe9a52468d1c17879fd1dd1c8eb351b0374b5cb5a8f1f"
+  },
+  "staticChecks": {
+    "ruff": "PASS",
+    "basedpyright": "0 errors, 0 warnings, 0 notes",
+    "python": "3.14.6",
+    "requiredPython": "3.11+"
+  },
+  "commands": [
+    "services/support-copilot-ai/.venv/bin/python -m pytest scripts/tests/test_workspace_data.py -q",
+    "bash scripts/tests/workspace-data.test.sh",
+    "uvx ruff check scripts/workspace_data.py scripts/tests/test_workspace_data.py",
+    "uvx basedpyright --pythonpath services/support-copilot-ai/.venv/bin/python scripts/workspace_data.py scripts/tests/test_workspace_data.py"
+  ]
+}

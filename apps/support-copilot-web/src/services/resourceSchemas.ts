@@ -53,7 +53,7 @@ const releaseMetadataSchema = z.strictObject({
 })
 
 export const auditMetadataSchema = z.union([
-  z.strictObject({}), ticketMetadataSchema, analysisMetadataSchema, reviewMetadataSchema,
+  z.strictObject({ noteId: nonEmptyString }), z.strictObject({}), ticketMetadataSchema, analysisMetadataSchema, reviewMetadataSchema,
   releaseMetadataSchema,
 ])
 export const auditEventSchema = z.strictObject({
@@ -62,7 +62,7 @@ export const auditEventSchema = z.strictObject({
   actorType: nonEmptyString,
   actorRoles: z.array(nonEmptyString),
   action: z.enum([
-    'TICKET_CREATED', 'TICKET_UPDATED', 'TICKET_UNASSIGNED', 'ANALYSIS_PERSISTED',
+    'TICKET_NOTE_ADDED', 'TICKET_CREATED', 'TICKET_UPDATED', 'TICKET_UNASSIGNED', 'ANALYSIS_PERSISTED',
     'ANALYSIS_REVIEW_APPROVED', 'ANALYSIS_REVIEW_EDITED', 'ANALYSIS_REVIEW_REJECTED',
     'KNOWLEDGE_RELEASE_DRAFT_CREATED', 'KNOWLEDGE_RELEASE_APPROVED',
     'KNOWLEDGE_RELEASE_PUBLISHED', 'KNOWLEDGE_RELEASE_ROLLED_BACK',

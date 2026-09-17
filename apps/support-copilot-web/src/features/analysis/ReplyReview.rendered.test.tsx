@@ -84,7 +84,7 @@ it('requires and records a rejection reason', async () => {
   const { onReviewSaved } = renderedReview()
 
   fireEvent.click(screen.getByRole('button', { name: /拒绝建议/ }))
-  expect(screen.getByRole('button', { name: /确认拒绝/ }).hasAttribute('disabled')).toBe(true)
+  expect((await screen.findByRole('button', { name: /确认拒绝/ })).hasAttribute('disabled')).toBe(true)
   fireEvent.change(screen.getByLabelText('拒绝原因'), { target: { value: '证据不足' } })
   fireEvent.click(screen.getByRole('button', { name: /确认拒绝/ }))
   await waitFor(() => expect(onReviewSaved).toHaveBeenCalledWith(expect.objectContaining({ action: 'REJECTED', reason: '证据不足' })))

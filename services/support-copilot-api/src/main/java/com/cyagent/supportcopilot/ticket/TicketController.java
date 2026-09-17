@@ -52,11 +52,14 @@ public class TicketController {
 		@RequestParam(required = false) String category,
 		@RequestParam(required = false) String keyword,
 		@RequestParam(required = false) String cursor,
+		@RequestParam(required = false) String sort,
+		@RequestParam(required = false) String assignee,
 		@RequestParam(defaultValue = "20") Integer limit
 	) {
-		var page = ticketService.list(status, priority, category, keyword, cursor, limit);
+		var page = ticketService.list(TicketQueueQuery.parse(status, priority, category, keyword, assignee, sort), cursor, limit);
 		var headers = new HttpHeaders();
 		headers.add("X-Page-Limit", Integer.toString(page.limit()));
+		headers.add("X-Total-Count", Long.toString(page.totalCount()));
 		if (page.nextCursor() != null) {
 			headers.add("X-Next-Cursor", page.nextCursor());
 		}

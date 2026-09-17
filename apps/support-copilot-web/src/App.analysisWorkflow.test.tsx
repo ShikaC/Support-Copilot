@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import App from './App'
 import { analysisResponsePayload, metricsResponsePayload, ticketResponsePayload } from './test/apiFixtures'
 
-vi.mock('echarts-for-react', () => ({ default: () => null }))
+vi.mock('echarts-for-react/esm/core', () => ({ default: () => null }))
 
 class TestResizeObserver {
   observe() {}
@@ -49,7 +49,9 @@ it('keeps ticket analyses independent and ignores a late response after switchin
   }
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    if (path === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload, secondTicket()])))
+    if (path.endsWith('/activity')) return Promise.resolve(new Response('{"items":[],"nextCursor":null}'))
+    if (path.endsWith('/notes')) return Promise.resolve(new Response('[]'))
+    if (path.split('?')[0] === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload, secondTicket()])))
     if (path === '/api/metrics') return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload)))
     if (path === '/api/tickets/ticket-10042' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify({
       ...ticketResponsePayload,
@@ -91,7 +93,9 @@ it('leaves analysis controls usable after a transient failure and succeeds on re
   const retryAnalysis = analysisResponsePayload('analysis-retry-success')
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    if (path === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload])))
+    if (path.endsWith('/activity')) return Promise.resolve(new Response('{"items":[],"nextCursor":null}'))
+    if (path.endsWith('/notes')) return Promise.resolve(new Response('[]'))
+    if (path.split('?')[0] === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([ticketResponsePayload])))
     if (path === '/api/metrics') return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload)))
     if (path === '/api/tickets/ticket-10042/analyze') {
       analysisAttempts += 1
@@ -138,11 +142,13 @@ it('refreshes server-owned ticket fields and version after analysis', async () =
   }
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    if (path === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([initialTicket])))
+    if (path.endsWith('/activity')) return Promise.resolve(new Response('{"items":[],"nextCursor":null}'))
+    if (path.endsWith('/notes')) return Promise.resolve(new Response('[]'))
+    if (path.split('?')[0] === '/api/tickets' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify([initialTicket])))
     if (path === '/api/metrics') return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload)))
     if (path === '/api/tickets/ticket-10042/analyze') return Promise.resolve(new Response(JSON.stringify(analysis)))
     if (path === '/api/tickets/ticket-10042' && init?.method === undefined) return Promise.resolve(new Response(JSON.stringify(updatedTicket)))
-    if (path === '/api/tickets/ticket-10042' && init?.method === 'PATCH') return Promise.resolve(new Response(JSON.stringify({
+    if (path === '/api/tickets/ticket-10042/claim' && init?.method === 'POST') return Promise.resolve(new Response(JSON.stringify({
       ...updatedTicket,
       assigneeName: '演示管理员',
       version: 6,
@@ -157,8 +163,29 @@ it('refreshes server-owned ticket fields and version after analysis', async () =
   expect(await screen.findAllByText('账单支付')).toHaveLength(2)
   fireEvent.click(await screen.findByRole('button', { name: '领取工单' }))
 
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', expect.objectContaining({
-    method: 'PATCH',
-    body: JSON.stringify({ assigneeName: '演示管理员', expectedVersion: 5 }),
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042/claim', expect.objectContaining({
+    method: 'POST',
+    body: JSON.stringify({ expectedVersion: 5 }),
   })))
+})
+
+it('retains the last persisted analysis when reanalysis fails', async () => {
+  vi.stubGlobal('ResizeObserver', TestResizeObserver)
+  const previous = analysisResponsePayload('analysis-previous')
+  const persisted = { ...ticketResponsePayload, latestAnalysis: previous }
+  vi.stubGlobal('fetch', vi.fn((input: string | URL | Request) => {
+    const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    if (path.split('?')[0] === '/api/tickets') return Promise.resolve(new Response(JSON.stringify([persisted])))
+    if (path === '/api/metrics') return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload)))
+    if (path.endsWith('/activity')) return Promise.resolve(new Response('{"items":[],"nextCursor":null}'))
+    if (path.endsWith('/notes')) return Promise.resolve(new Response('[]'))
+    return Promise.reject(new TypeError('synthetic connection loss'))
+  }))
+  window.sessionStorage.setItem('support-copilot.access-token', 'synthetic-analysis-token')
+  render(<App authMode="secured" />)
+  await screen.findByRole('button', { name: '重新分析' })
+  fireEvent.click(screen.getByRole('button', { name: '重新分析' }))
+  await screen.findByText('无法连接业务服务')
+  expect(screen.getByText(previous.classification.reasonSummary)).toBeTruthy()
+  expect(screen.getByRole('tab', { name: '回复建议' })).toBeTruthy()
 })

@@ -1,0 +1,55 @@
+ticket=ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3
+PATCH terminal transitions
+{
+  "version": 0,
+  "status": "NEW"
+}
+{"id":"ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","ticketNo":"SC-0C91F89CDF9D425882E00A6016264","channel":"WEB_FORM","customerName":"QA synthetic 2","customerCompany":"本地QA演练","customerTier":"STANDARD","subject":"QA terminal transition 2026-09-09","description":"仅用于终态保护验证，不含真实客户数据。","language":"zh-CN","category":"UNCLASSIFIED","priority":"MEDIUM","status":"IN_PROGRESS","assigneeName":null,"slaDeadline":"2026-09-09T16:09:55.922982Z","createdAt":"2026-09-09T08:09:55.922982Z","updatedAt":"2026-09-09T08:10:12.021164Z","version":1,"latestAnalysis":null,"latestReview":null,"events":[{"id":"created-ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","label":"工单创建","detail":"已进入待处理队列","createdAt":"2026-09-09T08:09:55.922982Z"}]}
+{"id":"ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","ticketNo":"SC-0C91F89CDF9D425882E00A6016264","channel":"WEB_FORM","customerName":"QA synthetic 2","customerCompany":"本地QA演练","customerTier":"STANDARD","subject":"QA terminal transition 2026-09-09","description":"仅用于终态保护验证，不含真实客户数据。","language":"zh-CN","category":"UNCLASSIFIED","priority":"MEDIUM","status":"RESOLVED","assigneeName":null,"slaDeadline":"2026-09-09T16:09:55.922982Z","createdAt":"2026-09-09T08:09:55.922982Z","updatedAt":"2026-09-09T08:10:12.048146Z","version":2,"latestAnalysis":null,"latestReview":null,"events":[{"id":"created-ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","label":"工单创建","detail":"已进入待处理队列","createdAt":"2026-09-09T08:09:55.922982Z"}]}
+{"id":"ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","ticketNo":"SC-0C91F89CDF9D425882E00A6016264","channel":"WEB_FORM","customerName":"QA synthetic 2","customerCompany":"本地QA演练","customerTier":"STANDARD","subject":"QA terminal transition 2026-09-09","description":"仅用于终态保护验证，不含真实客户数据。","language":"zh-CN","category":"UNCLASSIFIED","priority":"MEDIUM","status":"CLOSED","assigneeName":null,"slaDeadline":"2026-09-09T16:09:55.922982Z","createdAt":"2026-09-09T08:09:55.922982Z","updatedAt":"2026-09-09T08:10:12.077361Z","version":3,"latestAnalysis":null,"latestReview":null,"events":[{"id":"created-ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","label":"工单创建","detail":"已进入待处理队列","createdAt":"2026-09-09T08:09:55.922982Z"}]}
+POST claim CLOSED
+HTTP/1.1 409 Conflict
+vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+x-trace-id: trace_59edc2bfec7c
+x-content-type-options: nosniff
+x-xss-protection: 0
+cache-control: no-cache, no-store, max-age=0, must-revalidate
+pragma: no-cache
+expires: 0
+x-frame-options: SAMEORIGIN
+content-type: application/json
+date: Wed, 09 Sep 2026 08:10:12 GMT
+connection: close
+Transfer-Encoding: chunked
+
+{"code":"TICKET_STATE_CONFLICT","message":"当前工单状态不允许此操作。","traceId":"trace_59edc2bfec7c","timestamp":"2026-09-09T08:10:12.103550Z","details":{"ticketId":"ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","currentStatus":"CLOSED"}}POST unassign CLOSED
+HTTP/1.1 200 OK
+vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+x-trace-id: trace_381ba4bb8dc1
+x-content-type-options: nosniff
+x-xss-protection: 0
+cache-control: no-cache, no-store, max-age=0, must-revalidate
+pragma: no-cache
+expires: 0
+x-frame-options: SAMEORIGIN
+content-type: application/json
+content-length: 790
+date: Wed, 09 Sep 2026 08:10:12 GMT
+connection: close
+
+{"id":"ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","ticketNo":"SC-0C91F89CDF9D425882E00A6016264","channel":"WEB_FORM","customerName":"QA synthetic 2","customerCompany":"本地QA演练","customerTier":"STANDARD","subject":"QA terminal transition 2026-09-09","description":"仅用于终态保护验证，不含真实客户数据。","language":"zh-CN","category":"UNCLASSIFIED","priority":"MEDIUM","status":"CLOSED","assigneeName":null,"slaDeadline":"2026-09-09T16:09:55.922982Z","createdAt":"2026-09-09T08:09:55.922982Z","updatedAt":"2026-09-09T08:10:12.077361Z","version":3,"latestAnalysis":null,"latestReview":null,"events":[{"id":"created-ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","label":"工单创建","detail":"已进入待处理队列","createdAt":"2026-09-09T08:09:55.922982Z"}]}POST analyze CLOSED
+HTTP/1.1 409 Conflict
+vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+x-trace-id: trace_d99d2e031104
+x-content-type-options: nosniff
+x-xss-protection: 0
+cache-control: no-cache, no-store, max-age=0, must-revalidate
+pragma: no-cache
+expires: 0
+x-frame-options: SAMEORIGIN
+content-type: application/json
+date: Wed, 09 Sep 2026 08:10:12 GMT
+connection: close
+Transfer-Encoding: chunked
+
+{"code":"TICKET_STATE_CONFLICT","message":"当前工单状态不允许此操作。","traceId":"trace_d99d2e031104","timestamp":"2026-09-09T08:10:12.221301Z","details":{"ticketId":"ticket-571727bc-43e2-43e2-bb45-2bd0d2c160e3","currentStatus":"CLOSED"}}

@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import App from './App'
 import { metricsResponsePayload, ticketResponsePayload } from './test/apiFixtures'
 
-vi.mock('echarts-for-react', () => ({ default: () => null }))
+vi.mock('echarts-for-react/esm/core', () => ({ default: () => null }))
 
 afterEach(() => {
   cleanup()
@@ -33,7 +33,9 @@ it('reloads and reconciles the affected ticket after a stale assignment update',
   }
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    if (path === '/api/tickets' && init?.method === undefined) {
+    if (path.endsWith('/activity')) return Promise.resolve(new Response('{"items":[],"nextCursor":null}'))
+    if (path.endsWith('/notes')) return Promise.resolve(new Response('[]'))
+    if (path.split('?')[0] === '/api/tickets' && init?.method === undefined) {
       return Promise.resolve(new Response(JSON.stringify([initialTicket]), { status: 200 }))
     }
     if (path === '/api/metrics') {
@@ -74,7 +76,7 @@ it('reloads and reconciles the affected ticket after a stale assignment update',
   })
 })
 
-it('sends a versioned PATCH and reconciles a stale real-ticket assignment', async () => {
+it('sends a versioned claim and reconciles a stale real-ticket assignment', async () => {
   class TestResizeObserver {
     observe() {}
     unobserve() {}
@@ -94,13 +96,15 @@ it('sends a versioned PATCH and reconciles a stale real-ticket assignment', asyn
   }
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    if (path === '/api/tickets' && init?.method === undefined) {
+    if (path.endsWith('/activity')) return Promise.resolve(new Response('{"items":[],"nextCursor":null}'))
+    if (path.endsWith('/notes')) return Promise.resolve(new Response('[]'))
+    if (path.split('?')[0] === '/api/tickets' && init?.method === undefined) {
       return Promise.resolve(new Response(JSON.stringify([initialTicket]), { status: 200 }))
     }
     if (path === '/api/metrics') {
       return Promise.resolve(new Response(JSON.stringify(metricsResponsePayload), { status: 200 }))
     }
-    if (path === '/api/tickets/ticket-10042' && init?.method === 'PATCH') {
+    if (path === '/api/tickets/ticket-10042/claim' && init?.method === 'POST') {
       return Promise.resolve(
         new Response(
           JSON.stringify({
@@ -130,10 +134,10 @@ it('sends a versioned PATCH and reconciles a stale real-ticket assignment', asyn
     '工单已被其他操作更新，请刷新后再更新负责人',
   )
   expect(await screen.findByText('并发负责人')).toBeTruthy()
-  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042', expect.objectContaining({
-    method: 'PATCH',
+  expect(fetchMock).toHaveBeenCalledWith('/api/tickets/ticket-10042/claim', expect.objectContaining({
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ assigneeName: '演示管理员', expectedVersion: 4 }),
+    body: JSON.stringify({ expectedVersion: 4 }),
     signal: expect.any(AbortSignal),
   }))
 })

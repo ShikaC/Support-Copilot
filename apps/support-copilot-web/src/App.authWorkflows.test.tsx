@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 
 import App from './App'
 
-vi.mock('echarts-for-react', () => ({ default: () => null }))
+vi.mock('echarts-for-react/esm/core', () => ({ default: () => null }))
 
 class TestResizeObserver {
   observe() {}

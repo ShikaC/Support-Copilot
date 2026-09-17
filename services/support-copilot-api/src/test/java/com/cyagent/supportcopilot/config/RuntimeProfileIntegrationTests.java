@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -68,6 +71,63 @@ class RuntimeProfileIntegrationTests {
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessage(REQUIRED_PROFILE_MESSAGE + " Active profiles: " + expectedActiveProfiles + ".");
 	}
+
+	@Test
+	void demoDefaultsToAnExplicitLoopbackListener() {
+		try (var context = demoContext()) {
+			assertThat(context.getEnvironment().getProperty("server.address")).isEqualTo("127.0.0.1");
+		}
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "127.0.0.1", "::1", "[::1]", "0:0:0:0:0:0:0:1", "localhost" })
+	void demoAcceptsOnlySupportedLoopbackAddresses(String address) {
+		try (var context = demoContext("--server.address=" + address)) {
+			assertThat(context.isActive()).isTrue();
+		}
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "0.0.0.0", "::", "[::]", "192.0.2.10", "example.com", "" })
+	void demoRejectsWildcardExternalAndBlankListenerAddressesBeforeContextRefresh(String address) {
+		assertThatThrownBy(() -> demoContext("--server.address=" + address))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("demo").hasMessageContaining("server.address");
+	}
+
+	@Test
+	void demoRejectsAnEnvironmentWithoutAnEffectiveListenerAddress() {
+		var environment = new MockEnvironment();
+		environment.setActiveProfiles("demo");
+		try (var context = new GenericApplicationContext()) {
+			context.setEnvironment(environment);
+			assertThatThrownBy(() -> new RuntimeProfileApplicationContextInitializer().initialize(context))
+				.isInstanceOf(IllegalStateException.class).hasMessageContaining("server.address");
+		}
+	}
+
+	@Test
+	void authenticatedPilotAndTestProfilesRetainTheirListenerPolicy() {
+		for (var profile : new String[] { "pilot", "test" }) {
+			var environment = new MockEnvironment().withProperty("server.address", "0.0.0.0")
+				.withProperty(INTERNAL_TOKEN, "synthetic-runtime-token")
+				.withProperty(JWT_ISSUER, "https://issuer.test").withProperty(JWT_AUDIENCE, "support-copilot-api");
+			environment.setActiveProfiles(profile);
+			try (var context = new GenericApplicationContext()) {
+				context.setEnvironment(environment);
+				new RuntimeProfileApplicationContextInitializer().initialize(context);
+			}
+		}
+	}
+
+	private static ConfigurableApplicationContext demoContext(String... listenerArguments) {
+		var arguments = Stream.concat(Stream.of("--spring.profiles.active=demo"), Stream.of(listenerArguments))
+			.toArray(String[]::new);
+		return new SpringApplicationBuilder(RuntimeProfileProbe.class).web(WebApplicationType.NONE).run(arguments);
+	}
+
+	@TestConfiguration(proxyBeanMethods = false)
+	static class RuntimeProfileProbe {}
 
 	private static Stream<Arguments> invalidRuntimeProfiles() {
 		return Stream.of(

@@ -1,0 +1,298 @@
+{
+  "limit=20&sort=NEWEST": {
+    "status": 200,
+    "total": "11",
+    "items": [
+      {
+        "no": "SC-78E7E3E92DE34B928070BCDA0DB18",
+        "createdAt": "2026-09-09T08:01:44.746905Z",
+        "sla": "2026-09-09T16:01:44.746905Z",
+        "priority": "URGENT",
+        "assignee": "QA临时负责人"
+      },
+      {
+        "no": "SC-3356667E454344CC9D96E32591BD8",
+        "createdAt": "2026-09-09T08:00:51.789789Z",
+        "sla": "2026-09-09T16:00:51.789789Z",
+        "priority": "MEDIUM",
+        "assignee": "财务协作组"
+      },
+      {
+        "no": "SC-86D85ECB0F6A43ED88B7ABA9CD43B",
+        "createdAt": "2026-09-09T07:57:07.762918Z",
+        "sla": "2026-09-09T15:57:07.762918Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      },
+      {
+        "no": "SC-10042",
+        "createdAt": "2026-07-28T07:31:00Z",
+        "sla": "2026-07-28T11:30:00Z",
+        "priority": "HIGH",
+        "assignee": "周岚"
+      },
+      {
+        "no": "SC-10041",
+        "createdAt": "2026-07-28T06:58:00Z",
+        "sla": "2026-07-28T09:45:00Z",
+        "priority": "URGENT",
+        "assignee": "陈屿"
+      },
+      {
+        "no": "SC-10039",
+        "createdAt": "2026-07-28T05:44:00Z",
+        "sla": "2026-07-28T15:20:00Z",
+        "priority": "MEDIUM",
+        "assignee": "苏遥"
+      },
+      {
+        "no": "SC-10037",
+        "createdAt": "2026-07-28T04:52:00Z",
+        "sla": "2026-07-28T12:10:00Z",
+        "priority": "HIGH",
+        "assignee": null
+      },
+      {
+        "no": "SC-10034",
+        "createdAt": "2026-07-28T03:38:00Z",
+        "sla": "2026-07-29T02:00:00Z",
+        "priority": "LOW",
+        "assignee": null
+      },
+      {
+        "no": "SC-10031",
+        "createdAt": "2026-07-27T23:20:00Z",
+        "sla": "2026-07-28T13:30:00Z",
+        "priority": "HIGH",
+        "assignee": "陆予"
+      },
+      {
+        "no": "SC-10026",
+        "createdAt": "2026-07-27T18:46:00Z",
+        "sla": "2026-07-28T17:50:00Z",
+        "priority": "MEDIUM",
+        "assignee": "陈屿"
+      },
+      {
+        "no": "SC-10018",
+        "createdAt": "2026-07-27T14:12:00Z",
+        "sla": "2026-07-29T05:10:00Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      }
+    ]
+  },
+  "limit=20&sort=SLA": {
+    "status": 200,
+    "total": "11",
+    "items": [
+      {
+        "no": "SC-10041",
+        "createdAt": "2026-07-28T06:58:00Z",
+        "sla": "2026-07-28T09:45:00Z",
+        "priority": "URGENT",
+        "assignee": "陈屿"
+      },
+      {
+        "no": "SC-10042",
+        "createdAt": "2026-07-28T07:31:00Z",
+        "sla": "2026-07-28T11:30:00Z",
+        "priority": "HIGH",
+        "assignee": "周岚"
+      },
+      {
+        "no": "SC-10037",
+        "createdAt": "2026-07-28T04:52:00Z",
+        "sla": "2026-07-28T12:10:00Z",
+        "priority": "HIGH",
+        "assignee": null
+      },
+      {
+        "no": "SC-10031",
+        "createdAt": "2026-07-27T23:20:00Z",
+        "sla": "2026-07-28T13:30:00Z",
+        "priority": "HIGH",
+        "assignee": "陆予"
+      },
+      {
+        "no": "SC-10039",
+        "createdAt": "2026-07-28T05:44:00Z",
+        "sla": "2026-07-28T15:20:00Z",
+        "priority": "MEDIUM",
+        "assignee": "苏遥"
+      },
+      {
+        "no": "SC-10026",
+        "createdAt": "2026-07-27T18:46:00Z",
+        "sla": "2026-07-28T17:50:00Z",
+        "priority": "MEDIUM",
+        "assignee": "陈屿"
+      },
+      {
+        "no": "SC-10034",
+        "createdAt": "2026-07-28T03:38:00Z",
+        "sla": "2026-07-29T02:00:00Z",
+        "priority": "LOW",
+        "assignee": null
+      },
+      {
+        "no": "SC-10018",
+        "createdAt": "2026-07-27T14:12:00Z",
+        "sla": "2026-07-29T05:10:00Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      },
+      {
+        "no": "SC-86D85ECB0F6A43ED88B7ABA9CD43B",
+        "createdAt": "2026-09-09T07:57:07.762918Z",
+        "sla": "2026-09-09T15:57:07.762918Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      },
+      {
+        "no": "SC-3356667E454344CC9D96E32591BD8",
+        "createdAt": "2026-09-09T08:00:51.789789Z",
+        "sla": "2026-09-09T16:00:51.789789Z",
+        "priority": "MEDIUM",
+        "assignee": "财务协作组"
+      },
+      {
+        "no": "SC-78E7E3E92DE34B928070BCDA0DB18",
+        "createdAt": "2026-09-09T08:01:44.746905Z",
+        "sla": "2026-09-09T16:01:44.746905Z",
+        "priority": "URGENT",
+        "assignee": "QA临时负责人"
+      }
+    ]
+  },
+  "limit=20&sort=PRIORITY": {
+    "status": 200,
+    "total": "11",
+    "items": [
+      {
+        "no": "SC-78E7E3E92DE34B928070BCDA0DB18",
+        "createdAt": "2026-09-09T08:01:44.746905Z",
+        "sla": "2026-09-09T16:01:44.746905Z",
+        "priority": "URGENT",
+        "assignee": "QA临时负责人"
+      },
+      {
+        "no": "SC-10041",
+        "createdAt": "2026-07-28T06:58:00Z",
+        "sla": "2026-07-28T09:45:00Z",
+        "priority": "URGENT",
+        "assignee": "陈屿"
+      },
+      {
+        "no": "SC-10042",
+        "createdAt": "2026-07-28T07:31:00Z",
+        "sla": "2026-07-28T11:30:00Z",
+        "priority": "HIGH",
+        "assignee": "周岚"
+      },
+      {
+        "no": "SC-10037",
+        "createdAt": "2026-07-28T04:52:00Z",
+        "sla": "2026-07-28T12:10:00Z",
+        "priority": "HIGH",
+        "assignee": null
+      },
+      {
+        "no": "SC-10031",
+        "createdAt": "2026-07-27T23:20:00Z",
+        "sla": "2026-07-28T13:30:00Z",
+        "priority": "HIGH",
+        "assignee": "陆予"
+      },
+      {
+        "no": "SC-3356667E454344CC9D96E32591BD8",
+        "createdAt": "2026-09-09T08:00:51.789789Z",
+        "sla": "2026-09-09T16:00:51.789789Z",
+        "priority": "MEDIUM",
+        "assignee": "财务协作组"
+      },
+      {
+        "no": "SC-86D85ECB0F6A43ED88B7ABA9CD43B",
+        "createdAt": "2026-09-09T07:57:07.762918Z",
+        "sla": "2026-09-09T15:57:07.762918Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      },
+      {
+        "no": "SC-10039",
+        "createdAt": "2026-07-28T05:44:00Z",
+        "sla": "2026-07-28T15:20:00Z",
+        "priority": "MEDIUM",
+        "assignee": "苏遥"
+      },
+      {
+        "no": "SC-10026",
+        "createdAt": "2026-07-27T18:46:00Z",
+        "sla": "2026-07-28T17:50:00Z",
+        "priority": "MEDIUM",
+        "assignee": "陈屿"
+      },
+      {
+        "no": "SC-10018",
+        "createdAt": "2026-07-27T14:12:00Z",
+        "sla": "2026-07-29T05:10:00Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      },
+      {
+        "no": "SC-10034",
+        "createdAt": "2026-07-28T03:38:00Z",
+        "sla": "2026-07-29T02:00:00Z",
+        "priority": "LOW",
+        "assignee": null
+      }
+    ]
+  },
+  "limit=20&assignee=UNASSIGNED": {
+    "status": 200,
+    "total": "4",
+    "items": [
+      {
+        "no": "SC-86D85ECB0F6A43ED88B7ABA9CD43B",
+        "createdAt": "2026-09-09T07:57:07.762918Z",
+        "sla": "2026-09-09T15:57:07.762918Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      },
+      {
+        "no": "SC-10037",
+        "createdAt": "2026-07-28T04:52:00Z",
+        "sla": "2026-07-28T12:10:00Z",
+        "priority": "HIGH",
+        "assignee": null
+      },
+      {
+        "no": "SC-10034",
+        "createdAt": "2026-07-28T03:38:00Z",
+        "sla": "2026-07-29T02:00:00Z",
+        "priority": "LOW",
+        "assignee": null
+      },
+      {
+        "no": "SC-10018",
+        "createdAt": "2026-07-27T14:12:00Z",
+        "sla": "2026-07-29T05:10:00Z",
+        "priority": "MEDIUM",
+        "assignee": null
+      }
+    ]
+  },
+  "limit=20&assignee=%E5%91%A8%E5%B2%9A": {
+    "status": 200,
+    "total": "1",
+    "items": [
+      {
+        "no": "SC-10042",
+        "createdAt": "2026-07-28T07:31:00Z",
+        "sla": "2026-07-28T11:30:00Z",
+        "priority": "HIGH",
+        "assignee": "周岚"
+      }
+    ]
+  }
+}

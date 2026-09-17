@@ -1,0 +1,185 @@
+{
+  "results": [
+    {
+      "surface": "工单工作台",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "工单工作台",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "工单工作台",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "工单工作台",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "运营概览",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "运营概览",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "运营概览",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "运营概览",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "知识库",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "知识库",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "知识库",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "知识库",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "审计记录",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "审计记录",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "审计记录",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "审计记录",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "质量评估",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "质量评估",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "质量评估",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "overflow": 0,
+      "violations": []
+    },
+    {
+      "surface": "质量评估",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "overflow": 0,
+      "violations": []
+    }
+  ],
+  "pageErrors": []
+}

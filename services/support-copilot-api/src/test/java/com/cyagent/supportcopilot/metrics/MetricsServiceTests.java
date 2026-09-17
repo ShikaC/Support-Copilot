@@ -13,11 +13,10 @@ import org.junit.jupiter.api.Test;
 
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
-import com.cyagent.supportcopilot.ticket.TicketRepository;
 
 class MetricsServiceTests {
 
-	private final TicketRepository ticketRepository = mock(TicketRepository.class);
+	private final OperationalMetrics operationalMetrics = mock(OperationalMetrics.class);
 	private final AnalysisRunRepository analysisRunRepository = mock(AnalysisRunRepository.class);
 	private final AnalysisReviewRepository analysisReviewRepository = mock(AnalysisReviewRepository.class);
 	private final EvaluationReportReader evaluationReportReader = mock(EvaluationReportReader.class);
@@ -28,7 +27,7 @@ class MetricsServiceTests {
 		when(evaluationReportReader.read()).thenReturn(Optional.empty());
 
 		var response = new MetricsService(
-			ticketRepository,
+			operationalMetrics,
 			analysisRunRepository,
 			analysisReviewRepository,
 			evaluationReportReader
@@ -39,7 +38,6 @@ class MetricsServiceTests {
 		assertThat(response.analysisLatency()).isNull();
 		assertThat(response.suggestionAcceptanceRate()).isNull();
 		assertThat(response.evaluation()).isNull();
-		verify(ticketRepository, never()).findAll();
 		verify(analysisRunRepository, never()).findAll();
 		verify(analysisReviewRepository, never()).findAll();
 	}
@@ -69,7 +67,7 @@ class MetricsServiceTests {
 		));
 
 		var response = new MetricsService(
-			ticketRepository,
+			operationalMetrics,
 			analysisRunRepository,
 			analysisReviewRepository,
 			evaluationReportReader
@@ -87,16 +85,7 @@ class MetricsServiceTests {
 
 	@Test
 	void calculatesOperationalRatesFromDatabaseAggregates() {
-		var billing = mock(TicketRepository.CategoryCountProjection.class);
-		var technical = mock(TicketRepository.CategoryCountProjection.class);
-		when(billing.getCategory()).thenReturn("BILLING");
-		when(billing.getCount()).thenReturn(4L);
-		when(technical.getCategory()).thenReturn("TECHNICAL");
-		when(technical.getCount()).thenReturn(2L);
-		when(ticketRepository.countByStatusNotIn(List.of("RESOLVED", "CLOSED"))).thenReturn(5L);
-		when(ticketRepository.countByPriority("URGENT")).thenReturn(1L);
-		when(ticketRepository.countByPriority("HIGH")).thenReturn(2L);
-		when(ticketRepository.countByCategory()).thenReturn(List.of(billing, technical));
+		when(operationalMetrics.snapshot()).thenReturn(new OperationalMetrics.Snapshot(5, 1, 3, java.util.Map.of("BILLING", 4L, "TECHNICAL", 2L), List.of(), null));
 		when(analysisRunRepository.count()).thenReturn(4L);
 		when(analysisRunRepository.countByStatus("SUCCEEDED")).thenReturn(3L);
 		when(analysisReviewRepository.count()).thenReturn(4L);
@@ -107,7 +96,7 @@ class MetricsServiceTests {
 		when(evaluationReportReader.read()).thenReturn(Optional.empty());
 
 		var response = new MetricsService(
-			ticketRepository,
+			operationalMetrics,
 			analysisRunRepository,
 			analysisReviewRepository,
 			evaluationReportReader
@@ -123,10 +112,7 @@ class MetricsServiceTests {
 	}
 
 	private void stubEmptyAggregates() {
-		when(ticketRepository.countByStatusNotIn(List.of("RESOLVED", "CLOSED"))).thenReturn(0L);
-		when(ticketRepository.countByPriority("URGENT")).thenReturn(0L);
-		when(ticketRepository.countByPriority("HIGH")).thenReturn(0L);
-		when(ticketRepository.countByCategory()).thenReturn(List.of());
+		when(operationalMetrics.snapshot()).thenReturn(new OperationalMetrics.Snapshot(0, 0, 0, java.util.Map.of(), List.of(), null));
 		when(analysisRunRepository.count()).thenReturn(0L);
 		when(analysisRunRepository.countByStatus("SUCCEEDED")).thenReturn(0L);
 		when(analysisReviewRepository.countByActionIn(List.of(

@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewAction;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
@@ -15,18 +14,18 @@ import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
 @Service
 public class MetricsService {
 
-	private final TicketRepository ticketRepository;
+	private final OperationalMetrics operationalMetrics;
 	private final AnalysisRunRepository analysisRunRepository;
 	private final AnalysisReviewRepository analysisReviewRepository;
 	private final EvaluationReportReader evaluationReportReader;
 
 	public MetricsService(
-		TicketRepository ticketRepository,
+		OperationalMetrics operationalMetrics,
 		AnalysisRunRepository analysisRunRepository,
 		AnalysisReviewRepository analysisReviewRepository,
 		EvaluationReportReader evaluationReportReader
 	) {
-		this.ticketRepository = ticketRepository;
+		this.operationalMetrics = operationalMetrics;
 		this.analysisRunRepository = analysisRunRepository;
 		this.analysisReviewRepository = analysisReviewRepository;
 		this.evaluationReportReader = evaluationReportReader;
@@ -34,14 +33,7 @@ public class MetricsService {
 
 	@Transactional(readOnly = true)
 	public MetricsResponse snapshot() {
-		var open = ticketRepository.countByStatusNotIn(List.of("RESOLVED", "CLOSED"));
-		var urgent = ticketRepository.countByPriority("URGENT");
-		var slaRisk = urgent + ticketRepository.countByPriority("HIGH");
-		var categoryCounts = ticketRepository.countByCategory().stream()
-			.collect(Collectors.toMap(
-				TicketRepository.CategoryCountProjection::getCategory,
-				projection -> projection.getCount()
-			));
+		var operational = operationalMetrics.snapshot();
 		var totalAnalysisRuns = analysisRunRepository.count();
 		var analysisSuccessRate = totalAnalysisRuns == 0
 			? null
@@ -59,10 +51,10 @@ public class MetricsService {
 			.orElse(null);
 
 		return new MetricsResponse(
-			new Summary(open, urgent, slaRisk, analysisSuccessRate),
-			List.of(),
-			categoryDistribution(categoryCounts),
-			null,
+			new Summary(operational.open(), operational.urgent(), operational.risk(), analysisSuccessRate),
+			operational.trend(),
+			categoryDistribution(operational.categories()),
+			operational.latency(),
 			suggestionAcceptanceRate,
 			evaluation
 		);

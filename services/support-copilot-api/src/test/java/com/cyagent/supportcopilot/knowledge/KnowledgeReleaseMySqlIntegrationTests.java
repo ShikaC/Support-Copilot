@@ -17,7 +17,7 @@ import com.cyagent.supportcopilot.common.TestTrustedActors;
 import com.cyagent.supportcopilot.knowledge.KnowledgeReleaseDtos.CreateReleaseRequest;
 
 @EnabledIfEnvironmentVariable(named = "SUPPORT_COPILOT_RUN_MYSQL_TESTS", matches = "true")
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class KnowledgeReleaseMySqlIntegrationTests {
 	private static final String CANDIDATE_RELEASE_ID = "mysql-release-candidate";
 

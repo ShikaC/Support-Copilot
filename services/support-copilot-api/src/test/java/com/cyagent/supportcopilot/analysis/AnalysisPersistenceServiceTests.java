@@ -64,6 +64,7 @@ class AnalysisPersistenceServiceTests {
 		var savedRun = analysisRunRepository.findById(response.id()).orElseThrow();
 		var savedTicket = ticketRepository.findById(ticket.getId()).orElseThrow();
 		assertThat(savedRun.getSourceTicketVersion()).isEqualTo(sourceVersion);
+		assertThat(savedRun.getDurationMs()).isEqualTo(response.usage().durationMs());
 		assertThat(savedRun.getFallbackReason()).isNull();
 		assertThat(savedTicket.getVersion()).isEqualTo(sourceVersion + 1);
 		assertThat(savedTicket.getStatus()).isEqualTo("NEEDS_ESCALATION");

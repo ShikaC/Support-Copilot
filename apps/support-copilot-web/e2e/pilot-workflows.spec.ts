@@ -66,7 +66,7 @@ async function calibrateAuditFixedOverlay(page: Page): Promise<void> {
 
 async function verifyPage(page: Page, testInfo: TestInfo, scenario: Scenario, errors: BrowserErrors, extra: Readonly<Record<string, unknown>> = {}) {
   await page.evaluate(async () => {
-    await Promise.allSettled(document.getAnimations().map((animation) => animation.finished))
+    await Promise.allSettled(document.getAnimations().filter((animation) => animation.effect?.getTiming().iterations !== Infinity).map((animation) => animation.finished))
   })
   const axe = await new AxeBuilder({ page }).analyze()
   const critical = axe.violations.filter((violation) => violation.impact === 'critical')
@@ -225,7 +225,7 @@ test('audit pagination, quality evidence, chart pixels, text equivalents, and re
   await expect(page.getByText('trace-audit-2')).toBeVisible()
   await navigate(page, '质量评估')
   await expect(page.getByRole('cell', { name: 'task12-synthetic.jsonl' })).toBeVisible()
-  await expect(page.getByText('通过')).toBeVisible()
+  await expect(page.getByText('通过', { exact: true })).toBeVisible()
   const overviewResourcesBeforeNavigation = await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => entry.name).filter((name) => name.includes('/OverviewView-')))
   expect(overviewResourcesBeforeNavigation).toHaveLength(0)
   await navigate(page, '运营概览')

@@ -49,6 +49,8 @@ public class AnalysisRun {
 	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String responseJson;
 
+	private Long durationMs;
+
 	@Column(nullable = false)
 	private Instant createdAt;
 }

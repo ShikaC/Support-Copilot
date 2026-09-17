@@ -5,7 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest'
 import { demoMetrics, demoTickets } from '../../data/demoData'
 import { OverviewView } from './OverviewView'
 
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: ({ option }: { readonly option: { readonly animation?: boolean } }) => (
     <div data-testid="chart-renderer" data-animation-enabled={String(option.animation)} />
   ),

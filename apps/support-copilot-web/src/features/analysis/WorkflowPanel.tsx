@@ -12,7 +12,7 @@ export function WorkflowPanel({ analysis }: { readonly analysis: AnalysisResult 
       <div className="analysis-fact"><span className="analysis-fact-label">处理建议</span><span className="analysis-fact-value">{analysis.decision.escalationRequired ? '升级人工' : '一线审核'}</span></div>
     </div>
     <div className="confidence-row"><div className="confidence-copy"><span>分类置信度</span><strong>{(analysis.classification.confidence * 100).toFixed(0)}%</strong></div>
-      <Progress percent={analysis.classification.confidence * 100} showInfo={false} strokeColor="oklch(0.48 0.11 162)" railColor="oklch(0.92 0.008 100)" size="small" />
+      <Progress aria-label="分类置信度" percent={analysis.classification.confidence * 100} showInfo={false} strokeColor="oklch(0.48 0.11 162)" railColor="oklch(0.92 0.008 100)" size="small" />
     </div>
     <div className="analysis-reason">{analysis.classification.reasonSummary}</div>
     <div className="section-heading-row"><h3 className="section-label">处理轨迹</h3><span className={`mode-badge ${analysis.mode}`}>{analysis.mode === 'live' ? 'LIVE' : analysis.mode === 'mock' ? 'DEMO' : 'FALLBACK'}</span></div>

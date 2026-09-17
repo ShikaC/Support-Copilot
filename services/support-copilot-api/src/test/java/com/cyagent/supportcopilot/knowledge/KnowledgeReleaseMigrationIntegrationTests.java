@@ -46,12 +46,13 @@ class KnowledgeReleaseMigrationIntegrationTests {
 	private JdbcTemplate jdbcTemplate;
 
 	@Test
-	void flywayV5MigratesH2AndBaselineActivationPassesHibernateValidation() {
+	void flywayV6MigratesH2AndBaselineActivationPassesHibernateValidation() {
 		assertThat(jdbcTemplate.queryForObject(
 			"select \"version\" from \"flyway_schema_history\" where \"success\" = true "
 				+ "order by \"installed_rank\" desc limit 1",
 			String.class
-		)).isEqualTo("5");
+		)).isEqualTo("7");
+		assertThat(jdbcTemplate.queryForObject("select count(*) from ticket_notes", Long.class)).isZero();
 		assertThat(jdbcTemplate.queryForObject(
 			"select release_id from knowledge_active_release where id = 'active'",
 			String.class

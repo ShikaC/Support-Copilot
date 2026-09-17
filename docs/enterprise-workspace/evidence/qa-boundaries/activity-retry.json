@@ -1,0 +1,18 @@
+[
+  {
+    "scenario": "activity-failure",
+    "calls": 1,
+    "alerts": 1,
+    "text": "无法连接业务服务重新加载处理记录"
+  },
+  {
+    "retry": 1
+  },
+  {
+    "scenario": "activity-retry",
+    "calls": 2,
+    "alerts": 0,
+    "timelineItems": 1,
+    "earliest": true
+  }
+]

@@ -13,7 +13,7 @@ type AuditState =
   | { readonly kind: 'error'; readonly message: string }
 
 const actionLabels: Readonly<Record<AuditEvent['action'], string>> = {
-  TICKET_CREATED: '创建工单', TICKET_UPDATED: '更新工单', TICKET_UNASSIGNED: '取消负责人',
+  TICKET_NOTE_ADDED: '添加内部备注', TICKET_CREATED: '创建工单', TICKET_UPDATED: '更新工单', TICKET_UNASSIGNED: '取消负责人',
   ANALYSIS_PERSISTED: '保存分析', ANALYSIS_REVIEW_APPROVED: '采纳回复',
   ANALYSIS_REVIEW_EDITED: '编辑后采纳', ANALYSIS_REVIEW_REJECTED: '拒绝回复',
   KNOWLEDGE_RELEASE_DRAFT_CREATED: '创建知识草稿', KNOWLEDGE_RELEASE_APPROVED: '批准知识版本',
@@ -52,7 +52,7 @@ export function AuditView({ client }: { readonly client: ApiClient }) {
     case 'forbidden': return <div className="view-enter"><UnavailablePanel title="需要审核员或管理员权限" description="当前身份无权查看审计记录，后端已返回 403。" /></div>
     case 'error': return <div className="view-enter"><UnavailablePanel title="审计记录暂不可用" description={state.message} /></div>
     case 'ready': return <div className="view-enter"><section className="knowledge-panel"><div className="panel-header"><div className="panel-heading"><h2 className="panel-title">审计记录</h2><div className="panel-meta">按创建时间与事件编号进行游标分页</div></div></div>
-      <div className="evaluation-table-wrap">{state.items.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计记录" /> : <table className="evaluation-table"><thead><tr><th>时间</th><th>动作</th><th>目标</th><th>执行身份</th><th>Trace ID</th></tr></thead><tbody>{state.items.map((event) => <tr key={event.id}><td>{formatDate(event.createdAt)}</td><td><Tag>{actionLabels[event.action]}</Tag></td><td>{event.targetType} · {event.targetId}</td><td>{event.actorSubject}</td><td>{event.traceId}</td></tr>)}</tbody></table>}</div>
+      <div className="evaluation-table-wrap" tabIndex={0} role="region" aria-label="审计记录表，可横向滚动">{state.items.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计记录" /> : <table className="evaluation-table record-table"><thead><tr><th>时间</th><th>动作</th><th>目标</th><th>执行身份</th><th>Trace ID</th></tr></thead><tbody>{state.items.map((event) => <tr key={event.id}><td data-label="时间">{formatDate(event.createdAt)}</td><td data-label="动作"><Tag>{actionLabels[event.action]}</Tag></td><td data-label="目标">{event.targetType} · {event.targetId}</td><td data-label="执行身份">{event.actorSubject}</td><td data-label="Trace ID">{event.traceId}</td></tr>)}</tbody></table>}</div>
       {state.nextCursor !== null && <div className="pagination-actions"><Button loading={state.loadingMore} onClick={loadMore}>加载更多</Button></div>}
     </section></div>
     default: return state
