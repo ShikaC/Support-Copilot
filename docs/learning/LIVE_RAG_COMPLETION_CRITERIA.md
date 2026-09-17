@@ -1,5 +1,7 @@
 # Support Copilot 真实 RAG 完成标准
 
+> 最新执行状态以[docs/STATUS.md](../STATUS.md)和[2026-09-09真实AI基线](../verification/live-baseline-2026-09-09/README.md)为准。下文历史调用记录保留为阶段证据；本轮已获得真实调用授权并完成机器评估，人工事实审核和语义问题仍未闭环。
+
 ## 1. 最终要求
 
 Support Copilot 不能停留在模拟数据和本地规则演示。最终项目必须：

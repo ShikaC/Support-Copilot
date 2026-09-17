@@ -1,0 +1,1 @@
+PASS: 20 queries, all 249 scores exactly equal; rankings unchanged; no API calls

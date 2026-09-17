@@ -1,17 +1,51 @@
 # Support Copilot
 
-面向企业客服场景的智能工单辅助平台 V1。
+面向企业客服场景的智能工单辅助平台。
 
 Support Copilot 用模拟企业客服场景展示完整的 AI 应用工程链路：工单进入系统后，由 Java 业务 API 保存和编排，Python AI 服务完成结构化分类、知识检索、证据约束回复与风险判断，React 工作台展示可审计的处理轨迹并保留人工审核入口。
 
+## 2026-09-09 企业工作台与运行加固
+
+当前工作树已接通创建、可信身份领取、编辑、内部备注、状态流转、AI 分析、人工审核和审计闭环，并重做了桌面与移动工作台。当前事实与验证限制见 [工作台验收记录](docs/enterprise-workspace/VERIFICATION.md)，其中的结果针对未提交工作树。
+
+完成下文依赖安装后，可在根目录一条命令启动本地预览：
+
+```bash
+./scripts/dev-workspace.sh
+```
+
+打开 [本地工作台](http://127.0.0.1:18173)。脚本启动真实 React、Java、Python 服务，默认使用确定性 mock AI 和文件 H2；工单、备注、分析与审核在重启后保留。Ctrl+C 会停止三个服务，日志和数据库位于 `.local/workspace/`。可通过 `SUPPORT_WORKSPACE_EPHEMERAL=true` 显式选择退出后重置的临时模式。MySQL Pilot 使用下面的独立配置流程。
+
+按下文配置真实模型、Embedding 和可用索引后，停止旧工作区，再用以下命令启动真实 AI 分析（会调用外部 API）：
+
+```bash
+AI_MODE=live ./scripts/dev-workspace.sh
+```
+
+本地启动器只接受显式的 `mock` 或 `live`，启动日志会显示所选模式。历史 mock 分析保留原标记；对工单点击重新分析后才会生成新的真实模型结果。外部调用失败或证据不足时仍会明确显示 fallback，不算 live 成功。
+
+质量评估页读取独立的固定数据集报告，不会随 `AI_MODE` 自动切换，也不会根据一张工单重新计算。默认报告是 mock。需要同时展示真实评估时，显式指定已验证的报告；例如当前冻结版本的第二轮 22 例报告（门禁未通过）：
+
+```bash
+AI_MODE=live \
+EVALUATION_REPORT_PATH="$PWD/docs/verification/ai-quality-fixes-2026-09-10/final-2/live-latest.json" \
+./scripts/dev-workspace.sh
+```
+
+这是读取已有真实调用报告，不会重新调用模型或完成缺失的人工审核。报告缺失或格式无效时，质量数字显示不可用；不应换成 mock 成功率来替代失败结果。
+
+质量证据页现支持并列查看合成回归与公开文档业务基准，含正常产出、证据不足、超时、人工审核状态、并发耗时和逐例失败。新接口 `/api/quality-reports` 独立校验每份派生报告；原始模型结果不在页面请求时重算或调用。配置方式、校验命令及本轮验收见 [质量证据中心交付](docs/verification/product-quality-center-2026-09-10/README.md)。只有两份新报告均未配置或对应 live 槽位未配置时，旧评估可作为明确标注的兼容视图；新报告请求失败、丢失或损坏时不会以旧 mock 指标替代。
+
+停止工作区后执行 `./scripts/workspace-data.sh backup` 创建带 SHA-256 校验的备份；用 `./scripts/workspace-data.sh restore <备份目录>` 恢复。恢复前会保存现有数据库，工具会拒绝运行中或被其他进程锁定的数据库。详细验证与限制见 [当前验收记录](docs/enterprise-workspace/VERIFICATION.md)。
+
 ## 当前能力
 
-- 企业 SaaS 风格工单工作台，支持队列筛选、工单切换和 SLA 风险展示。
+- 响应式三栏工单工作台，支持服务端全量 SLA/优先级排序、负责人筛选、匹配总数、游标加载、全量快捷搜索、创建、领取、编辑、状态流转和持久化内部备注。
 - 工单分类、优先级、情绪、置信度与人工升级建议。
 - 检索查询、Top K 知识片段、来源、分数和引用展示。
 - 建议回复编辑、采纳和风险提示。
-- 运营概览、知识目录演示页和质量评估占位视图；只有接入可追溯报告后才展示评估数字。
-- `demo`/`test` 使用隔离 H2；`pilot` 已在 MySQL 8.4.11 上以 9 个零跳过场景验证 Flyway、Hibernate、幂等、审计、知识发布和重启 parity。
+- 运营概览、知识检索与发布、审计查询和质量评估；指标缺失时明确显示不可用，mock 离线评估不会冒充生产质量。
+- 一键工作区使用文件 H2 与 Flyway，临时 `demo`/`test` 仍可使用隔离内存 H2；`pilot` 支持 MySQL。当前实库测试结果以 [验收记录](docs/enterprise-workspace/VERIFICATION.md) 为准。
 - Java Resource Server 已按 `SUPPORT_AGENT`、`SUPPORT_REVIEWER`、`SUPPORT_ADMIN` 执行 JWT 角色门禁；Compose 中的固定 test-only OIDC issuer 已验证 token claims 与 401/403/2xx 边界，但不是生产登录系统。
 - Java 调用 Python 时使用仅服务端可见的 `X-Internal-Service-Token`；Python `/health` 公开，`/analyze` 在进入工作流前校验该凭据。
 - 工单创建/实际变更、分析持久化和人工审核会在同一事务写入不可编辑的可信审计事件；事件只保存 JWT/演示身份、受控动作与目标、版本、`traceId` 和白名单元数据。
@@ -595,13 +629,13 @@ Docker-root 连续 60 秒至少保有 8 GiB；镜像发布闸门则必须通过�
 
 ## 当前限制
 
-- `demo`/`test` 使用 H2，服务重启后业务数据会重新初始化；`pilot` 的 MySQL 8.4.11 parity 与 API/MySQL/整栈重启持久化已有运行时证据，但只覆盖单机合成 pilot。
+- 默认一键工作区使用文件 H2 并保留数据；单独启动内存 `demo`/`test` 时业务数据重新初始化；`pilot` 的 MySQL 8.4.11 parity 与 API/MySQL/整栈重启持久化已有运行时证据，但只覆盖单机合成 pilot。
 - 当前 append-only 审计覆盖已提交的工单创建/实际变更、分析持久化、`APPROVED`/`EDITED`/`REJECTED` 审核和知识 release 创建/审批/发布/回滚；元数据白名单不保存工单正文、回复、拒绝原因、证据、provider payload、token 或异常消息。
 - 审计 V2 migration、checksum、提交/回滚事务和重启 parity 已在 MySQL 8.4.11 验证；数据仍是 synthetic/redacted，且没有合规认证或生产留存流程，因此不能称为生产合规审计。
 - JWT endpoint policy、React session/memory token adapter 和 test-only OIDC pilot 组合已验证，但用户登录、token refresh 与生产身份供应商尚未实现。
 - mock 检索用于可重复演示，不代表真实语义检索质量。
 - Java release 发布不会热加载 Python file-backed corpus/artifact；新 release 仍需要显式部署 corpus、构建并激活 artifact。当前只验证本地文件系统原子生命周期，不代表共享存储或跨主机协调。
-- 质量页只读取 `EVALUATION_REPORT_PATH` 指向的评估报告；报告没有接入持久化评估运行表，文件被替换或删除后需要重新加载页面。
+- 质量页通过 `/api/quality-reports` 读取配置路径与 SHA-256 绑定的派生报告；未配置时可显示 `EVALUATION_REPORT_PATH` 对应的旧评估。报告尚未接入持久化评估运行表，替换文件必须同步更新经审核的配置摘要；页面支持刷新，校验失败时不展示报告数字。
 - 实时 OpenAI 模式需要用户自己的 API Key 和可用模型配置。
 - 真实 live 记录只证明一次脱敏合成工单的端到端链路成功，不代表稳定性、质量基准、生产延迟或成本结论。
 - 当前没有真实 CRM、邮件、支付或身份系统集成。

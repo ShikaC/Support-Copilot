@@ -1,0 +1,11 @@
+# 隔离运行器 AI 代码审查记录
+
+2026-09-10，独立只读协作者 runner_safety_review（Metis）对实际最终文件给出 APPROVE；没有执行模型或修改文件。这是 AI 代码审查，不能记作真人参考确认或模型输出人审。
+
+运行前发现并修正：分类26/总52预算歧义；SDK超时配置漂移；endpoint未固定；source文件集合/Gradle锁遗漏；损坏账本导致最终证据未保存；即时读回失败的200结果漏做重启验证；provider或检索证据写盘失败、provider成功后的下游程序错误可能触发Java重试重复付费；已建模invalid_model_response被误判未知异常并提前截断批次。
+
+最终检查：固定13题白名单不含holdout/参考答案；空file H2/独立端口和JAR；复用既有artifact，禁止文档Embedding；进入provider前持久化STARTED并检查预算；未知错误/账本写盘失败锁定后续调用但原错误仍上抛；命名的可恢复模型错误保留fallback；完整trace关联；每题一次、独占输出、一次性claim、明确停止并保存NOT_EXECUTED；即时和重启完整对象读回。
+
+非阻塞限制：本地SDK方法调用计数不证明远端接收或计费；人工标签和输出审核仍待完成；Java使用loopback demo安全profile，但显式关闭fixture并用真实GET确认空数据库，Python为live；不能将该profile名称当作使用模拟模型，也不能将本地匿名配置当作生产认证验收。
+
+审查时Node11/Python9定向测试通过，Python类型0错误0警告、Ruff通过；模型真实执行与结果必须以随后独立run目录为准。
