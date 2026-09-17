@@ -1,0 +1,48 @@
+{
+  "protocolVersion": 1,
+  "comparisonId": "development-comparison-20260911",
+  "preflightId": "preflight-development-comparison-20260911",
+  "baseRunId": "development-live-diagnostic-20260910",
+  "baseClaimSha256": "8476732b1464060c3fb36fe70e1d8609572dc110e363e84ef04f12b910cc1afb",
+  "casesSha": "7e78989315fd7991b72bce6bdb1528195c983b34b8ad4f18bbd99de260674023",
+  "hypothesis": "去掉 AnalysisWorkflow._build_query 的正文前180字符截断后，同一批13题 development 输入应产生13条不同的检索 query，使机构、先前对话回合和当前请求进入检索；由此候选检索片段应与 base run 的固定候选不同，并可能改变正常 live 产出、证据不足、超时和其他降级的分布。",
+  "singleVariable": "唯一生产变量是 services/support-copilot-ai/app/workflow.py 的 _build_query 从正文前180字符改为完整已校验标题与正文；模型、聊天协议、提示词、知识 corpus、向量 artifact、超时与重试预算必须与 base run 保持一致。",
+  "successCriteria": [
+    "逐题比较 retrieval.query：comparison.queryChangedCases 应为 13，comparisonDistinctQueries 应为 13，且每题 query 包含该题特有的业务上下文",
+    "逐题比较候选 chunkId：只报告 candidatesChangedCases 的实际数值，不预设必须全部变化",
+    "按正常 live 产出、证据不足、生成或读取超时、其他降级、未知错误分别计数，不用成功数量替代语义质量",
+    "全部即时分析读回和 Java 重启后的完整对象读回必须逐题匹配",
+    "失败、未执行和停止原因原样写入 trials 与 manifest，不重跑择优、不删除失败记录"
+  ],
+  "expectedSourceHashes": {
+    "services/support-copilot-ai/app/workflow.py": "c748a20c2990b68e6e181ef5279d40777e128ce6fab9817dedd3190d5c1f62dc",
+    "services/support-copilot-ai/app/grounded_reply_policy.py": "02a26836001cdc7142ed1e581894dbe14ab295dc9cf4adefee4611fe48f003ed",
+    "services/support-copilot-ai/app/response_language.py": "68fc8efa46d5887c1ca58942cd0384e4c901d19e80487b3efd600840f8472de6"
+  },
+  "budgets": {
+    "sdkSeconds": 20,
+    "pythonSeconds": 90,
+    "javaMs": 105000,
+    "clientMs": 130000,
+    "batchMs": 2100000,
+    "maxAnalyses": 14,
+    "maxServiceAttempts": 2
+  },
+  "holdoutCount": 0,
+  "humanInputReview": "PENDING",
+  "qualityScore": null,
+  "stopConditions": [
+    "凭据缺失、认证、配额或连续依赖失败时停止并把未执行题写为 NOT_EXECUTED",
+    "账本、trace 或来源哈希漂移时停止并保留原始字节",
+    "达到批次时间上限、操作上限或人工取消时停止，已执行结果保留"
+  ],
+  "notAllowed": [
+    "删除、替换、绕过或改写 .local 中的 development claim 与 base run 记录",
+    "覆盖、续跑或删除 base run development-live-diagnostic-20260910",
+    "使用 holdout 或任何未在冻结 cases 中的输入",
+    "同时更改模型、聊天协议、提示词、知识 corpus、向量 artifact、超时或重试预算",
+    "重跑到成功、删除失败或未执行记录",
+    "用 AI 审核替代真人输入确认与回答事实审核",
+    "在真人审阅本轮 diff 之前执行付费运行"
+  ]
+}

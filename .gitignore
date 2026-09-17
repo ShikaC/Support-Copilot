@@ -45,3 +45,7 @@ docs/verification/**/*.snapshot
 docs/verification/**/*.diff
 docs/verification/**/*-before.py.txt
 docs/verification/**/*-after.py.txt
+
+# Pre-registered comparison protocols are review material, not bulk evidence
+# output; keep them in Git even though sibling JSON is ignored above.
+!docs/verification/development-comparison-2026-09-11/protocol.json

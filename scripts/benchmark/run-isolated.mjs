@@ -6,14 +6,16 @@ import {execFileSync} from 'node:child_process';
 import {auditRoot,budgets,loadInputs,read,readLedger,requireFreePorts,runPaths,sha,write} from './isolated-inputs.mjs';
 import {Runtime,sourceSnapshot,requireSource} from './isolated-runtime.mjs';
 import {ledgerSummary,runBatch,restartReadback,request} from './isolated-engine.mjs';
+import {loadComparisonProtocol} from './comparison-protocol.mjs';
 
-const {values}=parseArgs({options:{id:{type:'string'},execute:{type:'boolean'},diagnostic:{type:'boolean'},review:{type:'string'},'api-port':{type:'string',default:'18280'},'ai-port':{type:'string',default:'18200'},help:{type:'boolean'}},strict:true});
-if(values.help){console.log('node scripts/benchmark/run-isolated.mjs --id <new-id> [--execute --diagnostic | --execute --review <human.json>] [--api-port 18280 --ai-port 18200]\nDefault: offline preparation only. One fixed development batch; no resume/overwrite.');process.exit(0);}
+const {values}=parseArgs({options:{id:{type:'string'},execute:{type:'boolean'},diagnostic:{type:'boolean'},review:{type:'string'},comparison:{type:'string'},'api-port':{type:'string',default:'18280'},'ai-port':{type:'string',default:'18200'},help:{type:'boolean'}},strict:true});
+if(values.help){console.log('node scripts/benchmark/run-isolated.mjs --id <new-id> [--execute --diagnostic | --execute --review <human.json> | --execute --comparison <protocol.json>] [--api-port 18280 --ai-port 18200]\nDefault: offline preparation only. One fixed development batch; no resume/overwrite.');process.exit(0);}
 const root=process.cwd();assert(values.id,'--id required');
 const ports=[Number(values['api-port']),Number(values['ai-port'])];const paths=runPaths(root,values.id,ports);
 const inputs=loadInputs(root,values.review?path.resolve(values.review):null);
-assert(!(values.diagnostic && values.review),'Choose diagnostic or human-reviewed input mode');
-if(values.execute)assert(inputs.human==='APPROVED' || values.diagnostic,'Human review pending; explicitly authorize diagnostic-only execution');
+assert([values.diagnostic,Boolean(values.review),Boolean(values.comparison)].filter(Boolean).length<=1,'Choose one of diagnostic, human-reviewed, or comparison mode');
+const comparison=values.comparison?loadComparisonProtocol(root,values.comparison,{casesSha:inputs.casesSha,id:values.id,execute:Boolean(values.execute)}):null;
+if(values.execute)assert(inputs.human==='APPROVED' || values.diagnostic || comparison,'Human review pending; explicitly authorize diagnostic-only execution');
 await requireFreePorts(ports);
 assert(!fs.existsSync(paths.output) && !fs.existsSync(paths.runtime),'Run ID already exists; no resume or overwrite');
 fs.mkdirSync(path.dirname(paths.output),{recursive:true});fs.mkdirSync(paths.output);
@@ -28,7 +30,8 @@ const sourceHashes=sourceSnapshot(root,paths.output);write(path.join(paths.outpu
 write(path.join(paths.output,'planned-inputs.json'),inputs.inputs);
 const runtime=new Runtime({root,...paths,ports,corpus:inputs.corpus,artifacts:artifactRoot,perOperationLimit:inputs.perOperationLimit});
 const manifest={id:values.id,state:'PREPARING',startedAt:new Date().toISOString(),head:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),dirty:Boolean(execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim()),
-  evidenceKind:values.diagnostic?'LIVE_DIAGNOSTIC_UNREVIEWED':inputs.human==='APPROVED'?'HUMAN_INPUT_REVIEWED_OUTPUT_UNREVIEWED':'PREPARATION_UNREVIEWED',inputHumanReview:inputs.human,answerAccuracy:null,outputHumanReviewed:0,cost:null,
+  evidenceKind:values.diagnostic?'LIVE_DIAGNOSTIC_UNREVIEWED':comparison?(values.execute?'DEVELOPMENT_COMPARISON_UNREVIEWED':'PREPARATION_UNREVIEWED'):inputs.human==='APPROVED'?'HUMAN_INPUT_REVIEWED_OUTPUT_UNREVIEWED':'PREPARATION_UNREVIEWED',inputHumanReview:inputs.human,answerAccuracy:null,outputHumanReviewed:0,cost:null,
+  comparison:comparison?{protocolFile:comparison.protocolFile,protocolSha:comparison.protocolSha,mode:comparison.mode,baseRunId:comparison.protocol.baseRunId,baseClaimSha256:comparison.baseClaimSha256,singleVariable:comparison.protocol.singleVariable,hypothesis:comparison.protocol.hypothesis,successCriteria:comparison.protocol.successCriteria}:null,
   casesSha:inputs.casesSha,reviewSha:inputs.reviewSha,plannedCount:inputs.inputs.length,concurrency:1,holdoutCount:0,budgets:{...budgets,perOperationLimit:inputs.perOperationLimit,totalProviderLimit:inputs.totalProviderLimit},
   sdkRetries:0,clientRetries:0,ports,database:'isolated file H2 / Flyway / no fixture tickets',artifactHashes,sourceHashesFile:'source-hashes.json',attemptMeaning:'SDK operation invocation; remote receipt and billing unknown',stopReason:null};
 function save(){const file=path.join(paths.output,'manifest.json');fs.writeFileSync(`${file}.tmp`,JSON.stringify(manifest,null,2)+'\n');fs.renameSync(`${file}.tmp`,file);}
@@ -45,8 +48,8 @@ try {
     const empty=await request(runtime.base,'/api/tickets',{signal:controller.signal});
     assert.equal(empty.status,200);assert.deepEqual(empty.body,[],'Isolated database must contain no fixture tickets');
     requireSource(root,sourceHashes);
-    const claim=path.join(root,'.local/quality-runs',`development-${inputs.casesSha}.claim.json`);
-    write(claim,{id:values.id,casesSha:inputs.casesSha,authorization:values.diagnostic?'User authorized unreviewed diagnostic; no semantic score':'Human input review provided',at:new Date().toISOString()});
+    const claim=comparison?comparison.comparisonClaimPath:path.join(root,'.local/quality-runs',`development-${inputs.casesSha}.claim.json`);
+    write(claim,comparison?{id:values.id,comparisonId:comparison.protocol.comparisonId,casesSha:inputs.casesSha,protocolFile:comparison.protocolFile,protocolSha:comparison.protocolSha,baseRunId:comparison.protocol.baseRunId,baseClaimSha256:comparison.baseClaimSha256,singleVariable:comparison.protocol.singleVariable,at:new Date().toISOString()}:{id:values.id,casesSha:inputs.casesSha,authorization:values.diagnostic?'User authorized unreviewed diagnostic; no semantic score':'Human input review provided',at:new Date().toISOString()});
     manifest.state='RUNNING';save();
     const context={base:runtime.base,output:paths.output,inputs:inputs.inputs,signal:controller.signal,perOperationLimit:inputs.perOperationLimit,totalProviderLimit:inputs.totalProviderLimit,checkSource:()=>requireSource(root,sourceHashes)};
     const batch=await runBatch(context);manifest.stopReason=batch.stopped;manifest.state=batch.stopped?'STOPPED':'MEASURED_UNREVIEWED';save();
