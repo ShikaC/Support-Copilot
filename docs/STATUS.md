@@ -1,15 +1,34 @@
 # Support Copilot 当前状态
 
-> 更新时间：2026-09-10
-> 状态分类：当前工作区事实
+> 更新时间：2026-09-11
+> 状态分类：当前工作区事实（已提交，工作树 clean）
 
-## 最新：检索上下文截断已修复，离线回归通过
+## 最新：提交前工作树已固化为 6 个提交（2026-09-11）
+
+此前 342 个待提交路径（94 个修改 + 未跟踪目录下的源码、测试、文档与截图）已按主题提交到 `master`，工作树 clean，新 HEAD `c923d0e`，本地领先 `origin/master` 但**未推送**。提交边界：
+
+| 提交 | 主题 | 文件数 |
+| --- | --- | --- |
+| `68b3aa0` | chore(git): 忽略本地运行产物与大型证据派生物 | 2 |
+| `2e4a0ad` | feat(workspace): 企业工单工作台与运行加固 | 154 |
+| `ca9cb6e` | feat(quality): 质量报告中心 | 25 |
+| `31b65ae` | feat(ai): 证据约束回复、语言边界与完整检索上下文 | 74 |
+| `3c8e478` | chore(pilot): 容器与运维加固 | 17 |
+| `c923d0e` | docs: 状态、路线与证据记录 | 70 |
+
+HEAD 上重跑验证：AI 服务 `pytest -q` 324 passed；Java `./gradlew test` 318 tests / 14 个 MySQL 容器用例跳过 / 0 failures；Web `npm test` 108 passed / 3 skipped；前端 `lint` 与生产 `build` 通过。
+
+限制：提交按主题固化而非逐个 hunk 拆分，`apps/support-copilot-web/src/services/api.ts`、`App.tsx` 与 `QualityView` 之间存在跨提交交叉依赖，中间提交单独 checkout 不保证可编译，只有 HEAD 经过上述验证。MySQL 实库、浏览器 E2E、Compose operations gate 和修正后的真实 live 复测未在本次固化中重跑。`.gitignore` 现在忽略 `.local/`、`.omo/` 与 `docs/verification` 下的 JSON、截图、`run-*/corpus` 等派生产物，这些文件保留在磁盘但未入库。
+
+以下各节是本次固化前的历史记录，其中"HEAD 仍为 `4df3bf4`、dirty、未提交"等描述只对当时的工作树成立。
+
+## 前一阶段：检索上下文截断已修复，离线回归通过
 
 已按用户指令修改`AnalysisWorkflow._build_query`：完整保留已通过TicketInput长度校验的标题与正文，去掉正文前180字符截断。唯一生产代码改动见[本轮diff与交付](verification/query-context-fix-2026-09-10/README.md)。19项新增回归修改前17失败/2通过、修改后19通过；AI模块完整324项通过。13条冻结真实输入经离线HTTP工作流产生13条不同query，历史上下文与当前请求均保留；超过4000字符正文仍返回422。测试响应不计入真实业务结果。
 
 本轮无新模型/Embedding调用，无部署或工作台重启。尚未测得修复后的检索命中、回答质量、延迟或费用改善，旧13题真实诊断与run-1原样保留。完整输入上限为240字符标题/4000字符正文；查询加分隔最多4241个Python code point，外发Embedding仍经过原脱敏边界。输入更长可能影响成本、延迟及相关性，须独立真实development复测验证。
 
-HEAD仍为`4df3bf44907c34318132496929bad4a3974ad88b`，master、dirty、未提交。修复前后源码、冻结材料及本轮明确改动边界由新交付验证；旧验证器绑定旧工作树，现会因授权源码/文档改变失败，原件保留。下一步在本轮diff审阅后预注册修正后的development比较，不删除claim或覆盖旧批次。人工参考/输出审核仍待完成，质量分数仍为空。
+当时 HEAD 为 `4df3bf44907c34318132496929bad4a3974ad88b`，master、dirty、未提交；该状态已于 2026-09-11 固化为 `c923d0e`。修复前后源码、冻结材料及本轮明确改动边界由新交付验证；旧验证器绑定旧工作树，现会因授权源码/文档改变失败，原件保留。下一步在本轮diff审阅后预注册修正后的development比较，不删除claim或覆盖旧批次。人工参考/输出审核仍待完成，质量分数仍为空。
 
 ## 前一阶段：13题真实诊断完成，确认检索输入截断缺陷
 
