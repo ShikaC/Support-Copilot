@@ -3,7 +3,11 @@
 > 更新时间：2026-09-11
 > 状态分类：当前工作区事实（已提交，工作树 clean）
 
-## 最新：修正后 development 比较已预注册（2026-09-11）
+## 最新：固化回归修复与比较协议预注册（2026-09-11）
+
+同一轮完成两件事：预注册修正后的 development 比较方案，并修复固化提交在文档门禁上暴露的三个回归。均未执行付费调用、未推送。
+
+### 1. 修正后 development 比较已预注册
 
 `docs/verification/development-comparison-2026-09-11/` 冻结了 query 修复后的第一次真实 development 复测方案，**尚未执行任何付费调用**。这一片切片解决的问题：旧 13 题诊断已占用一次性 development claim，同一数据集不能直接重跑，也不允许删除或绕过 claim。
 
@@ -12,6 +16,19 @@
 - 单一变量：仅 `_build_query` 由正文前 180 字符改为完整已校验标题与正文；模型、聊天协议、提示词、知识 corpus、向量 artifact 与超时预算冻结。
 - 离线验证：`node --test scripts/benchmark/comparison-protocol.test.mjs` 8 项契约测试通过；`node scripts/benchmark/isolated-runner.test.mjs` 11 项继续通过；预检 `preflight-development-comparison-20260911` 为 `PREPARED_NO_CALLS`、0 次 provider 操作、`evidenceKind=PREPARATION_UNREVIEWED`，确认 live / `chat_completions` / 1564×1024 artifact。
 - 下一步：作者审阅本轮 diff 后明确授权 `--execute --comparison`；执行后不得覆盖 base run，质量分数仍为 `null`，需真人输入确认与回答事实审核。
+
+### 2. 固化暴露并修复的门禁回归
+
+这些失败在固化前不会出现，因为验证器只检查 Git 追踪的文件，而受影响的文档与账本当时未被追踪。
+
+| 回归 | 根因 | 修复（提交） |
+| --- | --- | --- |
+| `verify-docs.sh` 的 tracked-copy 树不一致 | `.gitignore` 新增 `.omo/` 后，两个历史 task-10 账本仍被追踪，fixture 重建时被忽略 | 从索引移除两个文件，磁盘内容保留（`147fb36`）|
+| 335 处文档链接失败 | 固化把含本机绝对路径与 `:line` 后缀的证据文档纳入追踪 | 改为仓库相对链接，行号保留在链接文本（`896446a`）|
+| `QualityReportsController` 缺少类级映射 | 完整路径写在方法上，契约要求每个 controller 一个类级 `@RequestMapping` 与字面 base path | 改为类级映射 + `@GetMapping`，对外 URL 不变（`29a17ca`）|
+| tracked-only 检出中 404 处链接目标缺失 | 文档链接到有意不入库的本地派生产物（trials、corpus、workspace 快照）| 验证器允许被 `.gitignore` 排除的目标缺失，指向已发布文件的缺失链接、错误锚点、绝对路径与逃逸路径仍失败（`fa9979d`）|
+
+修复后证据：`./scripts/verify-docs.sh --static` 通过（tracked-copy 树一致、16 项文档契约测试、静态契约）；Java `./gradlew test` 318 tests / 0 failures / 14 skipped；AI `pytest -q` 324 passed；benchmark Node 契约测试 19 passed。未运行 `verify-docs.sh --full`（需要重新安装依赖并启动本地服务，与本次改动无关），因此不声称端到端 smoke 通过。
 
 ## 前一阶段：提交前工作树已固化（2026-09-11）
 
