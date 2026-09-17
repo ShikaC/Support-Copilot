@@ -53,3 +53,8 @@ docs/verification/**/*-after.py.txt
 # Offline retrieval-eval reports are small, conclusion-level evidence used as a
 # frozen comparison baseline; unrelated bulk artifacts stay ignored above.
 !docs/verification/retrieval-eval-2026-09-11/**
+
+# Retrieval-only baseline: results, plan and score report are the evidence.
+# The 341KB query-vector dump is reproducible from the plan and stays ignored.
+!docs/verification/retrieval-only-2026-09-17/**
+docs/verification/retrieval-only-2026-09-17/query-vectors.json

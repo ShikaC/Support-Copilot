@@ -1,0 +1,769 @@
+[
+  {
+    "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Hello. I urgently need to know more about driver civil penalties. There is one I need to pay asap.\nagent: Do you want to pay a driver civil penalty by mail for uninsured operation or uninsured accident?\nuser: No, not by mail. It needs to be faster than that.\nuser: What do I need to make a fast online payment?",
+            "hits": [
+              {
+                "chunk_id": "d2d-dmv-3fd1331a602be6ee-3200-5190",
+                "document_id": "d2d-dmv-3fd1331a602be6ee",
+                "document_title": "Pay driver civil penalty#1",
+                "section": "Unicode code points 3200:5190",
+                "content": "r money order payable to Commissioner of Motor Vehicles to : Driver Improvement UnitNYS DMV6 Empire State Plaza , Room 338Albany , NY 12228 474 - 0774 , Option #5 Phone Hours: M - F , 8:30 Noon FAX 518 474 - 6208 \n\nAt a DMV office \nYou can pay the driver civil penalty at the office listed on your suspension or revocation order , but it s much faster and easier to pay online. if the order was issued between January 1 , 1981 and June 30 , 1990 , the civil penalty is $100 if the order was issued between July 1 , 1990 and October 31 , 1996 , the civil penalty is $200 if the order was issued between November 1 , 1996 and October 31 , 2006 , the civil penalty is $300 if the order was issued between November 1 , 1992 and October 31 , 1996 , the civil penalty is $250 if the order was issued between November 1 , 1996 and October 31 , 2006 , the civil penalty is $350 if the order was issued between September 1 , 1983 and June 30 , 1990 , the civil penalty is $250 if the order was issued between July 1 , 1990 and October 31 , 1996 , the civil penalty is $500 if the order was issued between July 1 , 1990 and October 31 , 1996 , the civil penalty is $500 if the order was issued between June 1 , 1972 and April 30 , 1989 , the civil penalty is $300 if the order was issued between May 1 , 1989 and May 14 , 2003 , the civil penalty is $500 if the order was issued between June 1 , 1972 and April 30 , 1989 , the civil penalty is $300 if the order was issued between May 1 , 1989 and May 14 , 2003 , the civil penalty is $500. The DMV accepts : American Express Card Discover Card /Novus MasterCard MasterCard Debit card without personal identification number PIN VISA Card Visa Debit Card without personal identification number PIN Contact Information : Insurance Services BureauNYS DMV6 Empire State Plaza, Room 332BAlbany, NY 12228 \n\nShow \"do it online\" button in megamenu: \n\n\nTopic: \nTickets [7 ] \n\nshow mydmv button in megamenu: \n\n\nDisable this transaction?: \n\n\nyes or no survey:",
+                "source_uri": "https://doc2dial.github.io/#Pay%20driver%20civil%20penalty%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.791,
+                "rerank_position": 1,
+                "rerank_score": 0.791,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-dmv-3fd1331a602be6ee-0-2000",
+                "document_id": "d2d-dmv-3fd1331a602be6ee",
+                "document_title": "Pay driver civil penalty#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Pay driver civil penalty[1] \nA driver civil penalty is a fine you must pay to DMV for certain offenses before your license or driving privilege can be restored after a suspension or revocation. This fine is in addition to any other fines, penalties or surcharges that you must pay for a traffic conviction. The purpose of the driver civil penalty is to prevent the repeated behavior of problem drivers and to improve traffic safety. The quickest and easiest way is to pay a driver civil penalty online [2]. \n\nWho must pay? \nYou must pay a driver civil penalty if your driver license or driving privilege was suspended or revoked because you violated the NY State Zero Tolerance Law for drivers under age 21 see Penalties for alcohol or drug related offenses [3 ] or , if your driver license or driving privilege was revoked because you refused to take a chemical test for alcohol or drugs you operated or permitted the operation of a motor vehicle without automobile liability insurance you operated a motor vehicle involved in a traffic crash and the vehicle was not covered by automobile liability insurance \n\nPenalty amount \nThe amount depends on the reason for the suspension or revocation. You may owe more than one civil penalty. \n\nPay online \nYou can pay with a credit or debit card. 7 Your name and address on DMV records must be correct. Create a MyDMV account [4] to verify or change your address. \n\nYou must provide \nthe last four digits of your Social Security Number your DMV ID Number Client ID Number from your NY State driver license , learner permit or non - driver photo ID card see where to find information on your driver license [5], or your full name , date of birth and gender If your driver license is revoked , your payment of the driver civil penalty does not restore your privilege to drive. You must request and receive approval from DMV [6] to restore your license or driving privilege unless your revocation was for an uninsured accident. If your revocation was for an",
+                "source_uri": "https://doc2dial.github.io/#Pay%20driver%20civil%20penalty%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.7783,
+                "rerank_position": 2,
+                "rerank_score": 0.7783,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-dmv-3fd1331a602be6ee-1600-3600",
+                "document_id": "d2d-dmv-3fd1331a602be6ee",
+                "document_title": "Pay driver civil penalty#1",
+                "section": "Unicode code points 1600:3600",
+                "content": "ee where to find information on your driver license [5], or your full name , date of birth and gender If your driver license is revoked , your payment of the driver civil penalty does not restore your privilege to drive. You must request and receive approval from DMV [6] to restore your license or driving privilege unless your revocation was for an uninsured accident. If your revocation was for an uninsured accident , you must contact the DMV Insurance Services Bureau. If you are suspended for a violation of the Zero tolerance law , you must wait until the suspension period ends, pay a suspension termination fee and have a valid driver license before you can legally drive. To check if you have a valid driver license, create a MyDMV account [4] and use our My License, Permit or ID service. \n\nYou can pay more than one civil penalty online at a time \nYou are not required to pay all of your civil penalties in one transaction , but you cannot be approved for a new driver license or restoration of your driving privilege until you pay all the civil penalties you owe. You can return to the transaction later to pay additional civil penalties. Pay a driver civil penalty online [2 ] \n\nBy mail \nTo pay a driver civil penalty by mail for uninsured operation or uninsured accident , send a certified check, personal check or money order payable to Commissioner of Motor Vehicles to : Insurance Services BureauNYS DMV6 Empire State Plaza, Room 332BAlbany, NY 12228 To pay a driver civil penalty by mail for a chemical test refusal or violation of the Zero Tolerance Law , send a certified check or money order payable to Commissioner of Motor Vehicles to : Driver Improvement UnitNYS DMV6 Empire State Plaza , Room 338Albany , NY 12228 474 - 0774 , Option #5 Phone Hours: M - F , 8:30 Noon FAX 518 474 - 6208 \n\nAt a DMV office \nYou can pay the driver civil penalty at the office listed on your suspension or revocation order , but it s much faster and easier to pay online. if the order was issue",
+                "source_uri": "https://doc2dial.github.io/#Pay%20driver%20civil%20penalty%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7609,
+                "rerank_position": 3,
+                "rerank_score": 0.7609,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I want to self-certify\nagent: What driving type will you be certifying\nuser: Just for here in New york",
+            "hits": [
+              {
+                "chunk_id": "d2d-dmv-b8cdff6845c375df-0-2000",
+                "document_id": "d2d-dmv-b8cdff6845c375df",
+                "document_title": "Medical Certification FAQ's#3",
+                "section": "Unicode code points 0:2000",
+                "content": "Self-Certification \n\n\n1. Why do I have to self-certify? \nNew federal regulations require all commercial drivers to certify to the Department of Motor Vehicles DMV the type of driving they perform or expect to perform. Drivers that self - certify to a non - excepted driving type NA or NI are also required to submit a copy of their USDOT Medical Examiner s Certificate. This is a nationwide safety initiative that affects commercial driver in all states. \n\n2. What are the self-certification driving types? \nNon - Excepted Interstate NI : Commercial driving operation is permitted across state lines , and you are required to meet the Federal medical requirements Non - Excepted Intrastate NA : Commercial driving operation is restricted to New York State only , and you are required to meet the Federal medical requirements Excepted Interstate EI : Commercial driving operation is permitted across state lines for excepted operation only and you are exempt from the Federal medical requirements Excepted Intrastate EA : Commercial driving operation is restricted to New York State, permitted for excepted operation only and you are exempt from the Federal medical requirements. \n\n3. What if my driving type changes? \nIf your driving type changes , you must go into your local DMV office to change your self - certification driving type and have your license amended to add or delete the appropriate restrictions. A transaction fee will apply. If you are self - certifying to a non - excepted driving type NA or NI you will need to bring a copy of your valid USDOT Medical Examiners Certificate if it is not already on file with DMV. \n\n4. Can I change my self-certification driving type online? \nNo , you must go into a DMV office. \n\n5. I am eligible for an excepted operation, but I have a valid DOT Medical Examiner s Certificate. What driving type should I certify to? \nYou should certify to the type of driving in which you operate or expect to operate , and your CDL will have the restrictions",
+                "source_uri": "https://doc2dial.github.io/#Medical%20Certification%20FAQ's%233_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7728,
+                "rerank_position": 1,
+                "rerank_score": 0.7728,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-dmv-d116f74fac575be8-1600-3600",
+                "document_id": "d2d-dmv-d116f74fac575be8",
+                "document_title": "Lifetime driving records#3",
+                "section": "Unicode code points 1600:3600",
+                "content": "r a list and explanation of driver license restrictions. \n\nSummary 2 \nThe header is followed by a \" Summary \" section that includes license class / privilege document status including commercial and 19A document expiration date date of road test eligibility \n\nCurrent License \nThe \" Current License \" section includes current license class current license expiration date that expand the driving privilege any endorsements that was issued type of document \n\nNon-Driver ID \nThe \" Non - Driver ID \" section includes issue date expiration date \n\nPermit History \nThe \" Permit History \" section includes permit classes and the dates they were applied for date the permit document expired that limit or expand the permit privilege any restrictions or endorsements \n\nActivity \nThe \" Activity \" section may include driver license related course completion Commercial Driver License CDL history license reciprocity information \n\nClass / Privilege change \nThe \" Class / Privilege \" section includes class / Privilege of the driver holds or has held effective date for each class / Privilege date each license class / Privilege was posted to the license record \n\nDocument Issued \nThe \" Document \" section includes type of document license class issue date \n\nMerges \nThe \" Merges \" section only appears on the abstract if the driver has ever had license under a different Customer Identification Number CID than the one shown in the \" Header \" section. if present will show The \" Merges \" section which CID's were merged and the resulting CID the merged CID was put on the record the date any other name connected to the merged CID 's any other Dates of Birth DOB connected to the merged CID 's any other gender connected to the merged CID 's \n\nSuspensions and Revocations \nOn the \" Lifetime \" driving record , the \" Suspensions and Revocations \" section is divided into two sub - sections, \" Non - Scofflaws \" and \" Scofflaws \". Non - scofflaws and Scofflaws will be listed separately, in order by effective dat",
+                "source_uri": "https://doc2dial.github.io/#Lifetime%20driving%20records%233_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.6744,
+                "rerank_position": 2,
+                "rerank_score": 0.6744,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-dmv-b8cdff6845c375df-8000-8736",
+                "document_id": "d2d-dmv-b8cdff6845c375df",
+                "document_title": "Medical Certification FAQ's#3",
+                "section": "Unicode code points 8000:8736",
+                "content": "ial driver self - certification and medical certification data daily, as soon as possible. However , due to the volume of responses it could take a period of time for a driver record to be fully updated. Self - certification driving types data will be entered and show first, followed later by medical certification data , So , there may be a period of time where an NI or NA driving type reflects a \" Not Certified \" medical status until the medical certification data is entered, when it will then be updated to \" Certified \". \n\n14. How can I contact the Medical Certification Unit? \nFax : 518 - 486 - 4421 or 518 - 486 - 3260 Email : [ email protected] [6 ] Mail: NYS DMVMedical Certification UnitPO Box 2601Albany , NY 12220 - 0601",
+                "source_uri": "https://doc2dial.github.io/#Medical%20Certification%20FAQ's%233_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.6692,
+                "rerank_position": 3,
+                "rerank_score": 0.6692,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Hello there. How are you doing? I have some questions about making changes to an IRP registration.\nagent: Would you like to know what common changes you can make to IRP registrations?\nuser: Sure, why not?",
+            "hits": [
+              {
+                "chunk_id": "d2d-dmv-efbe5d14582d10af-0-2000",
+                "document_id": "d2d-dmv-efbe5d14582d10af",
+                "document_title": "Changes to IRP registration#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Changes to IRP registration[1] \n\n\nCommon changes to IRP registrations include \nadd or delete vehicles transfer plates from one vehicle to another add jurisdictions increase or decrease registered weight transfer a vehicle from one fleet to another fleet name change address change 1 \n\nTo make changes to your IRP registration \ncomplete Schedule A & C pdf [2] IRP-6 submit for all changes listed above provide proof of identity submit for all changes listed above 2 provide proof of ownership submit for all add vehicle requests 3 provide proof of NY State insurance NY State Insurance ID Card in same name as the registrant if you are adding vehicles to the fleet submit for all changes listed above provide proof of NY State insurance NY State Insurance ID Card in the new name if you are changing the name on the account send a check or money order made payable to the Commissioner of Motor Vehicles in the amount of $2.50 per vehicle send in proof of an established place of business for the new address submit for for address change only \n\nOnline \nYou may use OSCAR [3] to make some of these the changes online. \n\nBy mail \nIf you are using the United States Postal Service International Registration BureauPO Box 2850 ESPAlbany , NY 12220 - 0850 If you use an express mail service or other method International Registration BureauNYS DMVRoom 1366 Empire State PlazaAlbany , NY 12228 If you send your application by mail , the IRB sends you a invoice. If additional information is required to process your application , the IRB sends a request for additional information with the invoice. Payment by mail must be by certified check or money order. \n\nAt the Customer Service Counter in Albany \nYou may bring your application to the Customer Service CounterRoom 136Swan Street BuildingEmpire State PlazaAlbany , NY 12228 The Customer Service Counter is open 8:00am to 3:45pm, Monday through Friday, except state holidays The IRB calculates your fees while you wait. You may pay the fees in cash, b",
+                "source_uri": "https://doc2dial.github.io/#Changes%20to%20IRP%20registration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7735,
+                "rerank_position": 1,
+                "rerank_score": 0.7735,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-dmv-efbe5d14582d10af-3200-4110",
+                "document_id": "d2d-dmv-efbe5d14582d10af",
+                "document_title": "Changes to IRP registration#1",
+                "section": "Unicode code points 3200:4110",
+                "content": "ation. Your local DMV office cannot amend an IRP registration. \n\nDo it by phone: \nYou can't make changes to an IRP registration by phone. You may call the IRB with questions at 1 - 518 - 473 - 5834 \n\nDo it by mail: \nYou can make changes to your IRP registrations by mail. Follow the instructions on Schedule A&C [2] IRP-6. \n\nDo it at the DMV: \nYou can make changes to your IRP registrations at the Customer Service CounterRoom 136Swan Street BuildingEmpire State PlazaAlbany , NY 12228 The Customer Service Counter is open 8:00am to 3:45pm, Monday through Friday, except state holidays You can't make changes to your IRP registrations at a DMV local office. \n\nDo it online alternative: \nYou can make some changes to your IRP registrations using OSCAR [3 ] \n\nShow \"do it online\" button in megamenu: \n\n\nTopic: \nMotor Carriers [5 ] \n\nRelated PDFs: \n\n\nshow mydmv button in megamenu: \n\n\nDisable this transaction?:",
+                "source_uri": "https://doc2dial.github.io/#Changes%20to%20IRP%20registration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.7487,
+                "rerank_position": 2,
+                "rerank_score": 0.7487,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-dmv-efbe5d14582d10af-1600-3600",
+                "document_id": "d2d-dmv-efbe5d14582d10af",
+                "document_title": "Changes to IRP registration#1",
+                "section": "Unicode code points 1600:3600",
+                "content": "t by mail must be by certified check or money order. \n\nAt the Customer Service Counter in Albany \nYou may bring your application to the Customer Service CounterRoom 136Swan Street BuildingEmpire State PlazaAlbany , NY 12228 The Customer Service Counter is open 8:00am to 3:45pm, Monday through Friday, except state holidays The IRB calculates your fees while you wait. You may pay the fees in cash, by money order or certified check. You must provide payment and all required documents to receive your new IRP documents. \n\nBy fax \nSubmit the Schedule A & C pdf [2] IRP-6 by fax to 518 - 486 - 6579. IRB processes changes submitted by fax within 72 hours. If you change your address , you must notify the DMV within 10 days. Please complete Schedule A / C IRP6 and submit it along with your two proofs of new address and payment in the amount of $2.50 per vehicle. Payment must be a check or money order payable to the Commissioner of Motor Vehicles. Send photocopies of your proofs of identity. If another person brings your application to the Customer Service Counter , see the requirements for a second - party registration application. If you must change any information on your IRP registration that is also on your title certificate for example the VIN, year or make , you must first apply for an amendment to your title certificate. See Change name or other information on your registration or title [4] for more information. If you change information on your title certificate , you must send a photocopy of the changed title certificate when you apply to change information on the IRP registration. Your local DMV office cannot amend an IRP registration. \n\nDo it by phone: \nYou can't make changes to an IRP registration by phone. You may call the IRB with questions at 1 - 518 - 473 - 5834 \n\nDo it by mail: \nYou can make changes to your IRP registrations by mail. Follow the instructions on Schedule A&C [2] IRP-6. \n\nDo it at the DMV: \nYou can make changes to your IRP registrations at the Cu",
+                "source_uri": "https://doc2dial.github.io/#Changes%20to%20IRP%20registration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7363,
+                "rerank_position": 3,
+                "rerank_score": 0.7363,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: I want to know if my information is secure.\nagent: Are you having trouble with  the Online Identity Verification Process?\nuser: No, I just want to know more about it.",
+            "hits": [
+              {
+                "chunk_id": "d2d-ssa-82805346302d5017-0-2000",
+                "document_id": "d2d-ssa-82805346302d5017",
+                "document_title": "my Social Security | Security and Protection | Social Security Administration#1",
+                "section": "Unicode code points 0:2000",
+                "content": "my Social Security | Security and Protection \n\n\nThe Online Identity Verification Process \nOne of our most important responsibilities is protecting your investment and personal information. Social Security takes this responsibility very seriously , and we have a robust cybersecurity program in place to help us succeed. Our security process follows federal guidelines that includes additional security measures so we can be sure that you are who you say you are when you conduct online business with us. To protect the privacy of your identity and your information , we are using a new identity verification process. The new process : Requires you to sign in with a username and password ; Offers extra security ; and Complies with federal laws, regulations, and guidelines. In addition to your username and password , you can choose either your cell phone or email address as your second identification method when you sign in to or register for my Social Security. Two forms of identification when signing in will help better protect your account from unauthorized use and potential identity fraud. Each time you sign in to your account , you will complete two steps : Enter your username and password. Enter the security code we send by text message or email , depending on your choice cell phone provider text message and data rates may apply. If you choose to receive your one - time security code through email , you can add NO-REPLY@ssa.gov to your contact list to make sure it does not go into your spam or junk folder. For additional tips to help you stay safe and secure online please visit the Federal Trade Commission's OnGuard Online. \n\nIf You Cannot Or Do Not Want To Create An Account Online \nIf you are unable or unwilling to create an online account , you may still create an account in person by visiting your local Social Security office. \n\nIf You Want Extra Security \nWe offer you the choice to add extra security when you create an online account. In the past , we told you Soc",
+                "source_uri": "https://doc2dial.github.io/#my%20Social%20Security%20%7C%20Security%20and%20Protection%20%7C%20Social%20Security%20Administration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7325,
+                "rerank_position": 1,
+                "rerank_score": 0.7325,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-c91a3db805c71189-0-2000",
+                "document_id": "d2d-ssa-c91a3db805c71189",
+                "document_title": "my Social Security | Security and Protection | Social Security Administration#2",
+                "section": "Unicode code points 0:2000",
+                "content": "The Online Identity Verification Process \nOne of our most important responsibilities is protecting your investment and personal information. Social Security takes this responsibility very seriously , and we have a robust cybersecurity program in place to help us succeed. Our security process follows federal guidelines that includes additional security measures so we can be sure that you are who you say you are when you conduct online business with us. To protect the privacy of your identity and your information , we are using a new identity verification process. The new process : Requires you to sign in with a username and password ; Offers extra security ; and Complies with federal laws, regulations, and guidelines. In addition to your username and password , you can choose either your cell phone or email address as your second identification method when you sign in to or register for my Social Security. Two forms of identification when signing in will help better protect your account from unauthorized use and potential identity fraud. Each time you sign in to your account , you will complete two steps : Enter your username and password. Enter the security code we send by text message or email , depending on your choice cell phone provider text message and data rates may apply. If you choose to receive your one - time security code through email , you can add NO-REPLY@ssa.gov to your contact list to make sure it does not go into your spam or junk folder. For additional tips to help you stay safe and secure online please visit the Federal Trade Commission's OnGuard Online. \n\nIf You Cannot Or Do Not Want To Create An Account Online \nIf you are unable or unwilling to create an online account , you may still create an account in person by visiting your local Social Security office. \n\nIf You Want Extra Security \nWe offer you the choice to add extra security when you create an online account. In the past , we told you Social Security would never ask for your credit car",
+                "source_uri": "https://doc2dial.github.io/#my%20Social%20Security%20%7C%20Security%20and%20Protection%20%7C%20Social%20Security%20Administration%232_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.682,
+                "rerank_position": 2,
+                "rerank_score": 0.682,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-5ce736e5b1c697cc-3200-5200",
+                "document_id": "d2d-ssa-5ce736e5b1c697cc",
+                "document_title": "Manage Your Retirement Benefits | SSA#1",
+                "section": "Unicode code points 3200:5200",
+                "content": "es And Services To Stay In Control \nThere are many time - saving options available to you. Here are our most popular online services : Check your application status. Set up or change direct deposit. Get a proof of income letter. Get a Social Security 1099 SSA-1099 form. Request a replacement Social Security card. Opt out of certain mailed notices. Advanced Designation of Representative Payee. We continue to expand the services available online. Visit our online services page to see a complete list, including the newest services to help you manage your information. You can also search our comprehensive FAQs section for help with specific retirement issues. If you need help with managing your benefits and cannot find the answer or service above , visit our contact us page for other ways to get support. \n\nKeep Your Information Secure \nIdentity theft affects millions of people each year and can cause serious financial and identity - related problems. Protect yourself by securing your personal information, taking the time to understand the threat of identity theft, and exercising caution. \n\nProtect Yourself From Fraud \nSocial Security is diligently working at national, regional, and local levels to combat the fraud that undermines our mission to serve the American public. There are steps you can take to help protect your personal information : Do not routinely carry your Social Security card. Never say your Social Security number aloud in public. Beware of phishing scams emails, internet links, texts, and phone calls to trick you into revealing personal information. Create a my Social Security account to help you keep track of your records. Visit If You Want Extra Security to learn about extra verification steps we can add to your account. \n\nReport Suspicious Activity \nIf you receive a suspicious call from someone claiming to be from Social Security , hang up and then report details of the call to the Office of the Inspector General. You can do this by submitting a repor",
+                "source_uri": "https://doc2dial.github.io/#Manage%20Your%20Retirement%20Benefits%20%7C%20SSA%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.6617,
+                "rerank_position": 3,
+                "rerank_score": 0.6617,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: If I needed to change my address and phone number where do i begin?\nagent: So you want to change your address correct?\nuser: yes",
+            "hits": [
+              {
+                "chunk_id": "d2d-ssa-d87c62e4d40925ec-0-1874",
+                "document_id": "d2d-ssa-d87c62e4d40925ec",
+                "document_title": "Change of Address| Social Security Administration#1",
+                "section": "Unicode code points 0:1874",
+                "content": "Change of Address \n\n\nChange your Address and Telephone number online \nAre you moving, currently receiving benefits or enrolled in Medicare and want to know how to change your address? You can change and update your information anytime, anywhere by logging in to or creating a free my Social Security account. \n\nHow to change your address? \nIf you get Social Security benefits retirement, survivors, or disability , you can update your contact information in a safe, quick, and convenient way by following these five steps : Log in to my Social Security. Select the My Profile link on the right side of the screen. Select the Update Contact Information button and enter your address information. Select when would you like to schedule the update, then select Next. Review and verify your information , select Submit. This service is not currently available to people who receive Supplemental Security Income SSI or do not have a U.S. mailing address. However , if you are receiving SSI , you can easily check your address we have on record via the My Profile Tab on my Social Security. \n\nSign in to your mySocial Security account and update your information \nAlready have a my Social Security Account? Sign In to your account below and go to My Profile tab to change and update your contact information. Don't have a my Social Security Account? Creating a free my Social Security account takes less than 10 minutes, lets you change and update your information and gives you access to many other online services. \n\nStill have questions? \nIf you have questions or need help understanding how to change your address and telephone number online , call our toll - free number a 1 - 800 - 772 - 1213 or visit your Social Security office. If you are deaf or hard of hearing , call our toll - free TTY number , 1 - 800 - 325 - 0778, between7 a.m. and 7 p.m. Monday through Friday.",
+                "source_uri": "https://doc2dial.github.io/#Change%20of%20Address%7C%20Social%20Security%20Administration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.8224,
+                "rerank_position": 1,
+                "rerank_score": 0.8224,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-1283eff4d69f6884-0-1853",
+                "document_id": "d2d-ssa-1283eff4d69f6884",
+                "document_title": "Change of Address| Social Security Administration#2",
+                "section": "Unicode code points 0:1853",
+                "content": "Change your Address and Telephone number online \nAre you moving, currently receiving benefits or enrolled in Medicare and want to know how to change your address? You can change and update your information anytime, anywhere by logging in to or creating a free my Social Security account. \n\nHow to change your address? \nIf you get Social Security benefits retirement, survivors, or disability , you can update your contact information in a safe, quick, and convenient way by following these five steps : Log in to my Social Security. Select the My Profile link on the right side of the screen. Select the Update Contact Information button and enter your address information. Select when would you like to schedule the update, then select Next. Review and verify your information , select Submit. This service is not currently available to people who receive Supplemental Security Income SSI or do not have a U.S. mailing address. However , if you are receiving SSI , you can easily check your address we have on record via the My Profile Tab on my Social Security. \n\nSign in to your mySocial Security account and update your information \nAlready have a my Social Security Account? Sign In to your account below and go to My Profile tab to change and update your contact information. Don't have a my Social Security Account? Creating a free my Social Security account takes less than 10 minutes, lets you change and update your information and gives you access to many other online services. \n\nStill have questions? \nIf you have questions or need help understanding how to change your address and telephone number online , call our toll - free number a 1 - 800 - 772 - 1213 or visit your Social Security office. If you are deaf or hard of hearing , call our toll - free TTY number , 1 - 800 - 325 - 0778, between7 a.m. and 7 p.m. Monday through Friday.",
+                "source_uri": "https://doc2dial.github.io/#Change%20of%20Address%7C%20Social%20Security%20Administration%232_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.8159,
+                "rerank_position": 2,
+                "rerank_score": 0.8159,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-5ce736e5b1c697cc-1600-3600",
+                "document_id": "d2d-ssa-5ce736e5b1c697cc",
+                "document_title": "Manage Your Retirement Benefits | SSA#1",
+                "section": "Unicode code points 1600:3600",
+                "content": "cy changes, agency news, and notifications on important events. Create your personal my Social Security account to receive important notices online through the Message Center. The Message Center is a secure, convenient portal where you can receive sensitive communications we don t send through email or text. \n\nAdditional Information \nExplore The Benefits You May Be Due Benefits For Your Family \n\nFAQs \nWhat is a my Social Security online account and how do I get one? How do I sign up for Medicare? \n\nInform Us Of Changes \nWhen change happens in your life , letting us know ensures your benefits and information is kept up to date. Remember to tell us whenever there s a change in your life circumstance that could affect your benefits. Common changes to notify us of : Moving. Getting married or divorced. Changing your name. Adopting a child. No longer caring for a child who receives benefits. If you are a non - citizen and your status changes. Start getting a pension from work not covered by Social Security. Leave the United States for more than 30 days. Become unable to manage your funds. Are convicted of a criminal offense. The beneficiary dies. If you already receive Social Security benefits , you can update much of your information online with your personal my Social Security account. If you need to make a change that cannot be done through my Social Security , you can contact us for additional support. \n\nAdditional Information \nHow Social Security Can Help You When A Family Member Dies \n\nFAQs \nHow can I change my address? What should I do when someone dies? \n\nUse Our Resources And Services To Stay In Control \nThere are many time - saving options available to you. Here are our most popular online services : Check your application status. Set up or change direct deposit. Get a proof of income letter. Get a Social Security 1099 SSA-1099 form. Request a replacement Social Security card. Opt out of certain mailed notices. Advanced Designation of Representative Payee. We c",
+                "source_uri": "https://doc2dial.github.io/#Manage%20Your%20Retirement%20Benefits%20%7C%20SSA%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7105,
+                "rerank_position": 3,
+                "rerank_score": 0.7105,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: hello, how are you? I would like information of retirement benefits please?\nagent: Are you married?\nuser: No  Iam not married\nuser: What if I am divorced?",
+            "hits": [
+              {
+                "chunk_id": "d2d-ssa-fea6e0b27b0b0e40-0-2000",
+                "document_id": "d2d-ssa-fea6e0b27b0b0e40",
+                "document_title": "Benefits Planner: Retirement | Benefits For Your Spouse | Social Security Administration#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Benefits Planner: Retirement \n\n\nBenefits For Your Spouse \nEven if you have never worked under Social Security , you may be able to get spouse s retirement benefits if you are at least 62 years of age and your spouse is receiving retirement or disability benefits. You can also qualify for Medicare at age 65. If you are divorced , you may still be able to get benefits on your ex - spouse's record. For information on the requirements for Divorced Spouse's Benefits , read \" If You Are Divorced You can receive the spouse's benefit no matter what your age is if you are caring for their child who is also receiving benefits. \n\nHow Much Will I Receive? \nIf you qualify and apply for your own retirement benefits and for benefits as a spouse , we always pay your own benefits first. If your benefits as a spouse are higher than your own retirement benefits , you will get a combination of benefits equaling the higher spouse benefit. If you begin receiving benefits : between age 62 and your full retirement age , the amount will be permanently reduced by a percentage based on the number of months up to your full retirement age. If you are under full retirement age and you continue to work while receiving benefits , your benefits may be affected by the retirement earnings test. at your full retirement age , your benefit as a spouse cannot exceed one - half of your spouse's full retirement amount. If you were born before January 2 , 1954 and have already reached full retirement age , you can choose to receive only the spouse s benefit and delay receiving your retirement benefit until a later date. If your spouse is full retirement age and applying for spouse s benefits only , they can apply online by using the retirement application. Your spouse can also contact us to schedule an appointment. If your spouse s birthday is January 2 , 1954 or later , the option to take only one benefit at full retirement age no longer exists. If your spouse files for one benefit , they will be effecti",
+                "source_uri": "https://doc2dial.github.io/#Benefits%20Planner%3A%20Retirement%20%7C%20Benefits%20For%20Your%20Spouse%20%7C%20Social%20Security%20Administration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7099,
+                "rerank_position": 1,
+                "rerank_score": 0.7099,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-4ff3333b79e4fb28-3200-5200",
+                "document_id": "d2d-ssa-4ff3333b79e4fb28",
+                "document_title": "Disability Benefits | Social Security Administration#1",
+                "section": "Unicode code points 3200:5200",
+                "content": "[more info] and the account number , if you want the benefits electronically deposited Information About Your Medical Condition Name, address and phone number of someone we can contact who knows about your medical conditions and can help with your application Detailed information about your medical illnesses, injuries or conditions : Names, addresses, phone numbers, patient ID numbers and dates of treatment for all doctors, hospitals and clinics ; Names of medicines you are taking and who prescribed them ; and Names and dates of medical tests you have had and who sent you for them. \n\nInformation About Your Work \nThe amount of money earned last year and this year The name and address of your employer for this year and last year A copy of your The beginning and ending dates of any active U.S. military service you had before 1968 A list of the jobs up to 5 that you had in the 15 years before you became unable to work and the dates you worked at those jobs Information about any workers' compensation, black lung, and/or similar benefits you filed, or intend to file for. These benefits can : Be temporary or permanent in nature ; Include annuities and lump sum payments that you received in the past ; Be paid by your employer or your employer's insurance carrier, private agencies, or Federal, State or other government or public agencies ; and Be referred to as : Workers' Compensation ; Black Lung Benefits ; Longshore and Harbor Workers' Compensation ; Civil Service Disability Retirement ; Federal Employees' Retirement ; Federal Employees' Compensation ; State or local government disability insurance benefits ; or Disability benefits from the military This includes military retirement pensions based on disability but not Veterans' Administration VA benefits. \n\nWhat documents do I need to provide? \nWe may ask you to provide documents to show that you are eligible, such as : Birth certificate or other proof of birth ; Proof of U.S. citizenship or lawful alien status if you wer",
+                "source_uri": "https://doc2dial.github.io/#Disability%20Benefits%20%7C%20Social%20Security%20Administration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.7069,
+                "rerank_position": 2,
+                "rerank_score": 0.7069,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-a15b0f114fd645b3-0-2000",
+                "document_id": "d2d-ssa-a15b0f114fd645b3",
+                "document_title": "Benefits Planner: Retirement | Benefits For Your Spouse | Social Security Administration#2",
+                "section": "Unicode code points 0:2000",
+                "content": "Benefits For Your Spouse \nEven if you have never worked under Social Security , you may be able to get spouse s retirement benefits if you are at least 62 years of age and your spouse is receiving retirement or disability benefits. You can also qualify for Medicare at age 65. If you are divorced , you may still be able to get benefits on your ex - spouse's record. For information on the requirements for Divorced Spouse's Benefits , read \" If You Are Divorced You can receive the spouse's benefit no matter what your age is if you are caring for their child who is also receiving benefits. \n\nHow Much Will I Receive? \nIf you qualify and apply for your own retirement benefits and for benefits as a spouse , we always pay your own benefits first. If your benefits as a spouse are higher than your own retirement benefits , you will get a combination of benefits equaling the higher spouse benefit. If you begin receiving benefits : between age 62 and your full retirement age , the amount will be permanently reduced by a percentage based on the number of months up to your full retirement age. If you are under full retirement age and you continue to work while receiving benefits , your benefits may be affected by the retirement earnings test. at your full retirement age , your benefit as a spouse cannot exceed one - half of your spouse's full retirement amount. If you were born before January 2 , 1954 and have already reached full retirement age , you can choose to receive only the spouse s benefit and delay receiving your retirement benefit until a later date. If your spouse is full retirement age and applying for spouse s benefits only , they can apply online by using the retirement application. Your spouse can also contact us to schedule an appointment. If your spouse s birthday is January 2 , 1954 or later , the option to take only one benefit at full retirement age no longer exists. If your spouse files for one benefit , they will be effectively filing for all retirement o",
+                "source_uri": "https://doc2dial.github.io/#Benefits%20Planner%3A%20Retirement%20%7C%20Benefits%20For%20Your%20Spouse%20%7C%20Social%20Security%20Administration%232_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7011,
+                "rerank_position": 3,
+                "rerank_score": 0.7011,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hello i would like to get information about Recurring IDR Requesters\nagent: Do you want to file an annual recertification of your income?\nuser: Yes",
+            "hits": [
+              {
+                "chunk_id": "d2d-studentaid-3894ea21042014d2-0-2000",
+                "document_id": "d2d-studentaid-3894ea21042014d2",
+                "document_title": "Aidan | The FSA Virtual Assistant | Federal Student Aid#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Meet Aidan (Beta) \nIntroducing Aidan, a virtual assistant that can answer questions about federal student aid. Aidan uses advanced technology artificial intelligence and natural language processing to answer your most common questions. Whether you want to find out your current loan account balance, learn more about grants, or get help contacting your loan servicer , Aidan is here to help you find an answer. \n\nAidan can currently assist you with the following tasks: \n\n\nAnswering your common financial aid questions \nYou could type : \" What kind of grants are available to pay for college? \" \n\nQuickly finding pages on our website \nJust type : \" Where is \" \n\nRetrieving loan balance on your account \nSimply type: \" What is my account balance? \" \n\nMaking a payment on the spot \nYou could type: Make a payment \n\nUnderstanding your repayment plan \nYou could type: What s my repayment plan? \n\nFinding customer support information \nYou can type: \" Find contact info \" \n\nFinding your loan servicer(s) \nType : \" Who is my servicer? \" \n\nAidan Is Always Learning \nThe virtual assistant is still in the early stages of development beta mode , so Aidan is still learning and acquiring new skills. Be sure to check back in the future to discover new ways that Aidan can help you navigate the student aid process! \n\nFrequently Asked Questions About Aidan \n\n\nAre my conversations with Aidan recorded? \nYes , we keep a record of your conversations with Aidan. Your interactions will help us to improve quality assurance, maintain an accurate log of your requests, and identify new skills for Aidan to learn. \n\nCan someone else use Aidan using my phone or computer? \nNo , not if you protect your username and password. Be sure to log out of your account each time you are done chatting with Aidan. Also , never share your account username and password , and keep your personal account information private. \n\nIs Aidan secure and private? \nYes. Federal Student Aid will handle and store the data from your interac",
+                "source_uri": "https://doc2dial.github.io/#Aidan%20%7C%20The%20FSA%20Virtual%20Assistant%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7856,
+                "rerank_position": 1,
+                "rerank_score": 0.7856,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-studentaid-91d94eb26a974d08-0-1924",
+                "document_id": "d2d-studentaid-91d94eb26a974d08",
+                "document_title": "Apply for Income-Driven Student Loan Repayment | Federal Student Aid#1",
+                "section": "Unicode code points 0:1924",
+                "content": "What is Income-Driven Repayment? \nIncome - driven repayment IDR plans are designed to make your student loan debt more manageable by reducing your monthly payment amount. If you need to make lower monthly payments or if your outstanding federal student loan debt represents a significant portion of your annual income , one of the following income - driven plans may be right for you : As You Earn Repayment Plan REPAYE Revised Pay Pay As You Earn Repayment Plan PAYE Income - Based Repayment Plan IBR Income - Contingent Repayment Plan ICR Plan \n\nWho should complete this? \nBorrowers not currently on an IDR Plan who are seeking a lower monthly payment on their federal student loans and Borrowers currently on an IDR Plan who need to re - certify or make changes to their repayment plan. \n\nHow many IDR applications do I need? \n\n\nHow long will it take? \nThe entire Income - Driven Repayment process must be completed in a single session. Most people complete the process in 10 minutes or less. \n\nWhat do I need? \nVerified FSA ID \n\nNew Applicants \n\n\nI am not currently on an income-driven plan and I want to apply \nYou can apply for an income - driven repayment plan that limits your payments to a percentage of your income. LOG IN TO START \n\nReturning IDR Applicants \n\n\nSubmit annual re-certification of my income \nTo re - certify for your existing income - driven repayment plan you must provide updated information about your income and family size annually. LOG IN TO START \n\nRecalculate my monthly payment \nIf your income or family size has changed you can request that your income - driven payment be re - calculated to reduce your current monthly payment. LOG IN TO START \n\nSwitch my current plan to a new plan \nIf you are currently enrolled in an income - driven repayment plan and would like to switch to another income - driven repayment plan. LOG IN TO START Preview a read - only version of the complete form",
+                "source_uri": "https://doc2dial.github.io/#Apply%20for%20Income-Driven%20Student%20Loan%20Repayment%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.6559,
+                "rerank_position": 2,
+                "rerank_score": 0.6559,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-4ff3333b79e4fb28-3200-5200",
+                "document_id": "d2d-ssa-4ff3333b79e4fb28",
+                "document_title": "Disability Benefits | Social Security Administration#1",
+                "section": "Unicode code points 3200:5200",
+                "content": "[more info] and the account number , if you want the benefits electronically deposited Information About Your Medical Condition Name, address and phone number of someone we can contact who knows about your medical conditions and can help with your application Detailed information about your medical illnesses, injuries or conditions : Names, addresses, phone numbers, patient ID numbers and dates of treatment for all doctors, hospitals and clinics ; Names of medicines you are taking and who prescribed them ; and Names and dates of medical tests you have had and who sent you for them. \n\nInformation About Your Work \nThe amount of money earned last year and this year The name and address of your employer for this year and last year A copy of your The beginning and ending dates of any active U.S. military service you had before 1968 A list of the jobs up to 5 that you had in the 15 years before you became unable to work and the dates you worked at those jobs Information about any workers' compensation, black lung, and/or similar benefits you filed, or intend to file for. These benefits can : Be temporary or permanent in nature ; Include annuities and lump sum payments that you received in the past ; Be paid by your employer or your employer's insurance carrier, private agencies, or Federal, State or other government or public agencies ; and Be referred to as : Workers' Compensation ; Black Lung Benefits ; Longshore and Harbor Workers' Compensation ; Civil Service Disability Retirement ; Federal Employees' Retirement ; Federal Employees' Compensation ; State or local government disability insurance benefits ; or Disability benefits from the military This includes military retirement pensions based on disability but not Veterans' Administration VA benefits. \n\nWhat documents do I need to provide? \nWe may ask you to provide documents to show that you are eligible, such as : Birth certificate or other proof of birth ; Proof of U.S. citizenship or lawful alien status if you wer",
+                "source_uri": "https://doc2dial.github.io/#Disability%20Benefits%20%7C%20Social%20Security%20Administration%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.6294,
+                "rerank_position": 3,
+                "rerank_score": 0.6294,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Good morning. I'm trying to submit some FAFSA related information, and find out that I have to submit my parent's information too but, what if I can't do that because mayor causes?\nagent: I assume you're a dependent student?\nuser: That's correct. I have this dependent status. What can I do then?",
+            "hits": [
+              {
+                "chunk_id": "d2d-studentaid-227e67875d6aeee4-6400-8400",
+                "document_id": "d2d-studentaid-227e67875d6aeee4",
+                "document_title": "Reporting Parent Information | Federal Student Aid#1",
+                "section": "Unicode code points 6400:8400",
+                "content": "information to determine whether you can be considered independent and have an EFC calculated without parent data. Gather as much written evidence of your situation as you can. Written evidence may include court or law enforcement documents; letters from a clergy member, school counselor or social worker; and/or any other relevant data that explains your special circumstance. The financial aid office s decision about your dependency status is final and cannot be appealed to the U.S. Department of Education. \n\nWhat if my parents are unwilling to provide their information on my FAFSA form? \nYou can t be considered independent of your parents just because they refuse to help you with the FAFSA form. Still , we do understand that in some cases, the parents are not supporting the dependent student at all and refuse to provide their information on the student s application. If you re in that situation , here s the process for filling out the FAFSA form online or on the myStudentAid app : When the FAFSA form asks you to provide information about your parents , select the I am unable to provide information about my parent option. If you are using the myStudentAid app, you will need to select the Learn more link when you get to the point in the app where it tells you that it looks like parent information is required to calculate your EFC. You will then be provided with an explanation of what s considered a special circumstance. After reading through the options , select the one that says you don t have a special circumstance but you still can t provide parent information. If you are using the myStudentAid app, you will need to select the option indicating that you d like to be considered for an unsubsidized loan. The application explains that if your parents don t support you and refuse to provide their information on the application, you may submit your FAFSA form without their information. However , you won t be able to get any federal student aid other than an unsubsidiz",
+                "source_uri": "https://doc2dial.github.io/#Reporting%20Parent%20Information%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7997,
+                "rerank_position": 1,
+                "rerank_score": 0.7997,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-studentaid-227e67875d6aeee4-4800-6800",
+                "document_id": "d2d-studentaid-227e67875d6aeee4",
+                "document_title": "Reporting Parent Information | Federal Student Aid#1",
+                "section": "Unicode code points 4800:6800",
+                "content": "l Security number if he or she has one; living situation e.g., marital status, state of residence, household size; and financial circumstances e.g., tax information, certain assets, certain untaxed income. Learn more about the types of information you and your parents will report on the FAFSA form. \n\nWhat if I'm unable to provide parent information due to special circumstances? \nIn situations such as the ones below , you may be able to submit your FAFSA form without parent information despite being considered a dependent student : Your parents are incarcerated. You have left home due to an abusive family environment. You do not know where your parents are and are unable to contact them and you have not been adopted. You are older than 21 but not yet 24, are unaccompanied, and are either homeless or self - supporting and at risk of being homeless. If you are filling out the FAFSA form online or on the myStudentAid app , you will be asked whether you are able to provide information about your parents. If you are not , you will have the option to indicate that you have special circumstances that make you unable to get your parents information. You will then be able to submit your application without entering data about your parents. However , it is important for you to understand the following : Although your FAFSA form will be submitted , it will not be fully processed. You will not receive an Expected Family Contribution EFC and must immediately contact the financial aid office at the college or career school you plan to attend. The financial aid staff may ask for additional information to determine whether you can be considered independent and have an EFC calculated without parent data. Gather as much written evidence of your situation as you can. Written evidence may include court or law enforcement documents; letters from a clergy member, school counselor or social worker; and/or any other relevant data that explains your special circumstance. The financial aid of",
+                "source_uri": "https://doc2dial.github.io/#Reporting%20Parent%20Information%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.7937,
+                "rerank_position": 2,
+                "rerank_score": 0.7937,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-studentaid-903e7567ab408c26-0-2000",
+                "document_id": "d2d-studentaid-903e7567ab408c26",
+                "document_title": "Dependency Status | Federal Student Aid#1",
+                "section": "Unicode code points 0:2000",
+                "content": "For purposes of applying for federal student aid, what s the difference between a dependent student and an independent student? \nRead the definitions, find out who has to provide parent information on the FAFSA form, and learn what to do if you aren t in contact with your parents. Your dependency status determines whose information you must report on the Free Application for Federal Student Aid FAFSA form. If you re a dependent student , you will report your and your parents information. If you re an independent student , you will report your own information and, if you re married, your spouse s. The federal student aid programs are based on the concept that it is primarily your and your family s responsibility to pay for your education. A dependent student is assumed to have the support of parents , so the parents information has to be assessed along with the student s, in order to get a full picture of the family s financial strength. If you re a dependent student, it doesn t mean your parents are required to pay anything toward your education ; this is just a way of looking at everyone in a consistent manner. \n\nAm I dependent or independent? \nYour answers to questions on the FAFSA form determine whether you are considered a dependent or independent student. The questions change a little from one year s application to the next year s ; for instance, the 2020 21 FAFSA form asks whether you were born before Jan. 1 , 1997, while the 2021 22 FAFSA form will ask whether you were born before Jan. 1 , 1998. Here are the questions that determine your dependency status, first in a graphic format and then for 2020 21 specifically in a table of dependency status questions : View text-only version \n\nDependency Status Questions on the 2020 21 FAFSA Form \n* Answer \" No \" you are not a veteran if you 1 have never engaged in active duty including basic training in the U.S. armed forces , 2 are currently a Reserve Officers Training Corps ROTC student or a cadet or midshipman at",
+                "source_uri": "https://doc2dial.github.io/#Dependency%20Status%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7883,
+                "rerank_position": 3,
+                "rerank_score": 0.7883,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: can you give me details of VA education benefits for survivors and dependents\nagent: Find out if you re eligible for VA education benefits for dependents and survivors also called Chapter 35 benefits .\nuser: If I am the dependent spouse?",
+            "hits": [
+              {
+                "chunk_id": "d2d-va-a38ecc78f5375e39-0-2000",
+                "document_id": "d2d-va-a38ecc78f5375e39",
+                "document_title": "VA Education Benefits | Veterans Affairs#1",
+                "section": "Unicode code points 0:2000",
+                "content": "VA education and training benefits \nVA education benefits help Veterans, service members, and their qualified family members with needs like paying college tuition, finding the right school or training program, and getting career counseling. Learn how to apply for and manage the education and training benefits you've earned. \n\nOn this page \nGet GI Bill and other education benefits Manage your Veterans education benefits More information and resources \n\nGet GI Bill and other education benefits \nAbout GI Bill benefitsLearn how the GI Bill works and explore your options to pay for school or training. EligibilitySee if you're eligible for GI Bill or other VA education benefits. How to applyLearn how to prepare and apply for the GI Bill or other VA education and training benefits. After you applyFind out when to expect a decision from us on your application and what to do next. Vocational Rehabilitation and EmploymentSee if you qualify for help exploring employment options, any training you may need, and other voc rehab services. Educational and Career Counseling Chapter 36 Find out how to get free educational and career counseling as a recently discharged Veteran or a dependent family member. VA education benefits for dependents and survivorsFind out if you're eligible for Veteran dependent or survivor education benefits through a GI Bill program. Other educational assistance programsIf you're a Guardsman, Reservist, or Veteran who doesn't qualify for the Post-9/11 GI Bill , see if you're eligible for other VA education benefits. \n\nManage your Veterans education benefits \nView your VA payment historySee your payment history for VA education and other benefits you may have like disability compensation and pension. Check your Post-9/11 GI Bill benefitsSee how much of your GI Bill benefits you have left to help pay for school or training. Transfer Post-9/11 GI Bill benefitsTransfer your unused Post-9/11 GI Bill benefits to your spouse or other dependents. Change your GI",
+                "source_uri": "https://doc2dial.github.io/#VA%20Education%20Benefits%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.8146,
+                "rerank_position": 1,
+                "rerank_score": 0.8146,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-92932898d641d166-0-2000",
+                "document_id": "d2d-va-92932898d641d166",
+                "document_title": "VA Education Benefits | Veterans Affairs#2",
+                "section": "Unicode code points 0:2000",
+                "content": "VA education and training benefits \nVA education benefits help Veterans, service members, and their qualified family members with needs like paying college tuition, finding the right school or training program, and getting career counseling. Learn how to apply for and manage the education and training benefits you've earned. \n\nOn this page \nGet GI Bill and other education benefits Manage your Veterans education benefits More information and resources \n\nGet GI Bill and other education benefits \nAbout GI Bill benefitsLearn how the GI Bill works and explore your options to pay for school or training. EligibilitySee if you're eligible for GI Bill or other VA education benefits. How to applyLearn how to prepare and apply for the GI Bill or other VA education and training benefits. After you applyFind out when to expect a decision from us on your application and what to do next. Vocational Rehabilitation and EmploymentSee if you qualify for help exploring employment options, any training you may need, and other voc rehab services. Educational and Career Counseling Chapter 36 Find out how to get free educational and career counseling as a recently discharged Veteran or a dependent family member. VA education benefits for dependents and survivorsFind out if you're eligible for Veteran dependent or survivor education benefits through a GI Bill program. Other educational assistance programsIf you're a Guardsman, Reservist, or Veteran who doesn't qualify for the Post-9/11 GI Bill , see if you're eligible for other VA education benefits. \n\nManage your Veterans education benefits \nView your VA payment historySee your payment history for VA education and other benefits you may have like disability compensation and pension. Check your Post-9/11 GI Bill benefitsSee how much of your GI Bill benefits you have left to help pay for school or training. Transfer Post-9/11 GI Bill benefitsTransfer your unused Post-9/11 GI Bill benefits to your spouse or other dependents. Change your GI",
+                "source_uri": "https://doc2dial.github.io/#VA%20Education%20Benefits%20%7C%20Veterans%20Affairs%232_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.8125,
+                "rerank_position": 2,
+                "rerank_score": 0.8125,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-1ebb23b36f21312a-0-2000",
+                "document_id": "d2d-va-1ebb23b36f21312a",
+                "document_title": "VA.gov Home | Veterans Affairs#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Access and manage your VA benefits and health care \n\n\nHealth care \nRefill and track your prescriptions Send a secure message to your health care team Schedule and view your appointments View your lab and test results Apply now for VA health care \n\nDisability \nCheck your claim or appeal status View your payment history Upload evidence to support your claim File for a VA disability increase File a claim for compensation \n\nEducation \nCheck your Post-9/11 GI Bill benefits View your payment history Change your current education benefits Compare GI Bill benefits by school Apply for education benefits \n\nRecords \nGet Veteran ID cards Get your VA medical records Download your benefit letters Change your address Request your military records DD214 \n\nService member benefits \nFind out what benefits you may be eligible for during service and which time - sensitive benefits to consider when separating or retiring. \n\nFamily member benefits \nLearn about the benefits you may qualify for as a spouse, dependent, or survivor. And find out what you're eligible for as a family member caring for a Veteran with disabilities. \n\nBurials and memorials \nGet help planning a burial in a VA national cemetery, order a headstone or other memorial item to honor a Veteran's service, and apply for survivor and dependent benefits. \n\nCareers and employment \nApply for vocational rehabilitation services, get support for your Veteran - owned small business, and access other career resources. \n\nHousing assistance \nFind out if you're eligible for a VA - backed home loan. If you have a service - connected disability , see if you qualify for a housing grant to help you live more independently. \n\nPension \nApply for monthly payments for wartime Veterans and survivors with limited or no income who meet certain age and disability requirements. \n\nLife insurance \nExplore VA life insurance options for Veterans, service members, and families. Manage your policy online, file claims for benefits, and access helpful re",
+                "source_uri": "https://doc2dial.github.io/#VA.gov%20Home%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7975,
+                "rerank_position": 3,
+                "rerank_score": 0.7975,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What can I do After a Board decision\nagent: Do you disagree with the Board's decision?\nuser: If that is my case, what can I do?",
+            "hits": [
+              {
+                "chunk_id": "d2d-va-6b88a5f9366256b3-1600-2594",
+                "document_id": "d2d-va-6b88a5f9366256b3",
+                "document_title": "Insurance claims | Veterans Affairs#1",
+                "section": "Unicode code points 1600:2594",
+                "content": "have 6 years to bring such an action after accrual of the right for which the claim is made. You may want to speak with an attorney about this option. \n\nAfter a Board decision \nIf you disagree with the Board s decision and have new and relevant evidence that supports your case , you can file a Supplemental Claim. You can also appeal to the U.S. Court of Appeals for Veterans Claims. Learn more about your options after a Board decision \n\nWhat happens next? \nFind out what happens after you request a decision review You don t need to do anything while you wait unless VA sends you a letter asking for more information. If VA schedules exams for you , be sure not to miss them. Track the status of your appeal \n\nWhat if I need help? \nA Veterans Service Organization or VA - accredited attorney or agent can help you request a decision review. Get help requesting a decision review \n\nWhat if I have more questions? \nGet answers to frequently asked questions about decision reviews. Go to FAQs",
+                "source_uri": "https://doc2dial.github.io/#Insurance%20claims%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.7509,
+                "rerank_position": 1,
+                "rerank_score": 0.7509,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-08c54c534585a3f7-1600-2982",
+                "document_id": "d2d-va-08c54c534585a3f7",
+                "document_title": "VA decision reviews and appeals | Veterans Affairs#1",
+                "section": "Unicode code points 1600:2982",
+                "content": "vel Review of an initial claim or Supplemental Claimdecision. This option isn t available after a Higher - Level Review or Board Appeal. \n\nAppeal to a Veterans Law Judge \nDownload VA Form 10182: Board Appeal PDF A judge at the Board of Veterans Appeals in Washington, D.C., will review your case. Learn more about how to request a Board Appeal \n\nCan I request a Board Appeal? \nYou can request a Board Appeal after an initial claim, Supplemental Claim, or Higher - Level Review decision. You can t request 2 Board Appeals in a row. \n\nAfter a Board decision \nIf you disagree with the Board s decision and have new and relevant evidence that supports your case , you can file a Supplemental Claim. You can also appeal to the U.S. Court of Appeals for Veterans Claims. Learn more about your options after a Board decision \n\nWhat happens next? \nFind out what happens after you request a decision review You don t need to do anything while you wait unless VA sends you a letter asking for more information. If VA schedules exams for you , be sure not to miss them. Track the status of your claim or appeal \n\nWhat if I need help? \nA Veterans Service Organization or VA - accredited attorney or agent can help you request a decision review. Get help requesting a decision review \n\nWhat if I have more questions? \nGet answers to frequently asked questions about decision reviews. Go to FAQs",
+                "source_uri": "https://doc2dial.github.io/#VA%20decision%20reviews%20and%20appeals%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.746,
+                "rerank_position": 2,
+                "rerank_score": 0.746,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-041c3768668b02c2-3200-3618",
+                "document_id": "d2d-va-041c3768668b02c2",
+                "document_title": "Request a Board Appeal | Veterans Affairs#1",
+                "section": "Unicode code points 3200:3618",
+                "content": "nds you a letter asking for more information. If VA schedules exams for you , be sure not to miss them. Track the status of your appeal \n\nWhat if I need help? \nA Veterans Service Organization or VA - accredited attorney or agent can help you request a decision review. Get help requesting a decision review \n\nWhat if I have more questions? \nGet answers to frequently asked questions about decision reviews. Go to FAQs",
+                "source_uri": "https://doc2dial.github.io/#Request%20a%20Board%20Appeal%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7368,
+                "rerank_position": 3,
+                "rerank_score": 0.7368,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Can you get disability if you were exposed to ionizing radiation? \nagent: Yes, you may be eligible for disability compensation for illnesses including some cancers that are believed to be caused by contact with radiation during military service.\nuser: What are the two requirements I must meet to get these benefits?",
+            "hits": [
+              {
+                "chunk_id": "d2d-va-57921172c99c2362-0-2000",
+                "document_id": "d2d-va-57921172c99c2362",
+                "document_title": "Ionizing Radiation Exposure | Veterans Affairs#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Ionizing radiation exposure \nFind out if you can get disability compensation or benefits for illnesses including some cancers believed to be caused by contact with radiation during military service. \n\nCan I get disability benefits from VA? \nYou may be able to get disability benefits if you didn t receive a dishonorable discharge and you meet the requirements listed below. Both of these must be true : You have an illness that s on our list of illnesses believed to be caused by radiation or that doctors say may be caused by radiation , and Your illness started within a certain period of time as shown along with the list of illnesses See the list of radiation - related illnesses And you must have had contact with ionizing radiation in one of these ways while serving in the military. You: Were part of atmospheric nuclear weapons testing , or Served in the postwar occupation of Hiroshima or Nagasaki , or Were a prisoner of war POW in Japan , or Worked as an x - ray technician, in a reactor plant, or in nuclear medicine or radiography while on active duty or during active or inactive duty for training in the Reserves, or Did tasks like those of a Department of Energy (DOE) employee that make them a member of the Special Exposure Cohort (See 42 U.S.C. 7384L(14)) You may also qualify for disability benefits if you served in at least one of the below locations and capacities. You were: Part of underground nuclear weapons testing at Amchitka Island, Alaska, or Assigned to a gaseous diffusion plant at Paducah, Kentucky , or Assigned to a gaseous diffusion plant at Portsmouth, Ohio , or Assigned to a gaseous diffusion plant at Area K-25 at Oak Ridge, Tennessee \n\nWho s covered? \nVeterans \n\nWhat kind of disability benefits can I get? \nHealth care Compensation payments \n\nHow do I get these benefits? \nYou ll need to file a claim for disability compensation and provide the evidence supporting documents listed below : Medical records showing that you ve been diagnosed with one of t",
+                "source_uri": "https://doc2dial.github.io/#Ionizing%20Radiation%20Exposure%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.8977,
+                "rerank_position": 1,
+                "rerank_score": 0.8977,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-57921172c99c2362-1600-2587",
+                "document_id": "d2d-va-57921172c99c2362",
+                "document_title": "Ionizing Radiation Exposure | Veterans Affairs#1",
+                "section": "Unicode code points 1600:2587",
+                "content": "or Assigned to a gaseous diffusion plant at Area K-25 at Oak Ridge, Tennessee \n\nWho s covered? \nVeterans \n\nWhat kind of disability benefits can I get? \nHealth care Compensation payments \n\nHow do I get these benefits? \nYou ll need to file a claim for disability compensation and provide the evidence supporting documents listed below : Medical records showing that you ve been diagnosed with one of the illnesses on our list of those believed to be caused by radiation or that your doctor states may be caused by radiation exposure , and Service records showing that you were part of one of the radiation risk activities described above Note: When you file your claim , we ll ask the military branch that you served with or the Defense Threat Reduction Agency to give us a range of how much radiation they think you may have come into contact with. We ll use the highest level of the range they report to decide on your benefits. Find out how to file a claim for disability compensation",
+                "source_uri": "https://doc2dial.github.io/#Ionizing%20Radiation%20Exposure%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.7435,
+                "rerank_position": 2,
+                "rerank_score": 0.7435,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-57fde751bc7583fe-0-1494",
+                "document_id": "d2d-va-57fde751bc7583fe",
+                "document_title": "Exposure To Specific Environmental Hazards | Veterans Affairs#1",
+                "section": "Unicode code points 0:1494",
+                "content": "Exposure to specific environmental hazards \nIf you had contact with certain environmental hazards while serving in Iraq, Afghanistan, and other areas , you may have illnesses or other conditions believed to be caused by these toxic chemicals in the air, water, or soil. Find out if you can get disability compensation or benefits. \n\nCan I get disability benefits from VA? \nYou may be able to get disability benefits if you have an illness or other condition believed to be caused by your contact with an environmental hazard while serving in the military. This may include contact with : Particulate matter or large burn pits in Iraq, Afghanistan, and Djibouti in the Horn of Africa A large sulfur fire at Mishraq State Sulfur Mine near Mosul, Iraq Hexavalent chromium at the Qarmat Ali water treatment plant in Basra, Iraq Pollutants from a waste incinerator near the Naval Air Facility at Atsugi, Japan \n\nWho s covered? \nVeterans \n\nWhat kind of disability benefits can I get? \nHealth care Compensation payments \n\nHow do I get these benefits? \nYou ll need to file a claim for disability compensation. Find out how to file a claim for disability compensation When you file , you ll have to show that your health problems are linked to your contact with certain environmental hazards while serving in the military. Be sure to send in all information such as the Burn Pit Registry supporting your claim that you came into contact with certain environmental hazards. Check the Burn Pit Registry",
+                "source_uri": "https://doc2dial.github.io/#Exposure%20To%20Specific%20Environmental%20Hazards%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.7285,
+                "rerank_position": 3,
+                "rerank_score": 0.7285,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-gh-695",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: Public support desk\n\nuser: Clarify how to use the PowerShell completions\n\ngh completion -s powershell | iex\nMissing closing '}' in statement block or type definition.",
+            "hits": [
+              {
+                "chunk_id": "d2d-studentaid-3894ea21042014d2-0-2000",
+                "document_id": "d2d-studentaid-3894ea21042014d2",
+                "document_title": "Aidan | The FSA Virtual Assistant | Federal Student Aid#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Meet Aidan (Beta) \nIntroducing Aidan, a virtual assistant that can answer questions about federal student aid. Aidan uses advanced technology artificial intelligence and natural language processing to answer your most common questions. Whether you want to find out your current loan account balance, learn more about grants, or get help contacting your loan servicer , Aidan is here to help you find an answer. \n\nAidan can currently assist you with the following tasks: \n\n\nAnswering your common financial aid questions \nYou could type : \" What kind of grants are available to pay for college? \" \n\nQuickly finding pages on our website \nJust type : \" Where is \" \n\nRetrieving loan balance on your account \nSimply type: \" What is my account balance? \" \n\nMaking a payment on the spot \nYou could type: Make a payment \n\nUnderstanding your repayment plan \nYou could type: What s my repayment plan? \n\nFinding customer support information \nYou can type: \" Find contact info \" \n\nFinding your loan servicer(s) \nType : \" Who is my servicer? \" \n\nAidan Is Always Learning \nThe virtual assistant is still in the early stages of development beta mode , so Aidan is still learning and acquiring new skills. Be sure to check back in the future to discover new ways that Aidan can help you navigate the student aid process! \n\nFrequently Asked Questions About Aidan \n\n\nAre my conversations with Aidan recorded? \nYes , we keep a record of your conversations with Aidan. Your interactions will help us to improve quality assurance, maintain an accurate log of your requests, and identify new skills for Aidan to learn. \n\nCan someone else use Aidan using my phone or computer? \nNo , not if you protect your username and password. Be sure to log out of your account each time you are done chatting with Aidan. Also , never share your account username and password , and keep your personal account information private. \n\nIs Aidan secure and private? \nYes. Federal Student Aid will handle and store the data from your interac",
+                "source_uri": "https://doc2dial.github.io/#Aidan%20%7C%20The%20FSA%20Virtual%20Assistant%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.4227,
+                "rerank_position": 1,
+                "rerank_score": 0.4227,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-1ebb23b36f21312a-0-2000",
+                "document_id": "d2d-va-1ebb23b36f21312a",
+                "document_title": "VA.gov Home | Veterans Affairs#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Access and manage your VA benefits and health care \n\n\nHealth care \nRefill and track your prescriptions Send a secure message to your health care team Schedule and view your appointments View your lab and test results Apply now for VA health care \n\nDisability \nCheck your claim or appeal status View your payment history Upload evidence to support your claim File for a VA disability increase File a claim for compensation \n\nEducation \nCheck your Post-9/11 GI Bill benefits View your payment history Change your current education benefits Compare GI Bill benefits by school Apply for education benefits \n\nRecords \nGet Veteran ID cards Get your VA medical records Download your benefit letters Change your address Request your military records DD214 \n\nService member benefits \nFind out what benefits you may be eligible for during service and which time - sensitive benefits to consider when separating or retiring. \n\nFamily member benefits \nLearn about the benefits you may qualify for as a spouse, dependent, or survivor. And find out what you're eligible for as a family member caring for a Veteran with disabilities. \n\nBurials and memorials \nGet help planning a burial in a VA national cemetery, order a headstone or other memorial item to honor a Veteran's service, and apply for survivor and dependent benefits. \n\nCareers and employment \nApply for vocational rehabilitation services, get support for your Veteran - owned small business, and access other career resources. \n\nHousing assistance \nFind out if you're eligible for a VA - backed home loan. If you have a service - connected disability , see if you qualify for a housing grant to help you live more independently. \n\nPension \nApply for monthly payments for wartime Veterans and survivors with limited or no income who meet certain age and disability requirements. \n\nLife insurance \nExplore VA life insurance options for Veterans, service members, and families. Manage your policy online, file claims for benefits, and access helpful re",
+                "source_uri": "https://doc2dial.github.io/#VA.gov%20Home%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.3988,
+                "rerank_position": 2,
+                "rerank_score": 0.3988,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-ssa-85a2ea3f2946fa1b-3200-5200",
+                "document_id": "d2d-ssa-85a2ea3f2946fa1b",
+                "document_title": "Disability Benefits | Social Security Administration#2",
+                "section": "Unicode code points 3200:5200",
+                "content": "ount number , if you want the benefits electronically deposited Information About Your Medical Condition Name, address and phone number of someone we can contact who knows about your medical conditions and can help with your application Detailed information about your medical illnesses, injuries or conditions : Names, addresses, phone numbers, patient ID numbers and dates of treatment for all doctors, hospitals and clinics ; Names of medicines you are taking and who prescribed them ; and Names and dates of medical tests you have had and who sent you for them. \n\nInformation About Your Work \nThe amount of money earned last year and this year The name and address of your employer for this year and last year A copy of your The beginning and ending dates of any active U.S. military service you had before 1968 A list of the jobs up to 5 that you had in the 15 years before you became unable to work and the dates you worked at those jobs Information about any workers' compensation, black lung, and/or similar benefits you filed, or intend to file for. These benefits can : Be temporary or permanent in nature ; Include annuities and lump sum payments that you received in the past ; Be paid by your employer or your employer's insurance carrier, private agencies, or Federal, State or other government or public agencies ; and Be referred to as : Workers' Compensation ; Black Lung Benefits ; Longshore and Harbor Workers' Compensation ; Civil Service Disability Retirement ; Federal Employees' Retirement ; Federal Employees' Compensation ; State or local government disability insurance benefits ; or Disability benefits from the military This includes military retirement pensions based on disability but not Veterans' Administration VA benefits. \n\nWhat documents do I need to provide? \nWe may ask you to provide documents to show that you are eligible, such as : Birth certificate or other proof of birth ; Proof of U.S. citizenship or lawful alien status if you were not born in the Unite",
+                "source_uri": "https://doc2dial.github.io/#Disability%20Benefits%20%7C%20Social%20Security%20Administration%232_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.3821,
+                "rerank_position": 3,
+                "rerank_score": 0.3821,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "caseId": "qa-gh-1466",
+    "outcome": "RETRIEVED",
+    "stages": {
+      "analyze": {
+        "body": {
+          "status": "OK",
+          "mode": "retrieval-only",
+          "retrieval": {
+            "query": "Public support request This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: Public support desk\n\nuser: How to select fork to create PR in?\n\nI have many remotes that are forks of the main repository, and one of them is my fork, where I want my PR branches to be created. How would I go about configuring that?",
+            "hits": [
+              {
+                "chunk_id": "d2d-studentaid-3894ea21042014d2-0-2000",
+                "document_id": "d2d-studentaid-3894ea21042014d2",
+                "document_title": "Aidan | The FSA Virtual Assistant | Federal Student Aid#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Meet Aidan (Beta) \nIntroducing Aidan, a virtual assistant that can answer questions about federal student aid. Aidan uses advanced technology artificial intelligence and natural language processing to answer your most common questions. Whether you want to find out your current loan account balance, learn more about grants, or get help contacting your loan servicer , Aidan is here to help you find an answer. \n\nAidan can currently assist you with the following tasks: \n\n\nAnswering your common financial aid questions \nYou could type : \" What kind of grants are available to pay for college? \" \n\nQuickly finding pages on our website \nJust type : \" Where is \" \n\nRetrieving loan balance on your account \nSimply type: \" What is my account balance? \" \n\nMaking a payment on the spot \nYou could type: Make a payment \n\nUnderstanding your repayment plan \nYou could type: What s my repayment plan? \n\nFinding customer support information \nYou can type: \" Find contact info \" \n\nFinding your loan servicer(s) \nType : \" Who is my servicer? \" \n\nAidan Is Always Learning \nThe virtual assistant is still in the early stages of development beta mode , so Aidan is still learning and acquiring new skills. Be sure to check back in the future to discover new ways that Aidan can help you navigate the student aid process! \n\nFrequently Asked Questions About Aidan \n\n\nAre my conversations with Aidan recorded? \nYes , we keep a record of your conversations with Aidan. Your interactions will help us to improve quality assurance, maintain an accurate log of your requests, and identify new skills for Aidan to learn. \n\nCan someone else use Aidan using my phone or computer? \nNo , not if you protect your username and password. Be sure to log out of your account each time you are done chatting with Aidan. Also , never share your account username and password , and keep your personal account information private. \n\nIs Aidan secure and private? \nYes. Federal Student Aid will handle and store the data from your interac",
+                "source_uri": "https://doc2dial.github.io/#Aidan%20%7C%20The%20FSA%20Virtual%20Assistant%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 1,
+                "initial_score": 0.4262,
+                "rerank_position": 1,
+                "rerank_score": 0.4262,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-studentaid-b980a286fd79a1a7-0-2000",
+                "document_id": "d2d-studentaid-b980a286fd79a1a7",
+                "document_title": "PLUS Loan Application | Federal Student Aid#1",
+                "section": "Unicode code points 0:2000",
+                "content": "William D. Ford Federal Direct Loan ProgramFederal Direct PLUS Loan Request for Supplemental Information \nThis is a request for supplemental information in connection with your application for a Federal Direct PLUS Loan Direct PLUS Loan through the William D. Ford Federal Direct Loan Direct Loan Program. Some schools may have a different process for obtaining the additional information needed to process your Direct PLUS Loan application. The information that you provide will be sent to the school that you select. The school you select will use the information collected to determine your eligibility for a Direct PLUS Loan and process your application. Before you can receive a Direct PLUS Loan , you must complete a Direct PLUS Loan Master Promissory Note Direct PLUS Loan MPN, which explains all of the terms and conditions of Direct PLUS Loans and constitutes your legally binding agreement to repay all Direct PLUS Loans that you receive under the Direct PLUS Loan MPN. You will have an opportunity to complete the Direct PLUS Loan MPN after you complete the Direct PLUS Loan Request. The Direct PLUS Loan Request allows you to authorize the school to use your loan funds to satisfy other educationally related charges after tuition and fees, and room and board have been paid. You are not required to provide this authorization. If you are a parent borrower , the Direct PLUS Loan Request also allows you to : Designate whether the school pays any credit balance to the student or to you. Request a deferment while the student is in school. Request an additional deferment for 6 months after the student ceases to be enrolled at least half time. BEFORE YOU CONTINUE: If you have placed a security freeze on your credit file , you must lift or remove the freeze at each credit bureau before you continue. Your application will not be processed if you have a security freeze. \n\nSelect the type of Direct PLUS Loan Application you would like to complete \n\n\nDirect PLUS Loan Application for",
+                "source_uri": "https://doc2dial.github.io/#PLUS%20Loan%20Application%20%7C%20Federal%20Student%20Aid%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 2,
+                "initial_score": 0.4023,
+                "rerank_position": 2,
+                "rerank_score": 0.4023,
+                "used_as_evidence": true
+              },
+              {
+                "chunk_id": "d2d-va-1ebb23b36f21312a-0-2000",
+                "document_id": "d2d-va-1ebb23b36f21312a",
+                "document_title": "VA.gov Home | Veterans Affairs#1",
+                "section": "Unicode code points 0:2000",
+                "content": "Access and manage your VA benefits and health care \n\n\nHealth care \nRefill and track your prescriptions Send a secure message to your health care team Schedule and view your appointments View your lab and test results Apply now for VA health care \n\nDisability \nCheck your claim or appeal status View your payment history Upload evidence to support your claim File for a VA disability increase File a claim for compensation \n\nEducation \nCheck your Post-9/11 GI Bill benefits View your payment history Change your current education benefits Compare GI Bill benefits by school Apply for education benefits \n\nRecords \nGet Veteran ID cards Get your VA medical records Download your benefit letters Change your address Request your military records DD214 \n\nService member benefits \nFind out what benefits you may be eligible for during service and which time - sensitive benefits to consider when separating or retiring. \n\nFamily member benefits \nLearn about the benefits you may qualify for as a spouse, dependent, or survivor. And find out what you're eligible for as a family member caring for a Veteran with disabilities. \n\nBurials and memorials \nGet help planning a burial in a VA national cemetery, order a headstone or other memorial item to honor a Veteran's service, and apply for survivor and dependent benefits. \n\nCareers and employment \nApply for vocational rehabilitation services, get support for your Veteran - owned small business, and access other career resources. \n\nHousing assistance \nFind out if you're eligible for a VA - backed home loan. If you have a service - connected disability , see if you qualify for a housing grant to help you live more independently. \n\nPension \nApply for monthly payments for wartime Veterans and survivors with limited or no income who meet certain age and disability requirements. \n\nLife insurance \nExplore VA life insurance options for Veterans, service members, and families. Manage your policy online, file claims for benefits, and access helpful re",
+                "source_uri": "https://doc2dial.github.io/#VA.gov%20Home%20%7C%20Veterans%20Affairs%231_0",
+                "retrieval_method": "VECTOR",
+                "initial_rank": 3,
+                "initial_score": 0.384,
+                "rerank_position": 3,
+                "rerank_score": 0.384,
+                "used_as_evidence": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+]

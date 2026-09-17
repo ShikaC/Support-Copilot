@@ -39,9 +39,27 @@
 - 口径：gold 文档取自 `cases.json` 的 `source.document_id`，通过语料 `source_uri` 的 anchor 匹配到 `corpus.json` 的 `document_id`；同一文档被切成多个片段时命中任一片段即算命中。
 - 修复前基线（目录 `docs/verification/retrieval-eval-2026-09-11/`）：26 题计划 / 13 题已执行 / 11 题可评估；gold@1、@3、@10 均为 0，MRR 0.000；13 题共用 1 条 query、返回 1 组相同候选。结论与独立 Python 复核一致。
 - 限制：11 题样本量小，只能用于同一语料、同一评估集下的相对比较；gold 命中不代表片段包含答案，也不代表模型正确使用；本工具不替代真人回答审核。
-- 用途：比较协议执行后对新的运行目录重跑本工具并 `--baseline` 指向旧报告，即得到修复后的真实召回数字；后续检索改动先在离线评测上比较，再决定是否花真实调用。
+- 用途：比较协议执行后对新的运行目录重跑本工具并 `--baseline` 指向旧报告，即得到完整对照；后续检索改动先在离线评测上比较，再决定是否花真实调用。
 
-### 4. Provider 前置检查与执行阻塞
+### 4. 检索-only 基线：修复后真实召回 72.7%
+
+旧运行的 0% 召回无法区分“query 构造错”“检索算法差”“切片不合适”。新增 `evaluation/retrieval_only.py`后可以只花 embedding 就把这三者分开：它不修改任何生产检索代码，逐步复现 `LiveVectorIndex.search` 的判定（范围过滤 → 余弦 → 阈值 → top_n → 类别重排 → top_k），并由 8 项测试（`tests/test_retrieval_only.py`）用同一份输入断言两条路径给出完全相同的候选与分数。
+
+证据目录 `docs/verification/retrieval-only-2026-09-17/`（13 题、13 次 embedding 调用、**0 次生成调用**、未使用 chat 端点、不消耗 comparison claim）：
+
+| 指标 | 旧运行（query 被截断） | 检索-only |
+| --- | ---: | ---: |
+| gold@1 | — | 54.5%（6/11） |
+| gold@3 | 0.0%（0/11） | **72.7%（8/11）** |
+| MRR | 0.000 | **0.636** |
+| 去重 query / 候选集合 | 1 / 1 | 13 / 13 |
+| 空结果题数 | — | 0 |
+
+按领域：dmv 3/3、studentaid 2/2、ssa 2/3、va 1/3。`va` 是最弱切片。结论：**检索本身没坏，旧运行的 0% 来自 query 截断**。
+
+限制：这是检索指标，不含生成、fallback、引用与人工审核；gold 是文档级匹配，chunk 级统计会低估；语料是归档文档，不是真实客服知识库；development 13 题作者已见过输出，holdout 仍未使用。`query-vectors.json`（341KB）不入库，可在同一批向量上零调用复现排序与阈值实验。
+
+### 5. Provider 前置检查与执行阻塞
 
 新增 `scripts/benchmark/provider-probe.mjs`（8 项契约测试）：只做 3 次最小探测（模型列表、极短补全、极短嵌入），不输出密钥，给出 `READY`/`BLOCKED`、端点 sha256 与检查时间。它用于在执行一次性付费运行之前判断端点是否真实可用——`claim` 一经写入不可重跑，不能靠配置完整度代替真实探测。
 
