@@ -96,14 +96,11 @@ class LiveVectorIndex:
         )
 
     async def reload(self) -> LoadedEmbeddingArtifact:
-        """丢弃缓存的 artifact 并重新加载当前 active，让索引切换立即对后续检索生效。
-
-        预加载是有意的：切换方拿到返回值就说明新索引确实可用，不会出现“切换成功但首次
-        检索才报错”的半完成状态。正在进行的检索仍持有旧对象的引用，会正常跑完。
-        """
+        """只加载已准备的 active；失败保留缓存，绝不隐式构建或修改指针。"""
         async with self._load_lock:
-            self._artifact = None
-        return await self._get_artifact()
+            artifact = await anyio.to_thread.run_sync(self._store.load_active)
+            self._artifact = artifact
+            return artifact
 
     async def _get_artifact(self) -> LoadedEmbeddingArtifact:
         if self._artifact is not None:

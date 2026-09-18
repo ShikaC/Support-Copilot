@@ -60,6 +60,7 @@ class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._state = self._load_state()
+        self._reload_lock = anyio.Lock()
         self._readiness = RuntimeDependencyReadiness(
             provider_ready=settings.effective_mode == "mock" or settings.live_ready,
             index_ready=bool(self._state.corpus.chunks) and settings.effective_mode == "mock",
@@ -106,16 +107,17 @@ class KnowledgeRetriever:
         直接抛出，旧状态原封不动，检索继续用旧快照。所以要换切片，必须先把新语料和新索引
         都准备好，再调用这里。
         """
-        corpus = await anyio.to_thread.run_sync(
-            load_knowledge_corpus,
-            self._settings.knowledge_path,
-            self._settings.knowledge_provenance_path,
-        )
-        live_index = LiveVectorIndex(self._settings, corpus)
-        _ = await live_index.reload()
-        self._state = RetrievalState(corpus=corpus, live_index=live_index)
-        self._readiness.record_index_success()
-        return self.corpus_metadata
+        async with self._reload_lock:
+            corpus = await anyio.to_thread.run_sync(
+                load_knowledge_corpus,
+                self._settings.knowledge_path,
+                self._settings.knowledge_provenance_path,
+            )
+            live_index = LiveVectorIndex(self._settings, corpus)
+            _ = await live_index.reload()
+            self._state = RetrievalState(corpus=corpus, live_index=live_index)
+            self._readiness.record_index_success()
+            return self.corpus_metadata
 
     @property
     def readiness(self) -> RuntimeDependencyReadiness:

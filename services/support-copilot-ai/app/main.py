@@ -264,13 +264,7 @@ async def list_index_versions(
         Depends(internal_authenticator.require),
     ],
 ) -> JSONResponse:
-    """列出检索索引的所有可读版本、当前生效版本与已加载语料身份（只读）。
-
-    这里刻意不提供“切换索引”写端点：artifact 兼容校验会比对 release、corpus checksum、
-    embedding 模型与 chunking version，而 artifact id 由同一组字段决定——
-    因此同一进程配置下只可能存在一个 artifact，热切换在当前架构下必然失败。
-    换切片必须先改配置并重启，原因见 docs/verification/index-versions-2026-09-18/README.md。
-    """
+    """列出磁盘索引版本与进程语料身份；准备好匹配产物后可显式重载。"""
     corpus = retriever.corpus_metadata
     payload = index_version_payload(retriever.artifact_store)
     payload["corpus"] = {
@@ -306,11 +300,11 @@ async def reload_index(
         )
     try:
         corpus = await retriever.reload_index()
-    except KnowledgeSourceInvalidError as exc:
+    except KnowledgeSourceInvalidError:
         return error_response(
             409,
             "INDEX_CORPUS_UNRELOADABLE",
-            f"Knowledge corpus could not be reloaded: {exc}",
+            "Knowledge corpus could not be reloaded; check its format and provenance.",
             trace_id,
         )
     except EmbeddingArtifactError as exc:

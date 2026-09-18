@@ -105,7 +105,10 @@ def load_knowledge_corpus(
     path: Path,
     provenance_path: Path | None = None,
 ) -> KnowledgeCorpus:
-    content = path.read_text(encoding="utf-8")
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        raise KnowledgeSourceInvalidError(path=path, issue_count=1) from None
 
     try:
         corpus = KnowledgeCorpus.model_validate_json(content)
