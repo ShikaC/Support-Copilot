@@ -49,16 +49,20 @@ node scripts/benchmark/prepare-doc2dial.mjs --window 1000 --stride 800 --output 
 - 评分时**必须同时传 `--corpus`**，否则 `retrieval-eval.mjs` 会因匹配不上 chunk_id 而直接报错（这是后加的 fail-closed 防线，不匹配率 >10% 即失败）。
 - 前端调节入口（表单 / 任务 API / 上传文档）尚未实现；当前只能命令行操作。
 
-## 索引版本清单与热切换的边界（2026-09-18）
+## 索引版本清单与热重载（2026-09-18）
 
-`GET /knowledge/index/versions`（Python 服务，需内部服务鉴权）是**只读**清单：列出所有 artifact 版本、active/previous、每个版本的切片身份与行数、进程加载的语料身份。实现见 `app/embedding_artifact.py` 的 `list_artifacts()`，测试见 `tests/test_index_versions.py`。
+`GET /knowledge/index/versions`（只读）与 `POST /knowledge/index/reload`（默认关闭，`KNOWLEDGE_INDEX_MUTATION_ENABLED`＋内部服务鉴权）。实现见 `app/knowledge.py` 的 `RetrievalState` / `reload_index()`，测试见 `tests/test_index_versions.py`。
 
 必须守住的结论与规则：
 
-- **不要再尝试加 activate/rollback 写端点**：`_require_compatible` 校验的字段与 `_artifact_id` 用的是同一组字段，因此“两个能互相切换的 artifact”不存在。实测切到另一种切片返回 `artifact-incompatible`。写端点已实现后被删除，测试断言其路由不存在。
-- **换切片 = 改配置 + 重启**。启动时 `load_active()` 会校验配置与 active artifact 一致，这是有意保留的保护。
-- 若真要热切换，先做架构决策：把 `chunking_version` 从校验字段降为观测字段。这会改变检索安全边界，必须单独评估，不能顺手做。
+- **`chunking_version` 现在是观测字段，不再参与兼容校验**。理由是：真正该保护的是“索引每一行是不是它声称的那块内容”，由 `corpus_checksum` ＋逐行 chunk 对齐保证；切片版本只是标签。
+- **不要再恢复 activate/rollback**：换切片必然换语料，“只换索引不动语料”在语义上是错的。不同语料的 artifact 仍会被拒绝，这是**有意保留**的安全边界。
+- **运维顺序不能乱**：换语料文件 → 用**新语料**建索引并移 active 指针（用运行中进程的旧 store 会被正确拒绝）→ `POST /knowledge/index/reload`。
+- **`evaluation/live_verifier.py` 的 chunking_version 校验不能拿掉**：那是评测取证，要求 artifact 与记录一致。
+- 换 embedding 模型仍需改配置并重启（`provider_identity` 与 `model` 仍在校验范围内，因为查询要用同一模型）。
 - 清单里的 `modifiedAt` 是文件系统时间，不是构建证据。
+
+尚未实现：重建任务化、Java 转发、前端面板、语料上传。
 
 ## 已完成与已确认缺陷
 

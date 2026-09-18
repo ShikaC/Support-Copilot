@@ -285,8 +285,13 @@ class EmbeddingArtifactStore:
     def _require_compatible(self, manifest: EmbeddingArtifactManifest, metadata: tuple[ArtifactChunkMetadata, ...], matrix: np.ndarray) -> None:
         if manifest.input_format != EMBEDDING_INPUT_FORMAT:
             raise EmbeddingArtifactError("artifact-input-format-incompatible")
-        expected = (self._corpus.release_id, self._corpus.release_version, self._corpus.corpus_checksum, self._provider_identity, self._model, self._chunking_version)
-        actual = (manifest.release_id, manifest.release_version, manifest.corpus_checksum, manifest.provider_identity, manifest.embedding_model, manifest.chunking_version)
+        # 切片身份（chunking_version）故意不在这里校验。换切片必然换语料，而语料身份
+        # （release + corpus checksum）与下面的逐行 chunk 对齐已经覆盖了真正的安全边界；
+        # 拿配置里的切片版本去比对反而会把“索引可以跟随语料热切换”这条路堵死。
+        # 它现在是观测字段：由 artifact 自己声明，通过 manifest 对外暴露。
+        # 评测侧的取证校验（evaluation/live_verifier.py）仍然要求它与记录一致。
+        expected = (self._corpus.release_id, self._corpus.release_version, self._corpus.corpus_checksum, self._provider_identity, self._model)
+        actual = (manifest.release_id, manifest.release_version, manifest.corpus_checksum, manifest.provider_identity, manifest.embedding_model)
         if actual != expected:
             raise EmbeddingArtifactError("artifact-incompatible")
         if matrix.ndim != 2 or matrix.shape != (manifest.row_count, manifest.vector_dimension) or not np.isfinite(matrix).all():
@@ -301,6 +306,7 @@ class EmbeddingArtifactStore:
             manifest.vector_dimension,
             metadata,
             manifest.documents,
+            manifest.chunking_version,
         ) != manifest.artifact_id:
             raise EmbeddingArtifactError("artifact-identity-mismatch")
 
@@ -309,7 +315,11 @@ class EmbeddingArtifactStore:
         dimension: int,
         metadata: tuple[ArtifactChunkMetadata, ...],
         documents: tuple[ArtifactDocumentRecord, ...],
+        chunking_version: str | None = None,
     ) -> str:
+        # chunking_version 是 artifact 自己声明的身份，而不是当前进程的配置。
+        # 校验已落盘 artifact 时必须用 manifest 里的值来重算，否则换过切片的索引
+        # 会因为“配置对不上”而被当成篡改。
         identity = {
             "schema_version": 1,
             "release_id": self._corpus.release_id,
@@ -319,7 +329,7 @@ class EmbeddingArtifactStore:
             "embedding_model": self._model,
             "input_format": EMBEDDING_INPUT_FORMAT,
             "vector_dimension": dimension,
-            "chunking_version": self._chunking_version,
+            "chunking_version": chunking_version or self._chunking_version,
             "metadata_sha256": sha256(self._metadata_bytes(metadata)).hexdigest(),
             "documents_sha256": sha256(canonical_bytes([item.model_dump(mode="json") for item in documents])).hexdigest(),
         }

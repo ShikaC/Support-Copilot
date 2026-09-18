@@ -71,6 +71,15 @@ class RuntimeDependencyReadiness:
                 index_reason=reason,
             )
 
+    def record_index_success(self) -> None:
+        """索引被显式重载并通过校验；只清除索引侧的失败标记。
+
+        与 record_live_retrieval_success 分开：重载不做任何检索，不应该把
+        embedding provider 的状态也一起改成健康。
+        """
+        with self._lock:
+            self._state = replace(self._state, index_ready=True, index_reason=None)
+
     def record_live_generation_failure(self) -> None:
         with self._lock:
             self._state = replace(self._state, generation_provider_ready=False)

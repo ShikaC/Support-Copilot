@@ -109,9 +109,9 @@ def retrieval_request(
         top_k=top_k,
         live=live,
         knowledge_access=KnowledgeAccess(
-            release_id=retriever._release_id,
-            release_version=retriever._release_version,
-            corpus_checksum=retriever._corpus_checksum,
+            release_id=retriever.corpus_metadata.release_id,
+            release_version=retriever.corpus_metadata.release_version,
+            corpus_checksum=retriever.corpus_metadata.corpus_checksum,
             allowed_scopes=scopes,
         ),
     )

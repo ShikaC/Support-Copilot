@@ -98,8 +98,10 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 | GET | `/health` | 查询 AI 模式和兼容健康摘要 |
 | GET | `/health/live` | FastAPI liveness |
 | GET | `/health/ready` | FastAPI readiness 快照 |
+| GET | `/knowledge/index/versions` | 列出检索索引版本与当前生效版本（只读） |
 | PATCH | `/api/tickets/{id}` | 携带 expectedVersion 修改工单 |
 | POST | `/analyze` | Java 调用内部 AI 分析 |
+| POST | `/knowledge/index/reload` | 重载语料与向量索引（默认关闭，需内部鉴权） |
 | POST | `/api/knowledge/releases` | 创建 DRAFT release |
 | POST | `/api/knowledge/releases/{releaseId}/approve` | 审批 release |
 | POST | `/api/knowledge/releases/{releaseId}/publish` | 发布 release |

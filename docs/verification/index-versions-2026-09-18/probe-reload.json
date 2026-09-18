@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-09-18",
+  "note": "\u771f\u5b9e\u8bed\u6599\uff083.8MB / 4.8MB\uff09\u4e0e\u771f\u5b9e artifact \u4e0a\u7684\u7d22\u5f15\u91cd\u8f7d\u9a8c\u8bc1\uff1b\u53ea\u6362\u4e00\u534a\u65f6 fail-closed\u3002",
+  "startup": {
+    "release": "doc2dial-business-benchmark-v1",
+    "chunks": 1564
+  },
+  "scenarios": {
+    "reloadUnchanged": 200,
+    "corpusOnly": {
+      "status": 409,
+      "code": "INDEX_VERSION_UNUSABLE",
+      "chunksAfter": 1564
+    },
+    "corpusAndIndex": {
+      "status": 200,
+      "elapsedMs": 1686,
+      "release": "doc2dial-business-benchmark-1000-800-v1",
+      "chunks": 3015,
+      "artifact": "e418567d7f1bc794",
+      "processChunks": 3015
+    }
+  },
+  "operatorOrder": "\u5148\u6362\u8bed\u6599\u6587\u4ef6 \u2192 \u7528\u65b0\u8bed\u6599\u6fc0\u6d3b\u65b0 artifact \u2192 \u8c03 POST /knowledge/index/reload"
+}

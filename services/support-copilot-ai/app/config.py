@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     )
     embedding_chunking_version: str = "knowledge-corpus-v2"
     embedding_vector_dimension: int | None = Field(default=None, gt=0)
+    # 重载语料与索引会立刻改变线上检索结果，所以默认关闭；只有显式打开才暴露写端点。
+    knowledge_index_mutation_enabled: bool = False
     retrieval_top_n: int = 10
     retrieval_top_k: int = 3
     # The local scorer uses a different scale from live cosine similarity.

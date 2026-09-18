@@ -17,6 +17,7 @@ from app.internal_auth import (
     InternalServiceAuthenticator,
 )
 from app.knowledge import KnowledgeReleaseMismatchError, KnowledgeRetriever
+from app.knowledge_source import KnowledgeSourceInvalidError
 from app.models import TRACE_ID_PATTERN, AnalyzeRequest, AnalyzeResponse
 from app.observability import (
     STRUCTURED_LOG_FORMAT,
@@ -271,6 +272,61 @@ async def list_index_versions(
     换切片必须先改配置并重启，原因见 docs/verification/index-versions-2026-09-18/README.md。
     """
     corpus = retriever.corpus_metadata
+    payload = index_version_payload(retriever.artifact_store)
+    payload["corpus"] = {
+        "releaseId": corpus.release_id,
+        "releaseVersion": corpus.release_version,
+        "corpusChecksum": corpus.corpus_checksum,
+        "chunkCount": corpus.chunk_count,
+    }
+    return JSONResponse(content=payload)
+
+
+@app.post("/knowledge/index/reload")
+async def reload_index(
+    http_request: Request,
+    _authenticated: Annotated[
+        None,
+        Depends(internal_authenticator.require),
+    ],
+) -> JSONResponse:
+    """重新加载语料与向量索引，让切片切换不需要重启进程。
+
+    前提：运维已经先准备好新的语料文件与对应的 artifact，并把 active 指针指过去。
+    换切片就是换语料，两者必须一起换；只换一半会在校验里失败并保留旧状态。
+    默认关闭：重载会立刻改变线上检索结果，必须由 KNOWLEDGE_INDEX_MUTATION_ENABLED 打开。
+    """
+    trace_id = http_request.state.trace_id
+    if not settings.knowledge_index_mutation_enabled:
+        return error_response(
+            403,
+            "INDEX_MUTATION_DISABLED",
+            "Index mutation is disabled by configuration.",
+            trace_id,
+        )
+    try:
+        corpus = await retriever.reload_index()
+    except KnowledgeSourceInvalidError as exc:
+        return error_response(
+            409,
+            "INDEX_CORPUS_UNRELOADABLE",
+            f"Knowledge corpus could not be reloaded: {exc}",
+            trace_id,
+        )
+    except EmbeddingArtifactError as exc:
+        return error_response(
+            409,
+            "INDEX_VERSION_UNUSABLE",
+            f"Active index version does not match the corpus: {exc.reason}",
+            trace_id,
+        )
+    except KnowledgeReleaseMismatchError:
+        return error_response(
+            409,
+            "INDEX_RELEASE_MISMATCH",
+            "Knowledge corpus provenance does not match its release.",
+            trace_id,
+        )
     payload = index_version_payload(retriever.artifact_store)
     payload["corpus"] = {
         "releaseId": corpus.release_id,

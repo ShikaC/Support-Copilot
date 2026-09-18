@@ -79,17 +79,27 @@ holdout 36 题**未运行**。它是一次性资源，只能验证事先固定�
 
 证据：`docs/verification/chunking-1000-800-2026-09-18/`（语料 4.8MB 未入库，可由命令重建）。
 
-### 8. 索引版本清单：为什么“一键切切片”在当前架构下不成立
+### 8. 索引版本清单与热重载：切片可以在不重启的的情况下切换
 
-新增只读端点 `GET /knowledge/index/versions`（内部服务鉴权）：列出 artifact root 下的所有版本、当前生效版本、上一版本、每个版本的切片身份与行数，以及进程实际加载的语料身份。损坏目录归入 `unreadable`，不会让整个清单失败。
+新增两个端点（都需内部服务鉴权）：
 
-- 新增：`EmbeddingArtifactStore.list_artifacts()`、`LiveVectorIndex.artifact_store` 与 `reload()`、`KnowledgeRetriever.corpus_metadata` 与 `reload_index()`（`tests/test_index_versions.py` 10 项）。
-- **真实证据**：一个 root 里同时列出 `2ecf19dd…`（1564 行 / 2000-1600）与 `e418567d…`（3015 行 / 1000-800），active 指向前者；错误 token 返回 401。
-- **关键发现（这是本轮最重要的结论）**：写端点（activate / rollback）实现后被**删除**。因为 `_require_compatible` 校验的字段（release、corpus checksum、embedding 模型、chunking version）与 `_artifact_id` 用的是同一组字段——**两个 artifact 能互相切换 ⟺ 它们的前六项相同 ⟹ 必然是同一个 id**。所以同配置下热切换必然失败：实测切到另一种切片返回 `artifact-incompatible`，指针未移动。
-- 结论：**换切片 = 改配置 + 重启**（当前架构的唯一路径）。删掉写端点是因为留着它只会让人点出一个 409 而不知道原因；测试改为断言这些路由不存在（404）。
-- **未做但已明确的技术选项**：把 `chunking_version` 从**校验字段降级为观测字段**（兼容校验只保留 release / corpus checksum / input format / dimension），索引就能真正热切换。代价是失去一层“配置与索引错配立刻报错”的保护，因此应单独评估，不能顺手做。
+- `GET /knowledge/index/versions`：只读列出 artifact root 下的所有版本、active/previous、每个版本的切片身份与行数、进程实际加载的语料身份。
+- `POST /knowledge/index/reload`：重载语料与向量索引，默认关闭（`KNOWLEDGE_INDEX_MUTATION_ENABLED`）。
 
-证据：`docs/verification/index-versions-2026-09-18/`（含 `probe.json`）。前端与 Java 接入尚未开始。
+**关键架构决策：`chunking_version` 从校验字段降级为观测字段。**
+
+- 起因：第一版写端点（activate/rollback）测试全绿，但在真实的两套切片上一跑就失败（`artifact-incompatible`）。根因是 `_require_compatible` 校验的字段与 `_artifact_id` 是同一组——两个能互相切换的 artifact 根本不存在。
+- 修正后的认识：该保护的是“索引每一行是不是它声称的那块内容”，这由 `corpus_checksum` + 逐行 `(chunk_id, content_checksum)` 对齐保证；`chunking_version` 只是描述“这份语料怎么切的”的**标签**。而且**换切片必然换语料**，所以“只换索引不动语料”的 activate 在语义上本就是错的。
+- 改动：`_require_compatible` 不再比对 chunking_version；`_artifact_id` 在校验落盘 artifact 时改用 **manifest 自己声明的值**重算 id；新增 `RetrievalState(corpus, live_index)` 快照，检索只取一次引用，`reload_index()` 先构建新快照、成功后原子替换。
+- **未改动**：`evaluation/live_verifier.py` 仍要求 artifact 的 chunking_version 与记录一致——那是评测取证，不是运行时保护。
+
+**真实证据**（`probe-reload.json`，真实 3.8MB/4.8MB 语料与真实 artifact）：启动 1564 chunks；无变化 reload 200；**只换语料不换索引 409 且进程仍是 1564 chunks**；换齐后 reload **200、1686ms、变 3015 chunks**。
+
+运维顺序（不能乱）：换语料文件 → 用**新语料**建索引并移 active 指针（用运行中进程的旧 store 会被正确拒绝）→ `POST /knowledge/index/reload`。
+
+测试：`tests/test_index_versions.py` 16 项（含“同语料不同标签可切”“**不同语料仍被拒**”“只换一半 409 且旧快照不变”“重载后 search 命中新语料正文”）。全量 Python 375 项。
+
+证据：`docs/verification/index-versions-2026-09-18/`。**前端与 Java 接入尚未开始**：重建任务化、转发与面板是下一片。
 
 ## 前一阶段：比较协议预注册、门禁回归修复与离线检索评测（2026-09-11）
 

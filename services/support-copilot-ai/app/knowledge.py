@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import Final
 
+import anyio
 from openai import APITimeoutError, OpenAIError
 
 from app.config import Settings
@@ -10,10 +11,22 @@ from app.errors import (
     EmbeddingApiError,
     embedding_timeout_error,
 )
-from app.knowledge_source import KnowledgeChunk, load_knowledge_corpus
+from app.knowledge_source import KnowledgeChunk, KnowledgeCorpus, load_knowledge_corpus
 from app.live_vector_index import LiveVectorIndex, RetrievalWindow
 from app.models import KnowledgeAccess, RetrievalHit, SupportScope, TicketInput
 from app.readiness import RuntimeDependencyReadiness
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievalState:
+    """一次检索所需的语料与索引快照。
+
+    两者必须同进同退：换切片就是换语料，旧语料配新索引（或反之）会让每一行的含义都错位。
+    检索路径只取一次引用，所以重载可以原子替换，在途请求继续用旧快照跑完。
+    """
+
+    corpus: KnowledgeCorpus
+    live_index: LiveVectorIndex
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,59 +59,77 @@ class KnowledgeReleaseMismatchError(Exception):
 class KnowledgeRetriever:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        corpus = load_knowledge_corpus(
-            settings.knowledge_path,
-            settings.knowledge_provenance_path,
-        )
-        self._chunks = corpus.chunks
-        self._release_id = corpus.release_id
-        self._release_version = corpus.release_version
-        self._corpus_checksum = corpus.corpus_checksum
-        self._live_index = LiveVectorIndex(settings, corpus)
+        self._state = self._load_state()
         self._readiness = RuntimeDependencyReadiness(
             provider_ready=settings.effective_mode == "mock" or settings.live_ready,
-            index_ready=bool(self._chunks) and settings.effective_mode == "mock",
+            index_ready=bool(self._state.corpus.chunks) and settings.effective_mode == "mock",
             index_reason=(
                 None if settings.effective_mode == "mock" else "artifact-unverified"
             ),
         )
 
+    def _load_state(self) -> RetrievalState:
+        corpus = load_knowledge_corpus(
+            self._settings.knowledge_path,
+            self._settings.knowledge_provenance_path,
+        )
+        return RetrievalState(corpus=corpus, live_index=LiveVectorIndex(self._settings, corpus))
+
     @property
     def chunk_count(self) -> int:
-        return len(self._chunks)
+        return len(self._state.corpus.chunks)
 
     @property
     def corpus_metadata(self) -> CorpusMetadata:
-        """当前进程加载的语料身份；与 artifact manifest 里的值做一致性对照。"""
+        """当前加载的语料身份；与 artifact manifest 里的值做一致性对照。"""
+        corpus = self._state.corpus
         return CorpusMetadata(
-            release_id=self._release_id,
-            release_version=self._release_version,
-            corpus_checksum=self._corpus_checksum,
-            chunk_count=len(self._chunks),
+            release_id=corpus.release_id,
+            release_version=corpus.release_version,
+            corpus_checksum=corpus.corpus_checksum,
+            chunk_count=len(corpus.chunks),
         )
 
     @property
     def artifact_store(self) -> EmbeddingArtifactStore:
-        return self._live_index.artifact_store
+        return self._state.live_index.artifact_store
 
-    async def reload_index(self) -> None:
-        """在 active artifact 被外部切换后重新加载向量索引。
+    @property
+    def _live_index(self) -> LiveVectorIndex:
+        """当前快照里的索引实例。重载后会指向新实例，旧快照仍被在途请求持着。"""
+        return self._state.live_index
 
-        语料本身不重载：换语料意味着换进程。这里只解决“同一个 corpus 下切换切片版本”。
+    async def reload_index(self) -> CorpusMetadata:
+        """重新加载语料与向量索引，成功后原子替换检索状态。
+
+        先构建、后替换：语料读不到、或 active artifact 与它不匹配（逐行 chunk 校验失败）时
+        直接抛出，旧状态原封不动，检索继续用旧快照。所以要换切片，必须先把新语料和新索引
+        都准备好，再调用这里。
         """
-        await self._live_index.reload()
+        corpus = await anyio.to_thread.run_sync(
+            load_knowledge_corpus,
+            self._settings.knowledge_path,
+            self._settings.knowledge_provenance_path,
+        )
+        live_index = LiveVectorIndex(self._settings, corpus)
+        _ = await live_index.reload()
+        self._state = RetrievalState(corpus=corpus, live_index=live_index)
+        self._readiness.record_index_success()
+        return self.corpus_metadata
 
     @property
     def readiness(self) -> RuntimeDependencyReadiness:
         return self._readiness
 
     async def search(self, request: RetrievalRequest) -> list[RetrievalHit]:
-        self._require_active_release(request.knowledge_access)
+        # 只取一次快照：即使在运行中重载成功，本次请求也完整跑在同一份语料与索引上。
+        state = self._state
+        self._require_active_release(state, request.knowledge_access)
         # mock 模式使用确定性的本地打分器，方便演示和测试复现。
         # live 模式会构建 embedding，并使用向量检索。
         if request.live:
             try:
-                hits = await self._live_index.search(
+                hits = await state.live_index.search(
                     request.ticket,
                     request.query,
                     RetrievalWindow(top_n=request.top_n, top_k=request.top_k),
@@ -116,6 +147,7 @@ class KnowledgeRetriever:
             self._readiness.record_live_retrieval_success()
             return hits
         return self._local_search(
+            state,
             request.ticket,
             request.query,
             request.top_n,
@@ -123,16 +155,22 @@ class KnowledgeRetriever:
             request.knowledge_access.allowed_scopes,
         )
 
-    def _require_active_release(self, access: KnowledgeAccess) -> None:
+    def _require_active_release(
+        self,
+        state: RetrievalState,
+        access: KnowledgeAccess,
+    ) -> None:
+        corpus = state.corpus
         if (
-            access.release_id != self._release_id
-            or access.release_version != self._release_version
-            or access.corpus_checksum != self._corpus_checksum
+            access.release_id != corpus.release_id
+            or access.release_version != corpus.release_version
+            or access.corpus_checksum != corpus.corpus_checksum
         ):
             raise KnowledgeReleaseMismatchError
 
     def _local_search(
         self,
+        state: RetrievalState,
         ticket: TicketInput,
         query: str,
         top_n: int,
@@ -141,7 +179,7 @@ class KnowledgeRetriever:
     ) -> list[RetrievalHit]:
         eligible_chunks = tuple(
             chunk
-            for chunk in self._chunks
+            for chunk in state.corpus.chunks
             if set(chunk.allowed_scopes).intersection(allowed_scopes)
         )
         if not eligible_chunks:
