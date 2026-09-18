@@ -139,6 +139,18 @@ export function evaluateRun({label, runDir, casesFile = defaultCases, corpusFile
 
   const executed = rows.filter((row) => row.executed);
   const evaluable = executed.filter((row) => row.goldDocumentId !== null);
+  // 防呆：候选片段必须来自被评分的语料。传错 --corpus 时所有 gold 都会 miss，
+  // 如果不报错就会得到一个看起来像“质量突降”的假结论。
+  const corpusChunkIds = new Set(corpus.chunks.map((chunk) => chunk.chunk_id));
+  const candidateIds = executed.flatMap((row) => String(row.candidates ?? '').split('|').filter(Boolean));
+  const unknownCandidates = candidateIds.filter((id) => !corpusChunkIds.has(id));
+  const corpusMismatchRate = candidateIds.length === 0 ? 0 : unknownCandidates.length / candidateIds.length;
+  if (corpusMismatchRate > 0.1) {
+    throw new Error(
+      `候选片段与语料不匹配：${(corpusMismatchRate * 100).toFixed(1)}% 的候选 chunk_id 不在 ${corpusFile} 中；` +
+      '请确认 --corpus 与该次运行使用的语料一致',
+    );
+  }
   const hitsAt = (k) => evaluable.filter((row) => row.firstGoldRank !== null && row.firstGoldRank <= k).length;
   const ratio = (value, total) => (total === 0 ? null : value / total);
   const distinct = (values) => new Set(values.filter((value) => value !== null && value !== '')).size;
@@ -166,6 +178,7 @@ export function evaluateRun({label, runDir, casesFile = defaultCases, corpusFile
     distinctQueries: distinct(executed.map((row) => row.query)),
     distinctCandidateSets: distinct(executed.map((row) => row.candidateSetSha)),
     distinctFirstCandidates: distinct(executed.map((row) => row.candidates.split('|')[0])),
+    corpusMismatchRate,
     corpusChunks: corpus.chunks.length,
     corpusDocuments: new Set(corpus.chunks.map((chunk) => chunk.document_id)).size,
   };

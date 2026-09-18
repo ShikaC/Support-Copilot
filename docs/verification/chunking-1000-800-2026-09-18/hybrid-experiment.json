@@ -1,0 +1,2651 @@
+{
+  "generatedAt": "2026-09-18T07:17:42.834050Z",
+  "measuredCases": 40,
+  "topK": 3,
+  "corpusChunkCount": 3015,
+  "bm25": {
+    "k1": 1.2,
+    "b": 0.75,
+    "fields": [
+      "content"
+    ]
+  },
+  "primary": {
+    "name": "rrf-equal-k60",
+    "rrfK": 60,
+    "vectorWeight": 1.0,
+    "bm25Weight": 1.0,
+    "summary": {
+      "cases": 40,
+      "goldAt1": 31,
+      "goldAt3": 37,
+      "mrr": 0.8417
+    },
+    "rows": [
+      {
+        "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-cac90c90583744d896f2567200461530-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+        "firstGoldRank": null,
+        "topInGold": [
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+        "firstGoldRank": 2,
+        "topInGold": [
+          false,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+        "firstGoldRank": 2,
+        "topInGold": [
+          false,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+        "firstGoldRank": null,
+        "topInGold": [
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+        "firstGoldRank": null,
+        "topInGold": [
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+        "firstGoldRank": 2,
+        "topInGold": [
+          false,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+        "firstGoldRank": 2,
+        "topInGold": [
+          false,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+        "firstGoldRank": 3,
+        "topInGold": [
+          false,
+          false,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+        "firstGoldRank": 3,
+        "topInGold": [
+          false,
+          false,
+          true
+        ]
+      }
+    ]
+  },
+  "sensitivity": [
+    {
+      "name": "vector-only",
+      "rrfK": 60,
+      "vectorWeight": 1.0,
+      "bm25Weight": 0.0,
+      "summary": {
+        "cases": 40,
+        "goldAt1": 22,
+        "goldAt3": 32,
+        "mrr": 0.6667
+      },
+      "rows": [
+        {
+          "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-cac90c90583744d896f2567200461530-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bm25-only",
+      "rrfK": 60,
+      "vectorWeight": 0.0,
+      "bm25Weight": 1.0,
+      "summary": {
+        "cases": 40,
+        "goldAt1": 21,
+        "goldAt3": 31,
+        "mrr": 0.65
+      },
+      "rows": [
+        {
+          "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-cac90c90583744d896f2567200461530-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-equal-k10",
+      "rrfK": 10,
+      "vectorWeight": 1.0,
+      "bm25Weight": 1.0,
+      "summary": {
+        "cases": 40,
+        "goldAt1": 29,
+        "goldAt3": 34,
+        "mrr": 0.7875
+      },
+      "rows": [
+        {
+          "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-cac90c90583744d896f2567200461530-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-equal-k100",
+      "rrfK": 100,
+      "vectorWeight": 1.0,
+      "bm25Weight": 1.0,
+      "summary": {
+        "cases": 40,
+        "goldAt1": 31,
+        "goldAt3": 37,
+        "mrr": 0.8417
+      },
+      "rows": [
+        {
+          "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-cac90c90583744d896f2567200461530-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-bm25x0.5-k60",
+      "rrfK": 60,
+      "vectorWeight": 1.0,
+      "bm25Weight": 0.5,
+      "summary": {
+        "cases": 40,
+        "goldAt1": 30,
+        "goldAt3": 37,
+        "mrr": 0.8333
+      },
+      "rows": [
+        {
+          "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-cac90c90583744d896f2567200461530-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-bm25x2-k60",
+      "rrfK": 60,
+      "vectorWeight": 1.0,
+      "bm25Weight": 2.0,
+      "summary": {
+        "cases": 40,
+        "goldAt1": 29,
+        "goldAt3": 36,
+        "mrr": 0.8042
+      },
+      "rows": [
+        {
+          "caseId": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5d68fec39530256adc77c212879042ae-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-cac90c90583744d896f2567200461530-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-3637d14187420b78288c89813bcadf77-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-41680c19730b59b04eda71643a76ff5f-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-82a54ead72e4d274bbe0daa431896283-5",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-016cf0849b0c801d2515d0de704772a0-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-829c4f406cc56578eb1219883a849923-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5a743ace2239552da73cd5f52300ab60-6",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-8d5db793af142260b6531dc560cafb74-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-368abe8171c4fa05484a46f52df0959c-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-aced8883d86eeba05d57c686e283b71d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-f8976f74f01d096e1682c868e31461b5-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-660589fbfefaac122d8932875ff3a291-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-d9ae4758f904a702172438bb6af63720-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-29db4545fe12bf4c311ed7208491a620-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+          "firstGoldRank": 3,
+          "topInGold": [
+            false,
+            false,
+            true
+          ]
+        }
+      ]
+    }
+  ],
+  "primaryVersusVectorOnly": {
+    "baseline": "vector-only",
+    "improved": [
+      "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+      "qa-cac90c90583744d896f2567200461530-4",
+      "qa-82a54ead72e4d274bbe0daa431896283-5",
+      "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+      "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+      "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+      "qa-a3e94e5eafaffb5fdce095174df6b75d-4"
+    ],
+    "degraded": [
+      "qa-016cf0849b0c801d2515d0de704772a0-6",
+      "qa-5a743ace2239552da73cd5f52300ab60-6"
+    ],
+    "pValue": 0.1797,
+    "conclusive": true
+  }
+}

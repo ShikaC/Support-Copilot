@@ -1,4 +1,4 @@
-# 离线检索评测：扩展集 development 40 题（纯向量，query 未截断）
+# 离线检索评测：扩展集 development 40 题（切片 2000/1600）
 
 - 运行结果：`docs/verification/retrieval-expanded-2026-09-18/results.json`
 - 评估集：`docs/verification/retrieval-cases-expanded-2026-09-18/cases.json` (sha256 245ece52663636f6…)

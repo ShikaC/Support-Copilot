@@ -124,6 +124,26 @@ test('evaluateRun computes recall, MRR, and distinct-query diagnostics', () => {
   assert.equal(report.perCase.find((row) => row.caseId === 'q-2').query, 'query two');
 });
 
+test('evaluateRun refuses to score candidates that do not belong to the corpus', () => {
+  const fixture = writeFixture();
+  // Given a run whose hits came from a different slicing than the corpus being scored.
+  const foreign = JSON.parse(fs.readFileSync(fixture.corpusFile, 'utf8'));
+  foreign.chunks = foreign.chunks.map((chunk) => ({...chunk, chunk_id: `other-${chunk.chunk_id}`}));
+  fs.writeFileSync(fixture.corpusFile, JSON.stringify(foreign));
+  // When scoring against the wrong corpus.
+  // Then it fails loudly instead of reporting a fictitious quality collapse.
+  assert.throws(
+    () => evaluateRun({runDir: fixture.runDir, casesFile: fixture.casesFile, corpusFile: fixture.corpusFile}),
+    /候选片段与语料不匹配/,
+  );
+});
+
+test('evaluateRun reports a zero mismatch rate when the corpus matches', () => {
+  const fixture = writeFixture();
+  const report = evaluateRun({runDir: fixture.runDir, casesFile: fixture.casesFile, corpusFile: fixture.corpusFile});
+  assert.equal(report.summary.corpusMismatchRate, 0);
+});
+
 test('evaluateRun flags identical queries and identical candidate sets', () => {
   const fixture = writeFixture();
   const results = JSON.parse(fs.readFileSync(path.join(fixture.runDir, 'results.json'), 'utf8'));

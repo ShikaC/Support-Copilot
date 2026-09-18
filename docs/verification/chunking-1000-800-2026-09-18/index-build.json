@@ -1,0 +1,14 @@
+{
+  "artifact_id": "e418567d7f1bc7943deb3391375211e4ccedaa4366ee01d4df12e859e2aa7662",
+  "rows": 3015,
+  "dimension": 1024,
+  "duration_ms": 49594.72554200329,
+  "model": "Qwen/Qwen3-Embedding-0.6B",
+  "batch_size": 16,
+  "sdk_retries": 0,
+  "usage_tokens": null,
+  "cost": null,
+  "chunking_version": "doc2dial-codepoints-1000-800-v1",
+  "release_id": "doc2dial-business-benchmark-1000-800-v1",
+  "artifact_root": ".local/chunking-variants/1000-800/artifacts"
+}

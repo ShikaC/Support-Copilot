@@ -64,3 +64,8 @@ docs/verification/retrieval-only-2026-09-17/query-vectors.json
 !docs/verification/retrieval-cases-expanded-2026-09-18/**
 !docs/verification/retrieval-expanded-2026-09-18/**
 docs/verification/retrieval-expanded-2026-09-18/query-vectors.json
+
+# Chunking-granularity experiment run. The 4.8MB corpus itself stays out of Git and is
+# rebuilt by prepare-doc2dial.mjs; the slicing identity and build record are kept.
+!docs/verification/chunking-1000-800-2026-09-18/**
+docs/verification/chunking-1000-800-2026-09-18/query-vectors.json

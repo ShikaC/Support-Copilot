@@ -1,6 +1,6 @@
 # Support Copilot 下一会话交接提示词
 
-> 更新：2026-09-18。恢复入口；当前事实以[STATUS](../STATUS.md)为准，详细数字以独立报告为准。截至本次更新：master 工作树 clean、未推送；比较协议已预注册但执行被 provider 503 阻塞；**评估集已扩到 76 题**，development 40 题上的融合重测仍未显著；holdout 36 题封存未用。
+> 更新：2026-09-18。恢复入口；当前事实以[STATUS](../STATUS.md)为准，详细数字以独立报告为准。截至本次更新：master 工作树 clean、未推送；比较协议已预注册但执行被 provider 503 阻塞；**评估集已扩到 76 题**，development 40 题上的融合重测仍未显著；**切片参数已可配**，1000/800 实验证明切片粒度不是瓶颈；holdout 36 题封存未用。
 
 项目路径：`/Users/shika/Documents/Support-Copilot`。
 
@@ -29,6 +29,25 @@
 - 每 domain 配额提高靠 `scripts/benchmark/expand-quality-inputs.mjs`，它内置「配额 6 必须复现现有 24 题」的自检，跑失败即拒绝输出。
 - **holdout 36 题未运行**，只能验证事先固定的方案（当前仅等权 k=60 符合）。参数扫描里最好看的 `bm25x0.5` 属于在 40 题上挑出来的，**不许**用 holdout 验证它；用 holdout 是不可逆消耗，需要先确认。
 - 扩展集暴露了旧集看不到的问题：**3 题 gold 排在 10 名之外**（第 97 / 35 / 12 名），属于切片或 query 构造问题，重排救不回；旧集「召回够用、只差排序」的结论只在 11 题上成立。
+
+## 切片入口的当前状态（2026-09-18）
+
+切片参数（窗口 / 步长 / 每领域题数）已可从命令行配置，不再硬编码：
+
+```bash
+node scripts/benchmark/prepare-doc2dial.mjs --window 1000 --stride 800 --output <目录>
+# 然后用该目录的 corpus.json 调 evaluation.build_benchmark_index 建独立 artifact
+```
+
+必须守住的规则：
+
+- **默认参数必须永远能复现冻结产物**：`node scripts/benchmark/prepare-doc2dial.mjs --verify-against docs/verification/business-benchmark-2026-09-10` 必须输出 `verified: true`。改了切片逻辑后要先跑这一条。
+- 切片身份由参数推导（`doc2dial-codepoints-{window}-{stride}-v1`）；步长大于窗口会被拒绝，因为会静默丢掉文档内容。
+- **新切片必须用新的 artifact root**：同一个 root 下 `activate()` 会切换 active artifact，影响正在使用的检索。
+- 切片一变就是新基线：绝对指标不能与冻结集混算。
+- 已用 1000/800 验证过：片段数翻倍但 gold@3 不变，**切片粒度不是瓶颈，不要再花预算调切片**；真正有效的是排序（融合在两个切片下都提升）。
+- 评分时**必须同时传 `--corpus`**，否则 `retrieval-eval.mjs` 会因匹配不上 chunk_id 而直接报错（这是后加的 fail-closed 防线，不匹配率 >10% 即失败）。
+- 前端调节入口（表单 / 任务 API / 上传文档）尚未实现；当前只能命令行操作。
 
 ## 已完成与已确认缺陷
 
