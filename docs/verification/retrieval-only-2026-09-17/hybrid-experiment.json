@@ -1,0 +1,818 @@
+{
+  "generatedAt": "2026-09-18T04:51:58.404966Z",
+  "measuredCases": 11,
+  "topK": 3,
+  "corpusChunkCount": 1564,
+  "bm25": {
+    "k1": 1.2,
+    "b": 0.75,
+    "fields": [
+      "content"
+    ]
+  },
+  "primary": {
+    "name": "rrf-equal-k60",
+    "rrfK": 60,
+    "vectorWeight": 1.0,
+    "bm25Weight": 1.0,
+    "summary": {
+      "cases": 11,
+      "goldAt1": 9,
+      "goldAt3": 9,
+      "mrr": 0.8182
+    },
+    "rows": [
+      {
+        "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          true
+        ]
+      },
+      {
+        "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+        "firstGoldRank": null,
+        "topInGold": [
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+        "firstGoldRank": null,
+        "topInGold": [
+          false,
+          false,
+          false
+        ]
+      },
+      {
+        "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+        "firstGoldRank": 1,
+        "topInGold": [
+          true,
+          true,
+          false
+        ]
+      }
+    ]
+  },
+  "sensitivity": [
+    {
+      "name": "vector-only",
+      "rrfK": 60,
+      "vectorWeight": 1.0,
+      "bm25Weight": 0.0,
+      "summary": {
+        "cases": 11,
+        "goldAt1": 6,
+        "goldAt3": 8,
+        "mrr": 0.6364
+      },
+      "rows": [
+        {
+          "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+          "firstGoldRank": 2,
+          "topInGold": [
+            false,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "bm25-only",
+      "rrfK": 60,
+      "vectorWeight": 0.0,
+      "bm25Weight": 1.0,
+      "summary": {
+        "cases": 11,
+        "goldAt1": 8,
+        "goldAt3": 8,
+        "mrr": 0.7273
+      },
+      "rows": [
+        {
+          "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-equal-k10",
+      "rrfK": 10,
+      "vectorWeight": 1.0,
+      "bm25Weight": 1.0,
+      "summary": {
+        "cases": 11,
+        "goldAt1": 9,
+        "goldAt3": 9,
+        "mrr": 0.8182
+      },
+      "rows": [
+        {
+          "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-equal-k100",
+      "rrfK": 100,
+      "vectorWeight": 1.0,
+      "bm25Weight": 1.0,
+      "summary": {
+        "cases": 11,
+        "goldAt1": 9,
+        "goldAt3": 9,
+        "mrr": 0.8182
+      },
+      "rows": [
+        {
+          "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-bm25x0.5-k60",
+      "rrfK": 60,
+      "vectorWeight": 1.0,
+      "bm25Weight": 0.5,
+      "summary": {
+        "cases": 11,
+        "goldAt1": 9,
+        "goldAt3": 9,
+        "mrr": 0.8182
+      },
+      "rows": [
+        {
+          "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rrf-bm25x2-k60",
+      "rrfK": 60,
+      "vectorWeight": 1.0,
+      "bm25Weight": 2.0,
+      "summary": {
+        "cases": 11,
+        "goldAt1": 9,
+        "goldAt3": 9,
+        "mrr": 0.8182
+      },
+      "rows": [
+        {
+          "caseId": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a5d917071665232156177cb8c355d44e-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "caseId": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-9a1702284047fab39b63adf51be38528-4",
+          "firstGoldRank": null,
+          "topInGold": [
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "caseId": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+          "firstGoldRank": 1,
+          "topInGold": [
+            true,
+            true,
+            false
+          ]
+        }
+      ]
+    }
+  ],
+  "primaryVersusVectorOnly": {
+    "baseline": "vector-only",
+    "improved": [
+      "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+      "qa-f521296dc8cf7b95aa840da1322f2ad3-4"
+    ],
+    "degraded": [
+      "qa-80be4b895fd193b2e3867ef01e9cd0cd-4"
+    ],
+    "pValue": 1.0,
+    "conclusive": false
+  }
+}
