@@ -58,3 +58,9 @@ docs/verification/**/*-after.py.txt
 # The 341KB query-vector dump is reproducible from the plan and stays ignored.
 !docs/verification/retrieval-only-2026-09-17/**
 docs/verification/retrieval-only-2026-09-17/query-vectors.json
+
+# Expanded evaluation set and its retrieval run. Both are small, conclusion-level
+# evidence; only the regenerable query vectors stay ignored.
+!docs/verification/retrieval-cases-expanded-2026-09-18/**
+!docs/verification/retrieval-expanded-2026-09-18/**
+docs/verification/retrieval-expanded-2026-09-18/query-vectors.json

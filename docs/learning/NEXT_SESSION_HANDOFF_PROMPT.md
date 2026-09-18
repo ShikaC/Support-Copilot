@@ -1,6 +1,6 @@
 # Support Copilot 下一会话交接提示词
 
-> 更新：2026-09-11。恢复入口；当前事实以[STATUS](../STATUS.md)为准，详细数字以独立报告为准。截至本次更新：master 工作树 clean、未推送；修正后 development 比较协议已预注册但未执行付费调用；固化引入的文档门禁回归已修复。
+> 更新：2026-09-18。恢复入口；当前事实以[STATUS](../STATUS.md)为准，详细数字以独立报告为准。截至本次更新：master 工作树 clean、未推送；比较协议已预注册但执行被 provider 503 阻塞；**评估集已扩到 76 题**，development 40 题上的融合重测仍未显著；holdout 36 题封存未用。
 
 项目路径：`/Users/shika/Documents/Support-Copilot`。
 
@@ -18,6 +18,17 @@
 4. 再读[旧业务基准](../verification/business-benchmark-2026-09-10/README.md)、[输入审计](../verification/quality-input-audit-2026-09-10/README.md)、`PROTOCOL.md`、`AMENDMENT-1.md`、`freeze-manifest.json`。旧初版candidate中的DMV州别推断已明确废弃，不能送模型；实际输入白名单保留此前全部上下文，不含gold/目标agent回复/AI标签。
 5. 查看Git状态、分支和最近提交。2026-09-11 的固化提交范围为 `68b3aa0`..`42da086`，随后同一轮追加比较协议预注册与门禁回归修复（`.gitignore`、`scripts/benchmark/`、文档链接、`QualityReportsController`、`markdown_contracts`）；确切 HEAD 以 `git log` 为准。master、工作树 clean、本地领先 `origin/master` 未推送，详细边界见 `docs/STATUS.md` 顶部。仍然禁止回退或覆盖已提交历史；历史报告中的 source hash 仍绑定提交前工作树，不能因为 HEAD 变化就宣称旧证据在当前源码上复现。
 6. **第一条验证命令**：根目录运行 `node docs/verification/query-context-fix-2026-09-10/verify.mjs`。该验证保护本轮前工作树、旧结果和本轮授权源码/文档边界。上一阶段isolated-runner及quality验证器绑定修复前工作树，现在会因本轮授权源码/文档改变失败；保留原件，不改旧门禁。旧`verify-quality-inputs.mjs`的上一阶段整工作树门禁已因已授权产品变更过期，保留原件，不修改门禁制造通过。
+
+## 检索评估的当前口径（2026-09-18）
+
+把 development 从 11 道可评估题扩到 **40 道**后，纯向量基线是 gold@1 50.0%、gold@3 80.0%、MRR 0.625；融合实验（等权 RRF k=60）是 31/40、36/40、MRR 0.829，改善 5 题、退化 1 题，**McNemar p = 0.2188**。方向一致但未显著，**不得据此修改生产检索**。详细数字与限制见[扩展集报告](../verification/retrieval-expanded-2026-09-18/README.md)。
+
+必须守住的规则：
+
+- 扩展集与冻结开发集**只能各自纵向比较**，绝对命中率不得混算；扩展题未审计（`audit.label=PENDING`），不产生答案性或质量结论。
+- 每 domain 配额提高靠 `scripts/benchmark/expand-quality-inputs.mjs`，它内置「配额 6 必须复现现有 24 题」的自检，跑失败即拒绝输出。
+- **holdout 36 题未运行**，只能验证事先固定的方案（当前仅等权 k=60 符合）。参数扫描里最好看的 `bm25x0.5` 属于在 40 题上挑出来的，**不许**用 holdout 验证它；用 holdout 是不可逆消耗，需要先确认。
+- 扩展集暴露了旧集看不到的问题：**3 题 gold 排在 10 名之外**（第 97 / 35 / 12 名），属于切片或 query 构造问题，重排救不回；旧集「召回够用、只差排序」的结论只在 11 题上成立。
 
 ## 已完成与已确认缺陷
 

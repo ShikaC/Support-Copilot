@@ -1,0 +1,282 @@
+[
+  {
+    "id": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I just received a Notice of Registration Suspension and need to know if I have to attend the hearing.\nagent: Have you read the Notice of Registration Suspension?\nuser: Yes, I received it yesterday."
+    }
+  },
+  {
+    "id": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I came here to figure out how long I have to wait to take my road test. I just got my learners permit. Can you explain how long it will take?\nagent: Are you under the age of 18?\nuser: No, I'm 20 years old already.\nuser: I really, really want to drive. Is it true that I can't drive with a learners permit?"
+    }
+  },
+  {
+    "id": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: How long will Driver's Ed courses be valid for?\nagent: For roughly 1 one year.\nagent: Maybe longer depending on the course.\nuser: Does it ever expire?\nuser: I just want to know as I'm leaving the country for a few months and don't want to have to do it iagain."
+    }
+  },
+  {
+    "id": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I lost my insurance while on active duty and have some questions\nagent: You are required to maintain continuous coverage or surrender your plates before being deployed. \nagent: Were you unable to keep your insurance while on active duty?\nuser: yes, it just wasn't on my mind and I don't get notices and anything like that while deployed"
+    }
+  },
+  {
+    "id": "qa-5d68fec39530256adc77c212879042ae-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: what additional informative fo i need to renew non driver id card\nagent: if you are turning 21 soon. does this apply to you?\nuser: if you are turning 21, yes."
+    }
+  },
+  {
+    "id": "qa-cac90c90583744d896f2567200461530-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I need sales tax and registration help\nagent: Are you going to register a vehicle in New York at the DMV office?\nuser: yes"
+    }
+  },
+  {
+    "id": "qa-3637d14187420b78288c89813bcadf77-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Tell me about how to pay suspension termination fee\nagent: A suspension means your driver license or privilege to drive is taken away for a time before it is returned. There are two types of suspensions\nuser: Can I pay by mail?"
+    }
+  },
+  {
+    "id": "qa-41680c19730b59b04eda71643a76ff5f-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I need to be certified as an escort driver\nagent: You will need to apply for escort driver certification at a DMV office\nagent: If you need the certification test than you must go to a DMV office that offers the test\nuser: I don't need to take the test\nuser: what if i need to change my address"
+    }
+  },
+  {
+    "id": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: we need help with a complaint filed against us\nagent: Are you trying to protect your facility license, registration or certification?\nuser: yes, we need to be ready for anything that comes up\nuser: have we done the basics right of registering?"
+    }
+  },
+  {
+    "id": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Help! I got a traffic ticket. \nagent: No problem. I will be glad to help. If you are issued a ticket for a non - criminal moving traffic violation in the five boroughs of New York City\nuser: Is there more than one way to address this?"
+    }
+  },
+  {
+    "id": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: I need to find information to get benefits for my family on my SS\nagent: Have you started receiving your benefits already?\nuser: Yes"
+    }
+  },
+  {
+    "id": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Do I need documents for my foreign born child to receive their social security card?\nagent: Yes, you will need documentation pertaining to their proof of citizenship. \nagent: Do you have documents that pertain to their citizenship?\nuser: Yes, I have documents."
+    }
+  },
+  {
+    "id": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Hello there. I'd like to know what I need to do if I want to apply for retirement from outside the U.S.\nagent: Of course. You need to contact the Federal Benefits Unit for your country of residence if you live outside the U.S. or a U.S. territory and wish to apply for retirement benefits.\nagent: Would you like to know what an account is?\nuser: No. I know what an account is.\nuser: What if I include information about other family members when I apply?"
+    }
+  },
+  {
+    "id": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: If Applying for a child (under 18) what are the steps for Disability Benefits\n\nagent:  REVIEW the Child Disability Starter Kit . This kit answers common questions about applying for Supplemental Security Income SSI benefits for children , and includes a worksheet that will help you gather the information you need\nagent: Did you contact Social Security right away to find out if your income?\nuser: yes\nuser: If I do not want to do this report online or I need help"
+    }
+  },
+  {
+    "id": "qa-82a54ead72e4d274bbe0daa431896283-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: how do you qualify?\nagent: you would like to know how to qualify for disability correct?\nuser: no\nuser: please define disability"
+    }
+  },
+  {
+    "id": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Hello, I have a security alert on my credit report, what should I do?\nagent: If you have a security freeze on your credit report?\nuser: Yes"
+    }
+  },
+  {
+    "id": "qa-016cf0849b0c801d2515d0de704772a0-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: What documents do I need to apply?\nagent: We will need original documents for U.S. citizenship\nagent: Have you established your childs us  citizenship withus?\nuser: no\nuser: What happens if my child is not a u.s. citizen?"
+    }
+  },
+  {
+    "id": "qa-829c4f406cc56578eb1219883a849923-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: How To Apply Online For Just Medicare\nagent: are you ready to retire?\nuser: no"
+    }
+  },
+  {
+    "id": "qa-5a743ace2239552da73cd5f52300ab60-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Will I need any kind of documentation to get a social security card?\nagent: Yes, you will need original documents that can verify your citizenship.\nagent: Have you already established your U.S. citizenship with us?\nuser: No, I have no verified that with you yet.\nuser: Am I able to show alternative documentation if I don't have the ones listed?"
+    }
+  },
+  {
+    "id": "qa-8d5db793af142260b6531dc560cafb74-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Can I change my direct deposit of my benefit payments?\nagent: Do you want to set up a new account or just change a current one?\nuser: I want to change my current direct deposits."
+    }
+  },
+  {
+    "id": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: How many colleges should list in my FAFSA form?\nagent: You should list at least one college. The schools you choose will use your FAFSA information to determine the types and amounts of aid you may receive.\nuser:  Is there any particular order I should list my chosen schools?"
+    }
+  },
+  {
+    "id": "qa-368abe8171c4fa05484a46f52df0959c-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: What exactly are program reviews when carried out by Federal Student Aid?\nagent: Do you mean what duties the FSA have in overseeing their program and the reviewing of it?\nuser: Yes, that is the question that I have"
+    }
+  },
+  {
+    "id": "qa-aced8883d86eeba05d57c686e283b71d-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: is there a way to know how much financial aid I will get ?\nagent: We have a tool that will give you an estimate of the federal student aid you might receive, would you like to try it?\nuser: yes that's just what I was looking for"
+    }
+  },
+  {
+    "id": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I would like to know why I should go for Exit counseling, if it is important or can I skip it?\nagent: Do you know what Exit counseling is?\nuser: No I don't have any idea what it is."
+    }
+  },
+  {
+    "id": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: why are the FAFSA completion totals lower than they should be?\nagent: Would you like to know why the number of FAFSA submissions or completions is lower than you think it should be?\nuser: no"
+    }
+  },
+  {
+    "id": "qa-f8976f74f01d096e1682c868e31461b5-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hello, I would like to know what extenuating circumstances allow you to qualify for a loan.\nagent: Do you want to know the mitigating circumstances?\nuser: not all"
+    }
+  },
+  {
+    "id": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hi, I'm an undergraduate student and would like to preview the Direct Loan MPN. How do I go about finding this information?\nagent: You said you are an undergraduate student, it that correct?\nuser: No that is not right."
+    }
+  },
+  {
+    "id": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hello, can you tell me what co-debtor means?\nagent: Sure, spouse of an applicant who started an Income-Based Payment Plan Application.\nagent: It is noteworthy that you are not required to repay this loan by signing the borrower's IDR request.\nuser: Can you explain more about the ones you just mentioned?\nuser: The FSA consists of the Joint Signature Code / Reference Number."
+    }
+  },
+  {
+    "id": "qa-660589fbfefaac122d8932875ff3a291-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I need some information about entrance counseling, please.\nagent: Of course. Do you wish to know what Entrance Counseling is?\nuser: Yes, please explain."
+    }
+  },
+  {
+    "id": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I need to know what the requirements are to get financial aid\nagent: I can help you find out more about the basic eligibility criteria\nuser: will I need a diploma to qualify?"
+    }
+  },
+  {
+    "id": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hi, good morning. I want to know about the National Call to Service program, please?\nagent: No problem. Did you performed a period of national service?\nuser: No i did not.\nuser: Anyway, who's covered?"
+    }
+  },
+  {
+    "id": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What does Group Life Veterans Insurance (VGLI) cover?\nagent: With VGLI Veterans Group Life Insurance, you may be able to maintain your life insurance coverage after leaving military service while continuing to pay premiums\nuser: Is it possible that you can keep your life insurance coverage after leaving the military?"
+    }
+  },
+  {
+    "id": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hello. I am trying to get info about VA nursing homes.\nagent: Great. I can help you with that.\nuser: Thank you. Do I qualify?"
+    }
+  },
+  {
+    "id": "qa-d9ae4758f904a702172438bb6af63720-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hi there, I am looking for information regarding the Affordable Care Act and my VA health coverage \nagent: The Affordable Care Act is also known as the health care law. It was created to increase access for citizens to health care coverage, to control health care costs and also to improve health care quality and care coordination\nuser: If I don't have health insurance, do I have any penalties to pay?"
+    }
+  },
+  {
+    "id": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Am I eligible for VA health insurance?\nagent: Veterans, service members, their spouses, and their dependent children are all eligible for VA insurance. However, different people may be different programs. \nuser: What if I get hurt for a little while that makes me unable to work and then I can't pay my bills?"
+    }
+  },
+  {
+    "id": "qa-29db4545fe12bf4c311ed7208491a620-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What types of Veteran ID cards are there?\nagent: We provide multiple types of ID cards to use as a Veteran and only really need to show one.\nuser: Can I use my DoD Identification Card or do I have to use another as an ID?"
+    }
+  },
+  {
+    "id": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hello and good afternoon. I'll probably be on need for health care but i'm worried about the possible costs, could you tell me about how you calculate what i have to pay?\nagent: Are you referring about how we determine your possible payments based on your income?\nuser: Yes, that's precisely my doubt, can you clear it out?"
+    }
+  },
+  {
+    "id": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: you can give me some disability rating help\nagent: Did you receive a decision notice from us that confirms your disability rating?\nuser: no, not yet\nuser: what kind of benefits do you give? is it payments or health care?"
+    }
+  },
+  {
+    "id": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I just wanted to know if there are any resources and/or support outside VA which I could access.\nagent: Well, you can also get support from resources offered by other government departments and community organizations outside of VA.\nagent: Do you need more support?\nuser: No, that's fine. You're helping me.\nuser: Do you, by any chance, have the number for the SAMHSA National Helpline?"
+    }
+  },
+  {
+    "id": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I wanted to find out more about VA education aid for dependents\nagent: Okay, we can help you learn about the Survivors and Dependents Educational Assistance program .\nuser: who can get benefits?"
+    }
+  }
+]

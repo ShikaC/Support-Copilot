@@ -1,0 +1,53 @@
+{
+  "frozen_at": "2026-09-18T07:07:15.160Z",
+  "purpose": "为检索改动提供统计效力更高、且与冻结开发集同构的扩展题集",
+  "dataset": "Doc2Dial official archive named v1.0.1 (test split)",
+  "rule": "与 quality-input-audit-2026-09-10 相同的筛选规则，每 domain 配额由 6 提高到 25",
+  "source_sha256": {
+    "doc2dial_doc.json": "547ed8ee5bfd7babdadfb6246b1b3fc5fa107a4abdef972bc63c9b717000f56f",
+    "doc2dial_dial_test.json": "641687702d012dff630a7ba130acc732b0b7a68ade850125c3083a72c5737f6e"
+  },
+  "inputs_sha256": {
+    "docs/verification/business-benchmark-2026-09-10/cases.json": "861ba79264e06933985822ae707ee0e29429fbf0df2aea1d9b799d260905ca8f",
+    "docs/verification/quality-input-audit-2026-09-10/cases.json": "7e78989315fd7991b72bce6bdb1528195c983b34b8ad4f18bbd99de260674023"
+  },
+  "self_check": "配额 6 精确复现现有 24 个 Doc2Dial 候选（id 与渲染 input 均一致）",
+  "per_domain": [
+    {
+      "domain": "dmv",
+      "availableDocuments": 51,
+      "reproduced": 6,
+      "added": 19
+    },
+    {
+      "domain": "ssa",
+      "availableDocuments": 77,
+      "reproduced": 6,
+      "added": 19
+    },
+    {
+      "domain": "studentaid",
+      "availableDocuments": 50,
+      "reproduced": 6,
+      "added": 19
+    },
+    {
+      "domain": "va",
+      "availableDocuments": 95,
+      "reproduced": 6,
+      "added": 19
+    }
+  ],
+  "cases": 76,
+  "splits": {
+    "development": 40,
+    "holdout": 36
+  },
+  "audit_status": "PENDING",
+  "limits": [
+    "扩容题未经 AI 审计，也没有真人确认，不产生答案性或质量结论",
+    "只用于检索的相对比较；绝对命中率不能与冻结开发集混算",
+    "gold 仍是文档级标注：命中文档不代表片段包含完整答案",
+    "语料是归档文档，不代表当前政策或真实客服知识库"
+  ]
+}

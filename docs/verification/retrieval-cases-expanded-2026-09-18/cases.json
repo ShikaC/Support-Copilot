@@ -1,0 +1,2586 @@
+[
+  {
+    "id": "qa-d2c0327a9736dcb34a451fb1d9e163d1-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "d2c0327a9736dcb34a451fb1d9e163d1",
+      "document_id": "Registration suspensions for failure to pay tolls#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I just received a Notice of Registration Suspension and need to know if I have to attend the hearing.\nagent: Have you read the Notice of Registration Suspension?\nuser: Yes, I received it yesterday."
+    },
+    "publisher_reference": {
+      "utterance": "You can request an in-person DMV hearing or request a hearing by affidavit, which is a hearing on paper. This is up to you. Your Notice of Registration provides instructions about how to submit the affidavit to DMV.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "20",
+          "label": "solution"
+        },
+        {
+          "sp_id": "21",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-e151c95a3a4ed3521298f6f9872feac7-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "e151c95a3a4ed3521298f6f9872feac7",
+      "document_id": "Renew a hazardous materials (HazMat) endorsement#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: My HazMat endorsement is about to expire and I need help with renewing it.\nagent: Do you know how to renew your HazMat endorsement?\nuser: No. "
+    },
+    "publisher_reference": {
+      "utterance": "Do you know how often that you need to complete a background check to keep your HazMat endorsement?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "5",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-c3fb592c073ff2de66b5ed78fad62d69-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "c3fb592c073ff2de66b5ed78fad62d69",
+      "document_id": "Learner permit restrictions#3_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I came here to figure out how long I have to wait to take my road test. I just got my learners permit. Can you explain how long it will take?\nagent: Are you under the age of 18?\nuser: No, I'm 20 years old already.\nuser: I really, really want to drive. Is it true that I can't drive with a learners permit?"
+    },
+    "publisher_reference": {
+      "utterance": "You may not drive with a learner permit on any street within a park in New York City and on any bridge or tunnel under the jurisdiction of the Tri-borough Bridge and Tunnel Authority.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "6",
+          "label": "solution"
+        },
+        {
+          "sp_id": "7",
+          "label": "solution"
+        },
+        {
+          "sp_id": "8",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-da721d167aa0ccf0f46ac86e166fc743-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "da721d167aa0ccf0f46ac86e166fc743",
+      "document_id": "Stolen and recovered vehicles#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: What happens if my vehicle is stolen?\nagent: You want to report it to the police and your auto insurance company.\nuser: How do I report this?"
+    },
+    "publisher_reference": {
+      "utterance": "Report it to the police as soon ass possible so they can get in for in as auto theft records.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-831e0030e98ffa5f4755d7bbcd3fad22-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "831e0030e98ffa5f4755d7bbcd3fad22",
+      "document_id": "Prepare for your road test#3_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: How long will Driver's Ed courses be valid for?\nagent: For roughly 1 one year.\nagent: Maybe longer depending on the course.\nuser: Does it ever expire?\nuser: I just want to know as I'm leaving the country for a few months and don't want to have to do it iagain."
+    },
+    "publisher_reference": {
+      "utterance": "As long as the monitoring agency is still valid and reports it to the DMV, you will be fine.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "10",
+          "label": "solution"
+        },
+        {
+          "sp_id": "11",
+          "label": "solution"
+        },
+        {
+          "sp_id": "12",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-4a4aa99646ec063bb3b8defaf93e1819-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "4a4aa99646ec063bb3b8defaf93e1819",
+      "document_id": "Medical Certification Requirements#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: can you give me details of The four federal driving types\nagent: you want to know what the interstate not excepted is\nuser: yes"
+    },
+    "publisher_reference": {
+      "utterance": " Commercial driving operation is permitted across state lines , and you are required to meet the Federal medical requirements",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "18",
+          "label": "solution"
+        },
+        {
+          "sp_id": "19",
+          "label": "solution"
+        },
+        {
+          "sp_id": "20",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-be98bb760dd7ff224ec9d75d5fd51bd9-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "be98bb760dd7ff224ec9d75d5fd51bd9",
+      "document_id": "Automatic license and registration extension for military personnel#3_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I lost my insurance while on active duty and have some questions\nagent: You are required to maintain continuous coverage or surrender your plates before being deployed. \nagent: Were you unable to keep your insurance while on active duty?\nuser: yes, it just wasn't on my mind and I don't get notices and anything like that while deployed"
+    },
+    "publisher_reference": {
+      "utterance": "DMV has a procedure in place to exempt you from administrative actions upon your return. You must provide a notarized statement that the vehicle was not used during the time in question, a copy of your military ID, proof of current insurance \n or surrender of plates, and signed and dated copies of deployment and return papers, or DD-214. You can present these documents at any DMV office , or mail them to us.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "27",
+          "label": "solution"
+        },
+        {
+          "sp_id": "28",
+          "label": "solution"
+        },
+        {
+          "sp_id": "29",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-ef2359d03c975196c5562cdba4fd9f16-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "ef2359d03c975196c5562cdba4fd9f16",
+      "document_id": "Register a moped#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: How can I register a moped?\nagent: Can you give me the specs of this vehicle?\nuser: (insert specs here)"
+    },
+    "publisher_reference": {
+      "utterance": "That sounds like it qualifies. Please check our website in order to find the relevant forms.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-5d68fec39530256adc77c212879042ae-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "5d68fec39530256adc77c212879042ae",
+      "document_id": "Renew non-driver ID card#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: what additional informative fo i need to renew non driver id card\nagent: if you are turning 21 soon. does this apply to you?\nuser: if you are turning 21, yes."
+    },
+    "publisher_reference": {
+      "utterance": "wait until you are within 40 days of your 21st birthday to renew",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "79",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-aede8686db8cc652622178a9870ecedb-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "aede8686db8cc652622178a9870ecedb",
+      "document_id": "Get a license to drive a taxi or livery vehicle#3_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Hello, good day. How to I begin to drive a taxi?\nagent: You must have a New York Drivers License\nuser: Where do i learn how to apply for one?\nuser: How do I apply for a class E licensce?"
+    },
+    "publisher_reference": {
+      "utterance": " learn how to apply for your first driver license here: ",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "31",
+          "label": "solution"
+        },
+        {
+          "sp_id": "32",
+          "label": "solution"
+        },
+        {
+          "sp_id": "33",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-cac90c90583744d896f2567200461530-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "cac90c90583744d896f2567200461530",
+      "document_id": "Sales tax information#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I need sales tax and registration help\nagent: Are you going to register a vehicle in New York at the DMV office?\nuser: yes"
+    },
+    "publisher_reference": {
+      "utterance": "For the sales taxes you will have to pay the sales tax or prove that the sales tax was already paid.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-53ae80a9aa64385a24037e8309a7ead2-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "53ae80a9aa64385a24037e8309a7ead2",
+      "document_id": "Buy or sell a vehicle (transfer ownership)#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I need a dditional information about buy or sell a vehicle\nagent: Have you changed the name in the vehicle registration?\nuser: No, I haven't"
+    },
+    "publisher_reference": {
+      "utterance": "Do you have flood damage?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "34",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-3637d14187420b78288c89813bcadf77-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "3637d14187420b78288c89813bcadf77",
+      "document_id": "Pay suspension termination fee#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Tell me about how to pay suspension termination fee\nagent: A suspension means your driver license or privilege to drive is taken away for a time before it is returned. There are two types of suspensions\nuser: Can I pay by mail?"
+    },
+    "publisher_reference": {
+      "utterance": "Yes, you can",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "27",
+          "label": "solution"
+        },
+        {
+          "sp_id": "28",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-a097a9f12a738bed82da721431953780-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "a097a9f12a738bed82da721431953780",
+      "document_id": "Refunds and transfer credits for surrendered plates#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I need to transfer credit.\nagent: Are you wanting to transfer to another vehicle?\nuser: Yes I am wanting to transfer to another vehicle."
+    },
+    "publisher_reference": {
+      "utterance": "You can only use it for a new original registration.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "10",
+          "label": "solution"
+        },
+        {
+          "sp_id": "11",
+          "label": "solution"
+        },
+        {
+          "sp_id": "12",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-41680c19730b59b04eda71643a76ff5f-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "41680c19730b59b04eda71643a76ff5f",
+      "document_id": "Escort driver certification#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I need to be certified as an escort driver\nagent: You will need to apply for escort driver certification at a DMV office\nagent: If you need the certification test than you must go to a DMV office that offers the test\nuser: I don't need to take the test\nuser: what if i need to change my address"
+    },
+    "publisher_reference": {
+      "utterance": "Send your DMV ID Number Client ID Number located on your escort certificate , former address or name and your new address or name to :  New York State Department of Motor VehiclesBus Driver Unit Customer Service Unit 6 Empire State Plaza, Room 136B Albany , NY 12228",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "58",
+          "label": "solution"
+        },
+        {
+          "sp_id": "59",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-3cd0fb8c1ccf43fc7be1c0ee50923b9e-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "3cd0fb8c1ccf43fc7be1c0ee50923b9e",
+      "document_id": "Commercial vehicle registration fees, vehicle use taxes and supplemental fees#3_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: How much does it cost to get a commercial registration?\nagent: You would need to get both the county and state fees from the appropriate sources.\nagent: If it's the first time you've done this, you have a few small fees.\nuser: What fees are they?\nuser: I've looked at the fee chart but I don't understand it."
+    },
+    "publisher_reference": {
+      "utterance": "If you reference it, it will tell you all you need to know.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "9",
+          "label": "solution"
+        },
+        {
+          "sp_id": "10",
+          "label": "solution"
+        },
+        {
+          "sp_id": "11",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-e6a8b47fb0ff5ed1a980a4b8548f4aa7-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "e6a8b47fb0ff5ed1a980a4b8548f4aa7",
+      "document_id": "A Guide for Facilities:#3_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: we need help with a complaint filed against us\nagent: Are you trying to protect your facility license, registration or certification?\nuser: yes, we need to be ready for anything that comes up\nuser: have we done the basics right of registering?"
+    },
+    "publisher_reference": {
+      "utterance": "To legally operate as such a business, you must have registered with DMV. If your application was approved you would have received a certificate from DMV.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "6",
+          "label": "solution"
+        },
+        {
+          "sp_id": "7",
+          "label": "solution"
+        },
+        {
+          "sp_id": "8",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-81bfd1b117b769896efef664cd29b9b1-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "81bfd1b117b769896efef664cd29b9b1",
+      "document_id": "Know Your Rights in Auto Repair#3_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I have a repair problem with my van, can you answer a few questions about that?\nagent: Of course. First, attempt to resolve the issue with the management of the business. Keep a written record of all contacts with management in addition to details about the repair.\nagent: Do you want to submit a complaint electronically?\nuser: Yes, that'd be great."
+    },
+    "publisher_reference": {
+      "utterance": "In order to do so, download the complaint report available at the link above to your personal device. Attach and then email the completed report as well as any supporting documents to our email address. Please note that DMV staff will communicate with you through email.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "59",
+          "label": "solution"
+        },
+        {
+          "sp_id": "60",
+          "label": "solution"
+        },
+        {
+          "sp_id": "61",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-e34b1b3160d3ce255b6248b4d46a0023-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "dmv",
+    "split": "development",
+    "source": {
+      "dialogue_id": "e34b1b3160d3ce255b6248b4d46a0023",
+      "document_id": "Traffic Violations Bureau#3_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Help! I got a traffic ticket. \nagent: No problem. I will be glad to help. If you are issued a ticket for a non - criminal moving traffic violation in the five boroughs of New York City\nuser: Is there more than one way to address this?"
+    },
+    "publisher_reference": {
+      "utterance": "Follow the instructions on the ticket for the plea you wish to make , and act promptly .",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "14",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-4fee4f119f9cb6f417546b37cf806f22-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "4fee4f119f9cb6f417546b37cf806f22",
+      "document_id": "Benefits Planner: Retirement | Benefits For Your Family | Social Security Administration#2_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: I need to find information to get benefits for my family on my SS\nagent: Have you started receiving your benefits already?\nuser: Yes"
+    },
+    "publisher_reference": {
+      "utterance": "some members of your family may also qualify to receive benefits on your record ",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        },
+        {
+          "sp_id": "6",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-992c03b23279092c1e8eea63c3cba4e7-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "992c03b23279092c1e8eea63c3cba4e7",
+      "document_id": "Benefits Planner: Retirement | Applying for Medicare Only | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: I'm looking for a retirement benefits planner \nagent: Are you applying for medicare only?\nuser: no"
+    },
+    "publisher_reference": {
+      "utterance": "Do you have lifetime benefits on your record we can pay?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "9",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-00b3df8ed106bc3194bc3055803e2a15-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "00b3df8ed106bc3194bc3055803e2a15",
+      "document_id": "Learn what documents you will need to get a Social Security Card | Social Security Administration#12_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Do I need documents for my foreign born child to receive their social security card?\nagent: Yes, you will need documentation pertaining to their proof of citizenship. \nagent: Do you have documents that pertain to their citizenship?\nuser: Yes, I have documents."
+    },
+    "publisher_reference": {
+      "utterance": "If you don't, there are alternative forms that we can consider.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "19",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-720f21c0e4259a87ce2ad783ea250aae-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "720f21c0e4259a87ce2ad783ea250aae",
+      "document_id": "Appeal A Decision | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: I want to appeal\nagent: Were you recently denied Social Security benefits or Supplemental Security Income SSI? \nuser: yes I got denied"
+    },
+    "publisher_reference": {
+      "utterance": " you may request an appeal. you will have 60 days after you receive the notice of our decision to ask for any type of appeal ",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-a496c8fcff7497a253ce2bb6365d7d40-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "a496c8fcff7497a253ce2bb6365d7d40",
+      "document_id": "Apply for Retirement Benefits | SSA#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Hello there. I'd like to know what I need to do if I want to apply for retirement from outside the U.S.\nagent: Of course. You need to contact the Federal Benefits Unit for your country of residence if you live outside the U.S. or a U.S. territory and wish to apply for retirement benefits.\nagent: Would you like to know what an account is?\nuser: No. I know what an account is.\nuser: What if I include information about other family members when I apply?"
+    },
+    "publisher_reference": {
+      "utterance": "In that case we'll let you know if they may be able to receive benefits from your application.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "160",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-a344b757fc838b39c4ac66cce1f526cb-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "a344b757fc838b39c4ac66cce1f526cb",
+      "document_id": "Benefits Planner: Retirement | Benefits By Year Of Birth | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: tell me about the retirement benefits.\nagent: The age at which you get the benefits is based on your year of birth, this is the full retirement age. Do you want to know about it?\nuser: Not right now."
+    },
+    "publisher_reference": {
+      "utterance": "Are you planning to retire early?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "6",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-53591aafbb7b1aa8c7d9899473860b91-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "53591aafbb7b1aa8c7d9899473860b91",
+      "document_id": "Apply For A Child (Under Age 18) | Disability Benefits | SSA#2_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: If Applying for a child (under 18) what are the steps for Disability Benefits\n\nagent:  REVIEW the Child Disability Starter Kit . This kit answers common questions about applying for Supplemental Security Income SSI benefits for children , and includes a worksheet that will help you gather the information you need\nagent: Did you contact Social Security right away to find out if your income?\nuser: yes\nuser: If I do not want to do this report online or I need help"
+    },
+    "publisher_reference": {
+      "utterance": " you can call us toll - free at 1 - 800 - 772 - 1213",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "17",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-9f66bf41b437b2e227985c29496e503f-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "9f66bf41b437b2e227985c29496e503f",
+      "document_id": "Benefits Planner: Retirement | Other Things to Consider | Social Security Administration#2_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: How do I know when I should apply for Medicare?\nagent: Medicare typically starts when you turn 65 years old.\nagent: Have you reached 65 but decided to delay your benefits?\nuser: Yes, I have decided to delay receiving my benefits, is there someone I should contact about this?"
+    },
+    "publisher_reference": {
+      "utterance": "Yes, you would need to contact Social Security at least 3 months before you turn 65 to check about applying for Medicare.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "59",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-82a54ead72e4d274bbe0daa431896283-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "82a54ead72e4d274bbe0daa431896283",
+      "document_id": "Benefits Planner: Disability | How You Qualify | Social Security Administration#1_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: how do you qualify?\nagent: you would like to know how to qualify for disability correct?\nuser: no\nuser: please define disability"
+    },
+    "publisher_reference": {
+      "utterance": "We consider you disabled under Social Security rules if You can not do work that you did before",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "34",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-436a4cba9d0853a925a6e2b742c03948-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "436a4cba9d0853a925a6e2b742c03948",
+      "document_id": "Benefits Planner: Retirement | You Can Apply For Retirement Benefits Or Medicare | Social Security Administration#2_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: When do I apply for retirement benefits?\nagent: Please have information we need ready\nagent: Do you have a birth certificate?\nuser: yes"
+    },
+    "publisher_reference": {
+      "utterance": "you may request one from the state where you were born",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "31",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-aeef4e8c55fd27e73a4e831a33646b95-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "aeef4e8c55fd27e73a4e831a33646b95",
+      "document_id": "my Social Security | Create an Account | Social Security Administratio#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Hello, I have a security alert on my credit report, what should I do?\nagent: If you have a security freeze on your credit report?\nuser: Yes"
+    },
+    "publisher_reference": {
+      "utterance": "You can still open a Social Security account by temporarily lifting it.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "9",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-38b4aae9b2a7be94a8fe1d71efde4868-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "38b4aae9b2a7be94a8fe1d71efde4868",
+      "document_id": "Benefits Planner: Retirement | Benefits For Your Spouse | Social Security Administration#2_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Hi there. I'm getting everything set for my retirement, but I need some information.\nagent: Sure. You can always apply for the social security retirement.\nuser: Great. How does it works?"
+    },
+    "publisher_reference": {
+      "utterance": "You will be able to receive benefits that would be paid to you and it won't decrease the benefits for your spouse.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "33",
+          "label": "solution"
+        },
+        {
+          "sp_id": "35",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-016cf0849b0c801d2515d0de704772a0-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "016cf0849b0c801d2515d0de704772a0",
+      "document_id": "Learn what documents you will need to get a Social Security Card | Social Security Administration#20_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: What documents do I need to apply?\nagent: We will need original documents for U.S. citizenship\nagent: Have you established your childs us  citizenship withus?\nuser: no\nuser: What happens if my child is not a u.s. citizen?"
+    },
+    "publisher_reference": {
+      "utterance": "] Social Security will ask to see a current DHS document .",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "58",
+          "label": "solution"
+        },
+        {
+          "sp_id": "59",
+          "label": "solution"
+        },
+        {
+          "sp_id": "60",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-00bb98a2b4f6877ca2288644357a09b7-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "00bb98a2b4f6877ca2288644357a09b7",
+      "document_id": "Supplemental Security Income (SSI) Benefits | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Can you tell me what is the Supplemental Security Income Benefits?\nagent: clear The SSI Supplemental Security Income program pays benefits to disabled adults and children with limited income and resources.\nuser: Can I be eligible to apply for SSI online?"
+    },
+    "publisher_reference": {
+      "utterance": "Are they between 18 and 65 years old?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "11",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-829c4f406cc56578eb1219883a849923-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "829c4f406cc56578eb1219883a849923",
+      "document_id": "Medicare Benefits | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: How To Apply Online For Just Medicare\nagent: are you ready to retire?\nuser: no"
+    },
+    "publisher_reference": {
+      "utterance": "ok no problem. You can apply online for Medicare even if you are not ready to retire .   [4] Use our online application to sign up for Medicare ",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "22",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-1a42edfb51305e5d9fae24da0fdd099c-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "1a42edfb51305e5d9fae24da0fdd099c",
+      "document_id": "Benefits Planner: Disability | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: what can you tell me about the disability benefits.\nagent: I can tell you that it's always a good idea to plan ahead for disability benefits because you never know when you can needed.\nuser: and what would be the medical requirements for the Social Security disability insurance and the SSI program?"
+    },
+    "publisher_reference": {
+      "utterance": "The medical requirements are the same for both programas, aswell as the way we determine who qualifies.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "22",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-5a743ace2239552da73cd5f52300ab60-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "5a743ace2239552da73cd5f52300ab60",
+      "document_id": "Learn what documents you will need to get a Social Security Card | Social Security Administration#15_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Will I need any kind of documentation to get a social security card?\nagent: Yes, you will need original documents that can verify your citizenship.\nagent: Have you already established your U.S. citizenship with us?\nuser: No, I have no verified that with you yet.\nuser: Am I able to show alternative documentation if I don't have the ones listed?"
+    },
+    "publisher_reference": {
+      "utterance": "Yes, we will ask to see other documents that verify your identity by name, date of birth, and a recent photo.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "42",
+          "label": "solution"
+        },
+        {
+          "sp_id": "43",
+          "label": "solution"
+        },
+        {
+          "sp_id": "44",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-fd1e93460b85bb44b11f927a93aaba4c-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "fd1e93460b85bb44b11f927a93aaba4c",
+      "document_id": "Benefits Planner | Social Security Administration#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Can you explain to me about the benefits I could get from Social Security?\nagent: Would you like to know whether Social Security can provide you, your spouse, and other eligible family with benefits?\nuser: Yes, that is what I would like to know."
+    },
+    "publisher_reference": {
+      "utterance": "Would you like to know about when you retire?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-8d5db793af142260b6531dc560cafb74-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "ssa",
+    "split": "development",
+    "source": {
+      "dialogue_id": "8d5db793af142260b6531dc560cafb74",
+      "document_id": "Direct Deposit | Social Security Administration#2_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: Can I change my direct deposit of my benefit payments?\nagent: Do you want to set up a new account or just change a current one?\nuser: I want to change my current direct deposits."
+    },
+    "publisher_reference": {
+      "utterance": "If you already receive SSI benefits and you have a bank account, all you need to do is log in to your personal and secure social security account to change it.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-edce5c4b0660321d1aeb8d8a15ad99b5-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "edce5c4b0660321d1aeb8d8a15ad99b5",
+      "document_id": "Listing Colleges on the FAFSA® Form | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: How many colleges should list in my FAFSA form?\nagent: You should list at least one college. The schools you choose will use your FAFSA information to determine the types and amounts of aid you may receive.\nuser:  Is there any particular order I should list my chosen schools?"
+    },
+    "publisher_reference": {
+      "utterance": "For federal student aid, it doesn't matter in what order you list the schools. But for state aid, some states require that you list your schools in a specific order.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "14",
+          "label": "solution"
+        },
+        {
+          "sp_id": "17",
+          "label": "solution"
+        },
+        {
+          "sp_id": "18",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-b5567fbacdae5ed24d30527a1dca479e-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "b5567fbacdae5ed24d30527a1dca479e",
+      "document_id": "Teacher Loan Forgiveness | Federal Student Aid#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hi, I have FFEL loan and am wondering how much loan forgiveness am I entitled to?\nagent: The maximum amount is either $17,500 or $5,000 depending on the subject area taught.\nagent: Do  you have loans under the Direct Loan Program or the FFEL program?\nuser: No I only have a FFEL loan.\nuser: What are the basic requirements for all teachers?"
+    },
+    "publisher_reference": {
+      "utterance": "If you are a teacher at a public charter school you are considered to have received full state certification as a teacher if you meet the requirements set forth in the state's public charter school law.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "41",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-368abe8171c4fa05484a46f52df0959c-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "368abe8171c4fa05484a46f52df0959c",
+      "document_id": "Program Reviews | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: What exactly are program reviews when carried out by Federal Student Aid?\nagent: Do you mean what duties the FSA have in overseeing their program and the reviewing of it?\nuser: Yes, that is the question that I have"
+    },
+    "publisher_reference": {
+      "utterance": "The FSA regularly carries out program reviews which confirms whether a school meets the requirements of the FSA for institutional eligibility, financial responsibility and administrative capability. During these reviews, the school's compliance with FSA requirements is measured. The reviews also assess liabilities for errors in performance that a school may have. Also included in the review is identifying the actions that a school must take to improve its future administrative capabilities.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-2aea0dd7042c3b367702e0f7f41b0744-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "2aea0dd7042c3b367702e0f7f41b0744",
+      "document_id": "Parent PLUS Loan Application | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hi there. I would like to get some help about loan application for parents.\nagent: Great. No problem. Do you know what is the direct plus loan application for parents?\nuser: Yes, I have done some research about it."
+    },
+    "publisher_reference": {
+      "utterance": "Awesome, but you need to know that this loan will depend on every school.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-aced8883d86eeba05d57c686e283b71d-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "aced8883d86eeba05d57c686e283b71d",
+      "document_id": "Estimate Your Aid | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: is there a way to know how much financial aid I will get ?\nagent: We have a tool that will give you an estimate of the federal student aid you might receive, would you like to try it?\nuser: yes that's just what I was looking for"
+    },
+    "publisher_reference": {
+      "utterance": "You can use the FAFSA4caster",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-158251fa0162915345481c1b3bd8b51f-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "158251fa0162915345481c1b3bd8b51f",
+      "document_id": "Total and Permanent Disability Discharge | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: If I am totally and permanently disabled, can I qualify for a discharge of my federal student loans?\nagent: Note a TPD discharge for total and permanent disability frees you from having to pay a loan from the William D. Ford Federal Direct Loan Direct Loan Program, a loan from the FFEL Federal Family Education Loan Program and / or a Loan Federal Perkins or complete an EDUCATION Grant service obligation.\nuser: How can I qualify for a TPD download?"
+    },
+    "publisher_reference": {
+      "utterance": "You must first complete and submit a TPD download request, along with documentation showing that you meet our requirements to be considered totally and permanently disabled, to Nelnet, the administrator who assists the US Department of Education with the process TPD download.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "4",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-011ed108ec1fde84e22a071d2c29b9ba-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "011ed108ec1fde84e22a071d2c29b9ba",
+      "document_id": "Exit Counseling | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I would like to know why I should go for Exit counseling, if it is important or can I skip it?\nagent: Do you know what Exit counseling is?\nuser: No I don't have any idea what it is."
+    },
+    "publisher_reference": {
+      "utterance": "Do you know who should be going for exit counseling?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "13",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-540a6a3be0724e310c1b9168a28756ba-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "540a6a3be0724e310c1b9168a28756ba",
+      "document_id": "Student Loan Deferment | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I'm here for a school loan deferment\nagent: I can help you find out if a deferment is the best option for your situation.\nuser: what else can I do?"
+    },
+    "publisher_reference": {
+      "utterance": "You can consider income-driven repayment.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "8",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-5e91c548b9b9afdae84a9ea463ddef5e-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "5e91c548b9b9afdae84a9ea463ddef5e",
+      "document_id": "Questions and Answers About FAFSA® Completion Data | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: why are the FAFSA completion totals lower than they should be?\nagent: Would you like to know why the number of FAFSA submissions or completions is lower than you think it should be?\nuser: no"
+    },
+    "publisher_reference": {
+      "utterance": "Are you a high school counselor or college access professional and want to know what resources we have to help increase FAFSA completion totals?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "98",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-9cb41c5a51d97cca08ab3f8c2797eb77-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "9cb41c5a51d97cca08ab3f8c2797eb77",
+      "document_id": "IT Standards Library | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: what do you have in terms of federal student aid specific resources?\nagent: We have documents that are specific to the Federal Student Aid IT lifecycle for all projects and other pertinent references that an IT project may be required to comply with dependent on the contract\nuser: do you have references on managing IT?"
+    },
+    "publisher_reference": {
+      "utterance": "We have Lifecycle Management Methodology which can help you.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "32",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-f8976f74f01d096e1682c868e31461b5-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "f8976f74f01d096e1682c868e31461b5",
+      "document_id": "Appeal a Credit Decision Demo | Extenuating Circumstances | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hello, I would like to know what extenuating circumstances allow you to qualify for a loan.\nagent: Do you want to know the mitigating circumstances?\nuser: not all"
+    },
+    "publisher_reference": {
+      "utterance": "Do you think your situation presents a situation that otherwise qualifies for extenuating circumstances?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "14",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-b4ded6b50ad2fbd716b20cfde996fff3-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "b4ded6b50ad2fbd716b20cfde996fff3",
+      "document_id": "Income-Sensitive Plan | Federal Student Aid#1_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I am looking for further information on the Income-Sensitive Repayment Plan and am wondering where I could go to get this information\nagent: The main feature of these plans is that the payments increase or decrease based on your annual income\nagent: Do you think you may be seeking to make lower payments on your FFEL Program Loan?\nuser: Yes, I am looking to do this"
+    },
+    "publisher_reference": {
+      "utterance": "Well, in that case, this plan might just be for you",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "4",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-0b2463a734bb5bf15e8bf52ffc9956a6-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "0b2463a734bb5bf15e8bf52ffc9956a6",
+      "document_id": "Completing a Master Promissory Note | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hi, I'm an undergraduate student and would like to preview the Direct Loan MPN. How do I go about finding this information?\nagent: You said you are an undergraduate student, it that correct?\nuser: No that is not right."
+    },
+    "publisher_reference": {
+      "utterance": "Are you a graduate/profession student with a subsidized or unsubsidized loan?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "10",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-26e019e8e07b45430194245ea01bdf07-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "26e019e8e07b45430194245ea01bdf07",
+      "document_id": "How to Renew Your FAFSA® Application | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Do I have to renew my FAFSA every academic year?\nagent: Yes, in order to receive financial aid every academic year you need to renew your FAFSA.\nuser: Is renewing my FAFSA form easy?"
+    },
+    "publisher_reference": {
+      "utterance": "Did you log in to renew your FAFSA form?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "7",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-1280944e244ef83e9c34a76b0cf7a63a-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "1280944e244ef83e9c34a76b0cf7a63a",
+      "document_id": "Co-sign Your Spouse's Income-Driven Repayment Plan Application | Federal Student Aid#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hello, can you tell me what co-debtor means?\nagent: Sure, spouse of an applicant who started an Income-Based Payment Plan Application.\nagent: It is noteworthy that you are not required to repay this loan by signing the borrower's IDR request.\nuser: Can you explain more about the ones you just mentioned?\nuser: The FSA consists of the Joint Signature Code / Reference Number."
+    },
+    "publisher_reference": {
+      "utterance": "As requirements you need the Reference number / joint signature code.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "24",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-688d876e1d8b7890a7af1ec5d16379fe-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "688d876e1d8b7890a7af1ec5d16379fe",
+      "document_id": "Public Service Loan Forgiveness | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: would you give me information from the Public Service Loan Forgiveness\nagent: Do you work for a US federal, state, local, or tribal government or a nonprofit organization?\nuser: if i work for a federal government"
+    },
+    "publisher_reference": {
+      "utterance": "in this case you may be eligible for the Public Service Loan Forgiveness Program",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-660589fbfefaac122d8932875ff3a291-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "660589fbfefaac122d8932875ff3a291",
+      "document_id": "Entrance Counseling | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I need some information about entrance counseling, please.\nagent: Of course. Do you wish to know what Entrance Counseling is?\nuser: Yes, please explain."
+    },
+    "publisher_reference": {
+      "utterance": "Have you NOT previously received a Direct Loan or Federal Family Education Loan FFEL?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-93581640265a7f1c04887ba23a008d0f-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "93581640265a7f1c04887ba23a008d0f",
+      "document_id": "Receiving Financial Aid | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hi there. I would like to have some information related to receive financial aid as student.\nagent: Sure. We can bring you the best help we can provide to you. Is very important that you know that are the college or career school and not the u.s. department of education who are in charge to distribute the federal student aid.\nuser: Oh, I see. That's very important thing to know. But when I start receiving the aid?"
+    },
+    "publisher_reference": {
+      "utterance": "The type of aid you accepted will affect when you will get your aid.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "6",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-25b46c3bfdb8bed790af357c5f70208d-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "studentaid",
+    "split": "development",
+    "source": {
+      "dialogue_id": "25b46c3bfdb8bed790af357c5f70208d",
+      "document_id": "Eligibility Requirements | Federal Student Aid#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: I need to know what the requirements are to get financial aid\nagent: I can help you find out more about the basic eligibility criteria\nuser: will I need a diploma to qualify?"
+    },
+    "publisher_reference": {
+      "utterance": "Do you have a high school diploma or a recognized equivalent like a GED certificate?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "20",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-6ac49004abfb04cc7c4f117098f28b2e-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "6ac49004abfb04cc7c4f117098f28b2e",
+      "document_id": "National Call To Service Program | Veterans Affairs#1_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hi, good morning. I want to know about the National Call to Service program, please?\nagent: No problem. Did you performed a period of national service?\nuser: No i did not.\nuser: Anyway, who's covered?"
+    },
+    "publisher_reference": {
+      "utterance": "Just veterans get covered.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "24",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-c391621ab8602fffe50f624fa157aabe-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "c391621ab8602fffe50f624fa157aabe",
+      "document_id": "Servicemembers’ Group Life Insurance (SGLI) | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Can you give me any information about servicemembers group life insurance?\nagent: Servicemembers Group Life Insurance or SGLI lets eligible service members low cost term coverage.\nuser: How do I become eligible for SGLI?"
+    },
+    "publisher_reference": {
+      "utterance": "We will automatically sign you up if you are a service member who meet our criteria.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-65f3b9dd47a6d34df2588eac18949a3c-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "65f3b9dd47a6d34df2588eac18949a3c",
+      "document_id": "Veterans’ Group Life Insurance (VGLI) | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What does Group Life Veterans Insurance (VGLI) cover?\nagent: With VGLI Veterans Group Life Insurance, you may be able to maintain your life insurance coverage after leaving military service while continuing to pay premiums\nuser: Is it possible that you can keep your life insurance coverage after leaving the military?"
+    },
+    "publisher_reference": {
+      "utterance": "If you can possibly keep your insurance coverage",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "2",
+          "label": "solution"
+        },
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-47ee708713bb7166bb675a59df719d10-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "47ee708713bb7166bb675a59df719d10",
+      "document_id": "Access Your VA Life Insurance Policy Online | Veterans Affairs#1_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I want to know about life insurance policy\nagent: Do you have a VA life insurance?\nuser: Not  yet\nuser: What can I do when checking my life insurance?"
+    },
+    "publisher_reference": {
+      "utterance": "You can check your policy's status to make sure it's up to date. Pay your premium the amount you will pay each month to keep your coverage.\nPlease, check about your plan and renewal options.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "5",
+          "label": "solution"
+        },
+        {
+          "sp_id": "6",
+          "label": "solution"
+        },
+        {
+          "sp_id": "7",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-dcb97440f7eae9f40d215c53eaac009a-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "dcb97440f7eae9f40d215c53eaac009a",
+      "document_id": "VA Nursing Homes And Assisted Living | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hello. I am trying to get info about VA nursing homes.\nagent: Great. I can help you with that.\nuser: Thank you. Do I qualify?"
+    },
+    "publisher_reference": {
+      "utterance": "Well, let's see if you are able to get residential health care through the VA.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-6cc8637d3f86127df82922e94fc8d56f-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "6cc8637d3f86127df82922e94fc8d56f",
+      "document_id": "Upload Evidence To Support Your Disability Claim | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I need to upload evidence to support m disability claim.\nagent: Have you filed a disability claim?\nuser: Yes, I have filed."
+    },
+    "publisher_reference": {
+      "utterance": "Great, you can upload evidence for up to one year.  Evidence may include supporting documents like medical test results, doctor reports and other records.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "3",
+          "label": "solution"
+        },
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-d9ae4758f904a702172438bb6af63720-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "d9ae4758f904a702172438bb6af63720",
+      "document_id": "Affordable Care Act (ACA) And Your Coverage | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hi there, I am looking for information regarding the Affordable Care Act and my VA health coverage \nagent: The Affordable Care Act is also known as the health care law. It was created to increase access for citizens to health care coverage, to control health care costs and also to improve health care quality and care coordination\nuser: If I don't have health insurance, do I have any penalties to pay?"
+    },
+    "publisher_reference": {
+      "utterance": "This part of the law was changed by Congress, for plans that were starting in 2019. The payment referred to as the individual shared responsibility payment no longer applies in plan year 2019, for which you will be filing taxes in April 2020",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "11",
+          "label": "solution"
+        },
+        {
+          "sp_id": "12",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-5de05450bb6cf2568c2d06039e0482fc-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "5de05450bb6cf2568c2d06039e0482fc",
+      "document_id": "How To Apply For A Veteran ID Card | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I want to get a Vet ID card and need to know more about it\nagent: A Veteran ID Card is a form of photo ID you can use to get discounts offered to Veterans at many restaurants, hotels, stores, and other businesses. We can help you find out if you are eligible for a Veteran ID Card and how to apply.\nuser: How can I check for the status of my application once I send it in"
+    },
+    "publisher_reference": {
+      "utterance": "You can sign in to your AccessVA account to check the status of your VIC application. I can give you the link to sign in to your AccessVA account",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "57",
+          "label": "solution"
+        },
+        {
+          "sp_id": "58",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-87a49a6d6ba97ce60abafa50ca0e874d-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "87a49a6d6ba97ce60abafa50ca0e874d",
+      "document_id": "About VA Insurance Options And Eligibility | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Am I eligible for VA health insurance?\nagent: Veterans, service members, their spouses, and their dependent children are all eligible for VA insurance. However, different people may be different programs. \nuser: What if I get hurt for a little while that makes me unable to work and then I can't pay my bills?"
+    },
+    "publisher_reference": {
+      "utterance": "We have Traumatic Injury Protection TSGLI short-term insurance to help with that.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "16",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-522352fae1d674bb1014d52374faa691-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "522352fae1d674bb1014d52374faa691",
+      "document_id": "Yellow Ribbon Program | Veterans Affairs#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I wanted to know how my Yellow Ribbon benefits may change\nagent: If your school has an approved agreement with us and continues to participate in the program, they must continue to offer the Yellow Ribbon benefits to you the next year as long as you meet all of the requirements\nagent: Does your school have an approved agreement with us and still participating in the Yellow RIbbon program?\nuser: no, that is why I wanted to know how my benefits may change\nuser: how much do we get in benefits if someone were to sign up now?"
+    },
+    "publisher_reference": {
+      "utterance": "Some example are; schools could provide $ 1,000 for undergraduates , $ 1,500 for graduate students , and $ 2,000 for doctoral students. The school also could provide $ 1,800 for students in the school of engineering and $ 2,500 for students in the school of nursing .",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "66",
+          "label": "solution"
+        },
+        {
+          "sp_id": "67",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-29db4545fe12bf4c311ed7208491a620-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "29db4545fe12bf4c311ed7208491a620",
+      "document_id": "Types Of Veteran ID Cards | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What types of Veteran ID cards are there?\nagent: We provide multiple types of ID cards to use as a Veteran and only really need to show one.\nuser: Can I use my DoD Identification Card or do I have to use another as an ID?"
+    },
+    "publisher_reference": {
+      "utterance": "Go ahead and use your DoD as your main ID to prove you are a Veteran.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "9",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-c2c7cc8ffe54846344975c1ea83a8c5b-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "c2c7cc8ffe54846344975c1ea83a8c5b",
+      "document_id": "VA Disability Compensation For PTSD | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: what is PTSD?\nagent:   [2] Posttraumatic stress can happen after someone goes through a traumatic event such as combat , an assault , or a disaster .s   [3] Most people have some stress reactions following trauma .s     [4] But if the reactions don t go away over time or they disrupt your life ,s [5] you may have posttraumatic stress disorder PTSD\nuser: Can I get disability benefits from VA?"
+    },
+    "publisher_reference": {
+      "utterance": " [28] You may be able to get disability benefits if you have symptoms related to a traumatic event the stressor or your experience with the stressor is related to the PTSD symptoms ,s [29] and you meet all of the requirements",
+      "act": "respond_solution_positive",
+      "references": [
+        {
+          "sp_id": "28",
+          "label": "solution"
+        },
+        {
+          "sp_id": "29",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-1c8f9736dd6de7e223e99217c58326d2-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "1c8f9736dd6de7e223e99217c58326d2",
+      "document_id": "Your Health Care Costs | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hello and good afternoon. I'll probably be on need for health care but i'm worried about the possible costs, could you tell me about how you calculate what i have to pay?\nagent: Are you referring about how we determine your possible payments based on your income?\nuser: Yes, that's precisely my doubt, can you clear it out?"
+    },
+    "publisher_reference": {
+      "utterance": "O.k, lets see. Aren't you receiving VA disability compensation, or don't have some special characteristics like being a Medal of Honor recipient?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "34",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-860db6445eec2633d4a5a09bdb101635-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "860db6445eec2633d4a5a09bdb101635",
+      "document_id": "View Your VA Payment History | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Hi, I receive VA payments but need dates of previous payments. Is there a way I can view my VA payment history online?\nagent: Yes you can view payment history online. Do you need help signing into your account?\nuser: Yes I am not sure what is required to access my payment history."
+    },
+    "publisher_reference": {
+      "utterance": "Do you have an eBenefits account?",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "4",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-847c7e0f6fb8b78f6d44b5b97eb70e09-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "847c7e0f6fb8b78f6d44b5b97eb70e09",
+      "document_id": "What To Expect After You Get A Disability Rating | Veterans Affairs#1_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: you can give me some disability rating help\nagent: Did you receive a decision notice from us that confirms your disability rating?\nuser: no, not yet\nuser: what kind of benefits do you give? is it payments or health care?"
+    },
+    "publisher_reference": {
+      "utterance": "Disability compensation may include financial compensation payments as well as other benefits like health care or job training ",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-97b5ac191ca1d25e9275ac51e1c3476e-5",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "97b5ac191ca1d25e9275ac51e1c3476e",
+      "document_id": "Military Sexual Trauma (MST) | Veterans Affairs#1_0",
+      "target_turn_id": 5
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I want to learn about the VA and MST\nagent: Are you a veteran?\nuser: I'm not \nuser: can you tell me where I can get more information?"
+    },
+    "publisher_reference": {
+      "utterance": "You can download our military sexual trauma brochure for Veterans : In English PDF ,or En espanol PDF",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "78",
+          "label": "solution"
+        },
+        {
+          "sp_id": "79",
+          "label": "solution"
+        },
+        {
+          "sp_id": "80",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-28592664d078fb22d6d8e1efa266adb9-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "28592664d078fb22d6d8e1efa266adb9",
+      "document_id": "VA Mental Health Services | Veterans Affairs#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I just wanted to know if there are any resources and/or support outside VA which I could access.\nagent: Well, you can also get support from resources offered by other government departments and community organizations outside of VA.\nagent: Do you need more support?\nuser: No, that's fine. You're helping me.\nuser: Do you, by any chance, have the number for the SAMHSA National Helpline?"
+    },
+    "publisher_reference": {
+      "utterance": "Yes, simply call 1800-662-HELP 800-662-4357.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "212",
+          "label": "solution"
+        },
+        {
+          "sp_id": "213",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-1c17378544d0adfe586625d25d0552c6-6",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "holdout",
+    "source": {
+      "dialogue_id": "1c17378544d0adfe586625d25d0552c6",
+      "document_id": "Post-9/11 GI Bill | Veterans Affairs#1_0",
+      "target_turn_id": 6
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What does Post-9/11 GI Bill do?\nagent: The GI Bill Post-9/11 helps you pay for school or job training.\nagent: have you served the active army after September 10, 2001?\nuser: No, I have not been in the active army after September 10, 2001\nuser: What requirements must I meet to be eligible for benefits?"
+    },
+    "publisher_reference": {
+      "utterance": "one of the primary requirements is to have served at least 90 days on active duty, all at once or with interruptions in service as of September 11, 2001,",
+      "act": "query_condition",
+      "references": [
+        {
+          "sp_id": "10",
+          "label": "precondition"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  },
+  {
+    "id": "qa-a3e94e5eafaffb5fdce095174df6b75d-4",
+    "data_type": "HUMAN_AUTHORED_DOCUMENT_DIALOGUE",
+    "domain": "va",
+    "split": "development",
+    "source": {
+      "dialogue_id": "a3e94e5eafaffb5fdce095174df6b75d",
+      "document_id": "Survivors’ And Dependents’ Educational Assistance | Veterans Affairs#1_0",
+      "target_turn_id": 4
+    },
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: I wanted to find out more about VA education aid for dependents\nagent: Okay, we can help you learn about the Survivors and Dependents Educational Assistance program .\nuser: who can get benefits?"
+    },
+    "publisher_reference": {
+      "utterance": "If you are the child or spouse of a Veteran or service member who has died, is captured or missing, or has disabilities, you may be able to get help paying for school or job training through the DEA program also called Chapter 35.  We can help you find out if you are eligible for benefits.",
+      "act": "respond_solution",
+      "references": [
+        {
+          "sp_id": "4",
+          "label": "solution"
+        },
+        {
+          "sp_id": "5",
+          "label": "solution"
+        }
+      ]
+    },
+    "audit": {
+      "author_type": "NONE",
+      "label": "PENDING",
+      "note": "扩容题未做 AI 审计，只用于检索相对比较"
+    },
+    "included": true
+  }
+]
