@@ -4,6 +4,7 @@ import re
 import shutil
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 
@@ -41,6 +42,32 @@ class LoadedEmbeddingArtifact:
     manifest: EmbeddingArtifactManifest
     matrix: np.ndarray
     metadata: tuple[ArtifactChunkMetadata, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactSummary:
+    """一个已落盘 artifact 的可读快照；字段全部来自 manifest，不做推断。"""
+
+    artifact_id: str
+    release_id: str
+    release_version: int
+    corpus_checksum: str
+    chunking_version: str
+    embedding_model: str
+    vector_dimension: int
+    row_count: int
+    document_count: int
+    active: bool
+    previous: bool
+    modified_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactInventory:
+    active_artifact_id: str | None
+    previous_artifact_id: str | None
+    artifacts: tuple[ArtifactSummary, ...]
+    unreadable: tuple[str, ...]
 
 
 class EmbeddingArtifactStore:
@@ -132,6 +159,73 @@ class EmbeddingArtifactStore:
     def load_active(self) -> LoadedEmbeddingArtifact:
         pointer = self._load_pointer()
         return self.load(pointer.active_artifact_id)
+
+    def list_artifacts(self) -> ArtifactInventory:
+        """列出 artifact root 下的所有可读版本，并标出 active 与 previous。
+
+        单个损坏的目录会被归入 `unreadable` 而不是让整个列表失败：这里是用来看清
+        “现在有哪些索引”的诊断入口，不能因为一个历史残留就完全不可用。
+        `modified_at` 是文件系统时间，只用于界面展示，不是构建证据。
+        """
+        active_id: str | None = None
+        previous_id: str | None = None
+        if self._pointer.exists():
+            try:
+                pointer = self._load_pointer()
+                active_id = pointer.active_artifact_id
+                previous_id = pointer.previous_artifact_id
+            except EmbeddingArtifactError:
+                active_id = None
+        artifacts: list[ArtifactSummary] = []
+        unreadable: list[str] = []
+        if self._root.is_dir():
+            for entry in sorted(self._root.iterdir(), key=lambda item: item.name):
+                if not entry.is_dir() or re.fullmatch(r"[a-f0-9]{64}", entry.name) is None:
+                    continue
+                summary = self._summarize(entry, active_id, previous_id)
+                if summary is None:
+                    unreadable.append(entry.name)
+                else:
+                    artifacts.append(summary)
+        return ArtifactInventory(
+            active_artifact_id=active_id,
+            previous_artifact_id=previous_id,
+            artifacts=tuple(artifacts),
+            unreadable=tuple(unreadable),
+        )
+
+    def _summarize(
+        self,
+        directory: Path,
+        active_id: str | None,
+        previous_id: str | None,
+    ) -> ArtifactSummary | None:
+        manifest_path = directory / "manifest.json"
+        if not manifest_path.is_file():
+            return None
+        try:
+            manifest = EmbeddingArtifactManifest.model_validate_json(
+                manifest_path.read_text(encoding="utf-8")
+            )
+        except (ValidationError, ValueError, OSError):
+            return None
+        if manifest.artifact_id != directory.name:
+            return None
+        modified = manifest_path.stat().st_mtime
+        return ArtifactSummary(
+            artifact_id=manifest.artifact_id,
+            release_id=manifest.release_id,
+            release_version=manifest.release_version,
+            corpus_checksum=manifest.corpus_checksum,
+            chunking_version=manifest.chunking_version,
+            embedding_model=manifest.embedding_model,
+            vector_dimension=manifest.vector_dimension,
+            row_count=manifest.row_count,
+            document_count=len(manifest.documents),
+            active=manifest.artifact_id == active_id,
+            previous=manifest.artifact_id == previous_id,
+            modified_at=datetime.fromtimestamp(modified, tz=timezone.utc).isoformat(),
+        )
 
     def load(self, artifact_id: str) -> LoadedEmbeddingArtifact:
         if re.fullmatch(r"[a-f0-9]{64}", artifact_id) is None:

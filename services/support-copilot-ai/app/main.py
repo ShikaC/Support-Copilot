@@ -11,6 +11,7 @@ from starlette.responses import Response
 
 from app.analysis_runner import AnalysisProcessingTimeoutError, AnalysisRunner
 from app.config import get_settings
+from app.embedding_artifact import EmbeddingArtifactError, EmbeddingArtifactStore
 from app.internal_auth import (
     InternalServiceAuthenticationError,
     InternalServiceAuthenticator,
@@ -227,3 +228,54 @@ async def analyze(
             "AI analysis exceeded its processing deadline.",
             exc.trace_id,
         )
+
+
+def index_version_payload(artifact_store: EmbeddingArtifactStore) -> dict[str, object]:
+    inventory = artifact_store.list_artifacts()
+    return {
+        "activeArtifactId": inventory.active_artifact_id,
+        "previousArtifactId": inventory.previous_artifact_id,
+        "unreadable": list(inventory.unreadable),
+        "versions": [
+            {
+                "artifactId": item.artifact_id,
+                "releaseId": item.release_id,
+                "releaseVersion": item.release_version,
+                "corpusChecksum": item.corpus_checksum,
+                "chunkingVersion": item.chunking_version,
+                "embeddingModel": item.embedding_model,
+                "vectorDimension": item.vector_dimension,
+                "rowCount": item.row_count,
+                "documentCount": item.document_count,
+                "active": item.active,
+                "previous": item.previous,
+                "modifiedAt": item.modified_at,
+            }
+            for item in inventory.artifacts
+        ],
+    }
+
+
+@app.get("/knowledge/index/versions")
+async def list_index_versions(
+    _authenticated: Annotated[
+        None,
+        Depends(internal_authenticator.require),
+    ],
+) -> JSONResponse:
+    """列出检索索引的所有可读版本、当前生效版本与已加载语料身份（只读）。
+
+    这里刻意不提供“切换索引”写端点：artifact 兼容校验会比对 release、corpus checksum、
+    embedding 模型与 chunking version，而 artifact id 由同一组字段决定——
+    因此同一进程配置下只可能存在一个 artifact，热切换在当前架构下必然失败。
+    换切片必须先改配置并重启，原因见 docs/verification/index-versions-2026-09-18/README.md。
+    """
+    corpus = retriever.corpus_metadata
+    payload = index_version_payload(retriever.artifact_store)
+    payload["corpus"] = {
+        "releaseId": corpus.release_id,
+        "releaseVersion": corpus.release_version,
+        "corpusChecksum": corpus.corpus_checksum,
+        "chunkCount": corpus.chunk_count,
+    }
+    return JSONResponse(content=payload)

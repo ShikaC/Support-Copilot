@@ -29,6 +29,11 @@ class LiveVectorIndex:
         self._artifact: LoadedEmbeddingArtifact | None = None
         self._load_lock = anyio.Lock()
 
+    @property
+    def artifact_store(self) -> EmbeddingArtifactStore:
+        """进程内唯一的 artifact 存储：索引切换端点必须与检索用同一个实例与 root。"""
+        return self._store
+
     async def search(
         self,
         ticket: TicketInput,
@@ -89,6 +94,16 @@ class LiveVectorIndex:
             for row, chunk in enumerate(self._corpus.chunks)
             if scope_set.intersection(chunk.allowed_scopes)
         )
+
+    async def reload(self) -> LoadedEmbeddingArtifact:
+        """丢弃缓存的 artifact 并重新加载当前 active，让索引切换立即对后续检索生效。
+
+        预加载是有意的：切换方拿到返回值就说明新索引确实可用，不会出现“切换成功但首次
+        检索才报错”的半完成状态。正在进行的检索仍持有旧对象的引用，会正常跑完。
+        """
+        async with self._load_lock:
+            self._artifact = None
+        return await self._get_artifact()
 
     async def _get_artifact(self) -> LoadedEmbeddingArtifact:
         if self._artifact is not None:

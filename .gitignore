@@ -69,3 +69,6 @@ docs/verification/retrieval-expanded-2026-09-18/query-vectors.json
 # rebuilt by prepare-doc2dial.mjs; the slicing identity and build record are kept.
 !docs/verification/chunking-1000-800-2026-09-18/**
 docs/verification/chunking-1000-800-2026-09-18/query-vectors.json
+
+# Index version inventory: the read-only capability and its real-data probe.
+!docs/verification/index-versions-2026-09-18/**

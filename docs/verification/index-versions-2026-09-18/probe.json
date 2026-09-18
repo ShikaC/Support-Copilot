@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-09-18",
+  "note": "\u771f\u5b9e artifact root \u4e0a\u7684\u53ea\u8bfb\u6e05\u5355\uff1b\u540c\u65f6\u8bb0\u5f55\u5207\u6362\u5230\u53e6\u4e00\u79cd\u5207\u7247\u88ab\u62d2\u7edd\u7684\u771f\u5b9e\u539f\u56e0\u3002",
+  "endpoint": "GET /knowledge/index/versions",
+  "unauthorizedStatus": 401,
+  "removedMutationStatus": 404,
+  "loadedCorpus": {
+    "releaseId": "doc2dial-business-benchmark-v1",
+    "releaseVersion": 1,
+    "corpusChecksum": "9c1e91d5fff7f1b9f2b2a48efe71275b01035eac88b8ea693df1215b0e307b27",
+    "chunkCount": 1564
+  },
+  "activeArtifactId": "2ecf19dd9cd4a2a63235d41bf08ad36ddcc3b4a35a1fafddeafbbc286f3953d2",
+  "previousArtifactId": null,
+  "unreadable": [],
+  "versions": [
+    {
+      "artifactId": "2ecf19dd9cd4a2a63235d41bf08ad36ddcc3b4a35a1fafddeafbbc286f3953d2",
+      "releaseId": "doc2dial-business-benchmark-v1",
+      "releaseVersion": 1,
+      "corpusChecksum": "9c1e91d5fff7f1b9f2b2a48efe71275b01035eac88b8ea693df1215b0e307b27",
+      "chunkingVersion": "doc2dial-codepoints-2000-1600-v1",
+      "embeddingModel": "Qwen/Qwen3-Embedding-0.6B",
+      "vectorDimension": 1024,
+      "rowCount": 1564,
+      "documentCount": 488,
+      "active": true,
+      "previous": false,
+      "modifiedAt": "2026-09-10T07:01:44.111089+00:00"
+    },
+    {
+      "artifactId": "e418567d7f1bc7943deb3391375211e4ccedaa4366ee01d4df12e859e2aa7662",
+      "releaseId": "doc2dial-business-benchmark-1000-800-v1",
+      "releaseVersion": 1,
+      "corpusChecksum": "a6db45e3c4a42ba64565ca3b61a191502a185378d044bde2cbd6e75d84a8f04a",
+      "chunkingVersion": "doc2dial-codepoints-1000-800-v1",
+      "embeddingModel": "Qwen/Qwen3-Embedding-0.6B",
+      "vectorDimension": 1024,
+      "rowCount": 3015,
+      "documentCount": 488,
+      "active": false,
+      "previous": false,
+      "modifiedAt": "2026-09-18T07:38:33.042398+00:00"
+    }
+  ],
+  "crossSlicingActivation": {
+    "accepted": false,
+    "reason": "artifact-incompatible"
+  },
+  "pointerAfterRefusal": "2ecf19dd9cd4a2a63235d41bf08ad36ddcc3b4a35a1fafddeafbbc286f3953d2"
+}

@@ -5,7 +5,7 @@ from typing import Final
 from openai import APITimeoutError, OpenAIError
 
 from app.config import Settings
-from app.embedding_artifact import EmbeddingArtifactError
+from app.embedding_artifact import EmbeddingArtifactError, EmbeddingArtifactStore
 from app.errors import (
     EmbeddingApiError,
     embedding_timeout_error,
@@ -14,6 +14,16 @@ from app.knowledge_source import KnowledgeChunk, load_knowledge_corpus
 from app.live_vector_index import LiveVectorIndex, RetrievalWindow
 from app.models import KnowledgeAccess, RetrievalHit, SupportScope, TicketInput
 from app.readiness import RuntimeDependencyReadiness
+
+
+@dataclass(frozen=True, slots=True)
+class CorpusMetadata:
+    """当前进程加载的语料身份，用于与 artifact manifest 里的值对照。"""
+
+    release_id: str
+    release_version: int
+    corpus_checksum: str
+    chunk_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +66,27 @@ class KnowledgeRetriever:
     @property
     def chunk_count(self) -> int:
         return len(self._chunks)
+
+    @property
+    def corpus_metadata(self) -> CorpusMetadata:
+        """当前进程加载的语料身份；与 artifact manifest 里的值做一致性对照。"""
+        return CorpusMetadata(
+            release_id=self._release_id,
+            release_version=self._release_version,
+            corpus_checksum=self._corpus_checksum,
+            chunk_count=len(self._chunks),
+        )
+
+    @property
+    def artifact_store(self) -> EmbeddingArtifactStore:
+        return self._live_index.artifact_store
+
+    async def reload_index(self) -> None:
+        """在 active artifact 被外部切换后重新加载向量索引。
+
+        语料本身不重载：换语料意味着换进程。这里只解决“同一个 corpus 下切换切片版本”。
+        """
+        await self._live_index.reload()
 
     @property
     def readiness(self) -> RuntimeDependencyReadiness:

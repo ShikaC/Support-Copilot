@@ -79,6 +79,18 @@ holdout 36 题**未运行**。它是一次性资源，只能验证事先固定�
 
 证据：`docs/verification/chunking-1000-800-2026-09-18/`（语料 4.8MB 未入库，可由命令重建）。
 
+### 8. 索引版本清单：为什么“一键切切片”在当前架构下不成立
+
+新增只读端点 `GET /knowledge/index/versions`（内部服务鉴权）：列出 artifact root 下的所有版本、当前生效版本、上一版本、每个版本的切片身份与行数，以及进程实际加载的语料身份。损坏目录归入 `unreadable`，不会让整个清单失败。
+
+- 新增：`EmbeddingArtifactStore.list_artifacts()`、`LiveVectorIndex.artifact_store` 与 `reload()`、`KnowledgeRetriever.corpus_metadata` 与 `reload_index()`（`tests/test_index_versions.py` 10 项）。
+- **真实证据**：一个 root 里同时列出 `2ecf19dd…`（1564 行 / 2000-1600）与 `e418567d…`（3015 行 / 1000-800），active 指向前者；错误 token 返回 401。
+- **关键发现（这是本轮最重要的结论）**：写端点（activate / rollback）实现后被**删除**。因为 `_require_compatible` 校验的字段（release、corpus checksum、embedding 模型、chunking version）与 `_artifact_id` 用的是同一组字段——**两个 artifact 能互相切换 ⟺ 它们的前六项相同 ⟹ 必然是同一个 id**。所以同配置下热切换必然失败：实测切到另一种切片返回 `artifact-incompatible`，指针未移动。
+- 结论：**换切片 = 改配置 + 重启**（当前架构的唯一路径）。删掉写端点是因为留着它只会让人点出一个 409 而不知道原因；测试改为断言这些路由不存在（404）。
+- **未做但已明确的技术选项**：把 `chunking_version` 从**校验字段降级为观测字段**（兼容校验只保留 release / corpus checksum / input format / dimension），索引就能真正热切换。代价是失去一层“配置与索引错配立刻报错”的保护，因此应单独评估，不能顺手做。
+
+证据：`docs/verification/index-versions-2026-09-18/`（含 `probe.json`）。前端与 Java 接入尚未开始。
+
 ## 前一阶段：比较协议预注册、门禁回归修复与离线检索评测（2026-09-11）
 
 同一轮完成三件事：预注册修正后的 development 比较方案，修复固化提交在文档门禁上暴露的回归，并建立零费用的离线检索评测。均未执行付费调用、未推送。
