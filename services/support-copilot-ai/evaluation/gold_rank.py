@@ -14,11 +14,14 @@ artifact 矩阵算出全库排名，并给出 recall@k 曲线——即「候选�
 import argparse
 import json
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
 import numpy as np
+
+from evaluation.retrieval_evidence import load_retrieval_evidence
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CASES = "docs/verification/quality-input-audit-2026-09-10/cases.json"
@@ -35,13 +38,6 @@ def source_anchor(uri: str | None) -> str | None:
     if index < 0:
         return None
     return unquote(uri[index + 1 :])
-
-
-def active_matrix(artifact_root: Path) -> tuple[str, np.ndarray]:
-    pointer = json.loads((artifact_root / "active.json").read_text(encoding="utf-8"))
-    artifact_id = pointer["active_artifact_id"]
-    matrix = np.load(artifact_root / artifact_id / "matrix.npy")
-    return artifact_id, matrix
 
 
 def gold_rows(cases: list[dict[str, Any]], corpus: dict[str, Any]) -> dict[str, list[int]]:
@@ -149,6 +145,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="gold 全库排名诊断（零调用）")
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--vectors", required=True, help="检索-only 运行产生的 query-vectors.json")
+    parser.add_argument("--plan", default=None, help="默认使用 vectors 同目录的 retrieval-plan.json")
     parser.add_argument("--cases", default=DEFAULT_CASES)
     parser.add_argument("--corpus", default=DEFAULT_CORPUS)
     parser.add_argument("--artifact-root", default=DEFAULT_ARTIFACT_ROOT)
@@ -159,11 +156,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = args.root.resolve()
-    vectors = json.loads((root / args.vectors).read_text(encoding="utf-8"))
-    cases = json.loads((root / args.cases).read_text(encoding="utf-8"))
-    corpus = json.loads((root / args.corpus).read_text(encoding="utf-8"))
-    artifact_id, matrix = active_matrix((root / args.artifact_root).resolve())
-    report = build_report(cases, corpus, vectors, matrix, artifact_id)
+    vectors_path = root / args.vectors
+    plan_path = root / args.plan if args.plan else vectors_path.parent / "retrieval-plan.json"
+    evidence = load_retrieval_evidence(
+        plan_path, vectors_path, root / args.corpus, (root / args.artifact_root).resolve()
+    )
+    cases_bytes = (root / args.cases).read_bytes()
+    cases = json.loads(cases_bytes)
+    report = build_report(
+        cases, evidence.corpus.model_dump(mode="json"), evidence.vectors,
+        evidence.artifact.matrix, evidence.artifact.manifest.artifact_id
+    )
+    report["casesSha256"] = sha256(cases_bytes).hexdigest()
+    report["casesFile"] = str(root / args.cases)
     if args.json:
         output = root / args.json
         output.parent.mkdir(parents=True, exist_ok=True)

@@ -86,7 +86,7 @@ def test_build_report_ignores_cases_without_cached_vectors() -> None:
     assert report["recallAtK"]["3"] == 0
 
 
-def test_active_matrix_reads_the_pointer(tmp_path: Path) -> None:
+def test_cli_refuses_raw_matrix_without_recorded_evidence(tmp_path: Path) -> None:
     artifact_root = tmp_path / "artifacts"
     (artifact_root / "abc123").mkdir(parents=True)
     np.save(artifact_root / "abc123" / "matrix.npy", np.eye(2, dtype=np.float32))
@@ -94,9 +94,12 @@ def test_active_matrix_reads_the_pointer(tmp_path: Path) -> None:
         json.dumps({"schema_version": 1, "active_artifact_id": "abc123", "previous_artifact_id": None}),
         encoding="utf-8",
     )
-    artifact_id, matrix = gold_rank.active_matrix(artifact_root)
-    assert artifact_id == "abc123"
-    assert matrix.shape == (2, 2)
+    with pytest.raises(FileNotFoundError):
+        gold_rank.main([
+            "--root", str(tmp_path), "--vectors", "query-vectors.json",
+            "--artifact-root", "artifacts", "--json", "report.json",
+        ])
+    assert not (tmp_path / "report.json").exists()
 
 
 def test_render_states_the_diagnostic_boundary() -> None:

@@ -331,3 +331,151 @@ def test_execute_refuses_to_overwrite_mismatched_plan(
     with pytest.raises(ValueError, match="不要覆盖既有证据"):
         anyio.run(retrieval_only.run, args)
     assert harness.provider.query_calls == 0
+
+
+@pytest.mark.parametrize("existing", ["results.json", "query-vectors.json", "retrieval-only-manifest.json", "execution-claim.json"])
+def test_execute_rejects_existing_execution_before_provider_call(
+    harness: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, existing: str,
+) -> None:
+    # Given: even a partial previous execution is retained as evidence.
+    monkeypatch.setattr(retrieval_only, "Settings", lambda **kwargs: harness.settings)
+    monkeypatch.setattr(retrieval_only, "OpenAIEmbeddingProvider", lambda _: harness.provider)
+    (harness.tmp_path / "inputs.json").write_text(json.dumps([
+        {"id": "case-1", "input": {"subject": "S", "description": "D"}},
+    ]))
+    output = harness.tmp_path / "out"
+    output.mkdir()
+    (output / existing).write_text("{}")
+    args = retrieval_only.parse_args([
+        "--root", str(harness.tmp_path), "--inputs", "inputs.json",
+        "--corpus", "corpus.json", "--artifact-root", "artifacts",
+        "--output", "out", "--execute",
+    ])
+    # When: the same output directory is accidentally executed again.
+    with pytest.raises(FileExistsError):
+        anyio.run(retrieval_only.run, args)
+    # Then: no billable work happens before the refusal.
+    assert harness.provider.query_calls == 0
+
+
+def test_failed_execution_retains_claim_and_refuses_retry(
+    harness: SimpleNamespace, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given: the external dependency fails on the first attempt.
+    monkeypatch.setattr(retrieval_only, "Settings", lambda **kwargs: harness.settings)
+    class FailingProvider:
+        calls = 0
+
+        async def embed_query(self, _text: str) -> list[float]:
+            self.calls += 1
+            raise RuntimeError("simulated external interruption")
+
+    provider = FailingProvider()
+    monkeypatch.setattr(retrieval_only, "OpenAIEmbeddingProvider", lambda _: provider)
+    (harness.tmp_path / "inputs.json").write_text(json.dumps([
+        {"id": "case-1", "input": {"subject": "S", "description": "D"}},
+    ]))
+    args = retrieval_only.parse_args([
+        "--root", str(harness.tmp_path), "--inputs", "inputs.json",
+        "--corpus", "corpus.json", "--artifact-root", "artifacts",
+        "--output", "out", "--execute",
+    ])
+    with pytest.raises(RuntimeError):
+        anyio.run(retrieval_only.run, args)
+    # When: retrying that failed execution.
+    with pytest.raises(FileExistsError):
+        anyio.run(retrieval_only.run, args)
+    # Then: the initial attempt remains the only external call.
+    assert provider.calls == 1
+
+
+@pytest.mark.parametrize("field,value", [
+    ("artifactId", "0" * 64),
+    ("embeddingModel", "different-model"),
+    ("corpusSha256", "0" * 64),
+    ("topK", 1),
+])
+def test_execute_rejects_prepared_plan_drift_before_provider_call(
+    harness: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, field: str, value: str | int,
+) -> None:
+    monkeypatch.setattr(retrieval_only, "Settings", lambda **kwargs: harness.settings)
+    monkeypatch.setattr(retrieval_only, "OpenAIEmbeddingProvider", lambda _: harness.provider)
+    (harness.tmp_path / "inputs.json").write_text(json.dumps([
+        {"id": "case-1", "input": {"subject": "S", "description": "D"}},
+    ]))
+    args = retrieval_only.parse_args([
+        "--root", str(harness.tmp_path), "--inputs", "inputs.json",
+        "--corpus", "corpus.json", "--artifact-root", "artifacts", "--output", "out",
+    ])
+    anyio.run(retrieval_only.run, args)
+    plan_file = harness.tmp_path / "out/retrieval-plan.json"
+    plan = json.loads(plan_file.read_text())
+    plan[field] = value
+    plan_file.write_text(json.dumps(plan))
+    args.execute = True
+    with pytest.raises(ValueError, match="不要覆盖既有证据"):
+        anyio.run(retrieval_only.run, args)
+    assert harness.provider.query_calls == 0
+
+
+def test_concurrent_execution_claim_allows_only_one_embedding_call(
+    harness: SimpleNamespace, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(retrieval_only, "Settings", lambda **kwargs: harness.settings)
+    (harness.tmp_path / "inputs.json").write_text(json.dumps([
+        {"id": "case-1", "input": {"subject": "S", "description": "D"}},
+    ]))
+    args = retrieval_only.parse_args([
+        "--root", str(harness.tmp_path), "--inputs", "inputs.json",
+        "--corpus", "corpus.json", "--artifact-root", "artifacts", "--output", "out", "--execute",
+    ])
+
+    async def scenario() -> None:
+        entered = anyio.Event()
+        release = anyio.Event()
+
+        class BlockingProvider:
+            calls = 0
+
+            async def embed_query(self, _text: str) -> list[float]:
+                self.calls += 1
+                entered.set()
+                await release.wait()
+                return QUERY_VECTOR
+
+        provider = BlockingProvider()
+        monkeypatch.setattr(retrieval_only, "OpenAIEmbeddingProvider", lambda _: provider)
+        async with anyio.create_task_group() as tasks:
+            tasks.start_soon(retrieval_only.run, args)
+            await entered.wait()
+            try:
+                with pytest.raises(FileExistsError):
+                    await retrieval_only.run(args)
+            finally:
+                release.set()
+        assert provider.calls == 1
+
+    anyio.run(scenario)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_execute_rejects_nonfinite_query_vector_without_recording_no_evidence(
+    harness: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, value: float,
+) -> None:
+    monkeypatch.setattr(retrieval_only, "Settings", lambda **kwargs: harness.settings)
+    harness.provider._query = [value, 0.0, 0.0]
+    monkeypatch.setattr(retrieval_only, "OpenAIEmbeddingProvider", lambda _: harness.provider)
+    (harness.tmp_path / "inputs.json").write_text(json.dumps([
+        {"id": "case-1", "input": {"subject": "S", "description": "D"}},
+    ]))
+    args = retrieval_only.parse_args([
+        "--root", str(harness.tmp_path), "--inputs", "inputs.json",
+        "--corpus", "corpus.json", "--artifact-root", "artifacts",
+        "--output", "out", "--execute",
+    ])
+    with pytest.raises(ValueError, match="非有限值"):
+        anyio.run(retrieval_only.run, args)
+    assert harness.provider.query_calls == 1
+    assert (harness.tmp_path / "out/execution-claim.json").exists()
+    assert not (harness.tmp_path / "out/results.json").exists()
+    assert not (harness.tmp_path / "out/query-vectors.json").exists()

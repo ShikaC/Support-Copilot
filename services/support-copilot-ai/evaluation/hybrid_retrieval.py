@@ -14,12 +14,14 @@ import math
 import re
 from collections import Counter
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from evaluation.gold_rank import active_matrix, cosine_all, gold_rows
+from evaluation.gold_rank import cosine_all, gold_rows
+from evaluation.retrieval_evidence import load_retrieval_evidence
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_PLAN = "docs/verification/retrieval-only-2026-09-17/retrieval-plan.json"
@@ -265,12 +267,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = args.root.resolve()
-    plan = json.loads((root / args.plan).read_text(encoding="utf-8"))
-    vectors = json.loads((root / args.vectors).read_text(encoding="utf-8"))
-    cases = json.loads((root / args.cases).read_text(encoding="utf-8"))
-    corpus = json.loads((root / args.corpus).read_text(encoding="utf-8"))
-    _, matrix = active_matrix((root / args.artifact_root).resolve())
-    report = build_experiment(plan, vectors, cases, corpus, matrix, top_k=args.top_k)
+    evidence = load_retrieval_evidence(
+        root / args.plan, root / args.vectors, root / args.corpus, (root / args.artifact_root).resolve()
+    )
+    cases_bytes = (root / args.cases).read_bytes()
+    cases = json.loads(cases_bytes)
+    report = build_experiment(
+        evidence.plan.model_dump(by_alias=True), evidence.vectors, cases,
+        evidence.corpus.model_dump(mode="json"), evidence.artifact.matrix, top_k=args.top_k
+    )
+    report["artifactId"] = evidence.artifact.manifest.artifact_id
+    report["casesSha256"] = sha256(cases_bytes).hexdigest()
+    report["casesFile"] = str(root / args.cases)
     if args.json:
         (root / args.json).write_text(
             json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

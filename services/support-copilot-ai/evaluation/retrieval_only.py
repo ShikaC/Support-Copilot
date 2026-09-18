@@ -30,6 +30,7 @@ import numpy as np
 from app.config import Settings
 from app.data_redaction import redact_sensitive_text
 from app.embedding_artifact import EmbeddingArtifactStore
+from app.embedding_artifact_identity import file_checksum
 from app.embedding_provider import EmbeddingProvider, OpenAIEmbeddingProvider
 from app.knowledge_source import KnowledgeCorpus, load_knowledge_corpus
 from app.models import RetrievalHit, SupportScope
@@ -148,6 +149,7 @@ def build_plan(
     corpus_path: Path,
     artifact_root: Path,
     model: str | None,
+    provider_identity: str,
     dimension: int,
     chunking_version: str,
     top_n: int,
@@ -176,6 +178,7 @@ def build_plan(
         "artifactRoot": str(artifact_root),
         "artifactId": artifact_id,
         "embeddingModel": model,
+        "embeddingProviderIdentity": provider_identity,
         "vectorDimension": dimension,
         "chunkingVersion": chunking_version,
         "allowedScopes": [scope.value for scope in ALLOWED_SCOPES],
@@ -235,6 +238,7 @@ async def run(args: argparse.Namespace) -> int:
         corpus_path=corpus_path,
         artifact_root=artifact_root,
         model=settings.openai_embedding_model,
+        provider_identity=artifact.manifest.provider_identity,
         dimension=artifact.manifest.vector_dimension,
         chunking_version=artifact.manifest.chunking_version,
         top_n=args.top_n,
@@ -253,12 +257,24 @@ async def run(args: argparse.Namespace) -> int:
 
     plan_file = output / "retrieval-plan.json"
     if plan_file.exists():
-        existing = json.loads(plan_file.read_text(encoding="utf-8"))
-        if existing.get("querySha256") != plan["querySha256"]:
+        plan_bytes = plan_file.read_bytes()
+        existing = json.loads(plan_bytes)
+        if {key: value for key, value in existing.items() if key != "generatedAt"} != {
+            key: value for key, value in plan.items() if key != "generatedAt"
+        }:
             raise ValueError("已存在的计划与本次输入不一致；请换输出目录，不要覆盖既有证据")
     else:
         write_new(plan_file, plan)
+        plan_bytes = plan_file.read_bytes()
+    plan_sha256 = hashlib.sha256(plan_bytes).hexdigest()
 
+    # Refuse both completed legacy runs and partial runs before any paid work.
+    for name in ("results.json", "query-vectors.json", "retrieval-only-manifest.json"):
+        if (output / name).exists():
+            raise FileExistsError(output / name)
+    # Exclusive creation also serializes concurrent executions of this output.
+    # Keep the claim after failures: remote receipt/billing may be unknown.
+    write_new(output / "execution-claim.json", plan)
     provider: EmbeddingProvider = OpenAIEmbeddingProvider(settings)
     rows_to_score = eligible_rows(corpus, ALLOWED_SCOPES)
     records: list[dict[str, Any]] = []
@@ -274,6 +290,8 @@ async def run(args: argparse.Namespace) -> int:
         embedding_calls += 1
         if query_vector.ndim != 1 or query_vector.shape[0] != artifact.manifest.vector_dimension:
             raise ValueError(f"{case_id} 的 query 向量维度异常")
+        if not np.isfinite(query_vector).all():
+            raise ValueError(f"{case_id} 的 query 向量包含非有限值")
         vectors[case_id] = [float(value) for value in query_vector]
         scored = cosine_scores(artifact.matrix, query_vector, rows_to_score)
         ranked = rank_candidates(
@@ -314,6 +332,8 @@ async def run(args: argparse.Namespace) -> int:
             "executedCases": len(records),
             "executedEmbeddingCalls": embedding_calls,
             "executedGenerationCalls": 0,
+            "retrievalPlanSha256": plan_sha256,
+            "queryVectorsSha256": file_checksum(output / "query-vectors.json"),
             "casesWithHits": sum(1 for record in records if record["outcome"] == "RETRIEVED"),
         },
     )
