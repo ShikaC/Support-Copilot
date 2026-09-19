@@ -78,7 +78,8 @@ Provider 返回 NaN、正负 Infinity 时，旧执行器还会写出错误的 `N
 | 真实浏览器 | Web 目录 `npm run test:e2e` | **21 passed**，Chromium、三个视口、本地 mock API；`frontend-e2e-resume.log`。Vitest 补丁未改变生产依赖或构建产物，因此保留本次已有浏览器证据 |
 | Benchmark 脚本 | `node --test scripts/benchmark/*.test.mjs` | **77 passed**；`benchmark-node.log` |
 | 发布安全门禁 | `./scripts/verify-ci-gates.sh --mode release` | **PASS**；`release-final-gate.log`。Python prod 57/dev 66、Java 183、Node 234 个精确依赖记录均无已知漏洞；凭据控制测试、当时 tracked tree 与全历史 164 个提交扫描通过；workflow、迁移、安全静态与 23 项扫描证据测试通过 |
-| 已提交文档 | `./scripts/verify-docs.sh --static` | 提交文档后执行；此工具仅验证 `git archive HEAD` |
+| 已提交文档 | `./scripts/verify-docs.sh --static` | **PASS，16 passed + 文档契约**；`docs-final.log`，在 clean `6485373` 的 `git archive HEAD` 上执行 |
+| 文档提交后凭据复核 | `gitleaks dir . --config <repo>/.gitleaks.toml --no-banner --redact --exit-code 1`（在 HEAD archive 内），以及 `gitleaks git . --log-opts=--all --config .gitleaks.toml --no-banner --redact --exit-code 1` | **PASS，零命中**；clean `6485373`，全历史 167 个提交；`gitleaks-final-tree.log` / `gitleaks-final-history.log` |
 
 一次从仓库根运行 AI 测试的尝试为 411 passed / 2 failed，因为两个子进程依赖 AI 项目工作目录，报模块未找到；按项目规定目录运行全量得到上述 413 passed，没有为此修改测试。运维 Python 测试首轮为 215 passed / 3 子进程超时，当时同时编译扫描工具；三项保持原样独立重跑全部通过。原失败记录保留，不将那次全量调用写成绿色。
 
@@ -97,7 +98,7 @@ Provider 返回 NaN、正负 Infinity 时，旧执行器还会写出错误的 `N
 | `1aeadd3` | 前端懒加载测试等待 |
 | `6800f13` | Vitest 4.1.11 |
 
-发布门禁运行期间提交边界从 `f48a51e` 推进到 `e61faae`，因此它绑定所读取的工作树内容，不能伪称在单个 clean SHA 上完成。最终 Node/Java 锁文件分别与扫描 inventory 的 SHA-256 完全相同（`60724946fcbf793a94e595a04c4e34aa6909a3bd203793f5cb73e6e89a8d3448`、`5fabdcae27fb62b06d903c3c7523e25a92f143bb8979444fd23ba996d6dbbc1c`）。文档提交后须完成 `verify-docs.sh --static` 和最终树/历史凭据复核；最终 SHA、是否 clean、远端 SHA 与 Actions 结果在交付时另行记录，不对尚未执行的检查写 PASS。
+发布门禁运行期间提交边界从 `f48a51e` 推进到 `e61faae`，因此它绑定所读取的工作树内容，不能伪称在单个 clean SHA 上完成。最终 Node/Java 锁文件分别与扫描 inventory 的 SHA-256 完全相同（`60724946fcbf793a94e595a04c4e34aa6909a3bd203793f5cb73e6e89a8d3448`、`5fabdcae27fb62b06d903c3c7523e25a92f143bb8979444fd23ba996d6dbbc1c`）。文档与凭据复核已在 clean `6485373c0326835989f8c8d24a0d475fd905781a` 通过，随后仅补记本段结果。最终 SHA、是否 clean、远端 SHA 与 Actions 结果在交付消息中另行记录，不对尚未执行的远端检查写 PASS。
 
 ## 验证范围与限制
 
