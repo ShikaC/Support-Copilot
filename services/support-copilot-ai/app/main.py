@@ -1,10 +1,15 @@
 import logging
 import re
-from collections.abc import Awaitable, Callable
-from typing import Annotated, Final
-from uuid import uuid4
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from typing import Annotated, Final, TypedDict
+from uuid import UUID, uuid4
 
+import anyio
+from anyio.abc import TaskGroup
 from fastapi import Depends, FastAPI, Request
+from fastapi import Path as ApiPath
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
@@ -12,6 +17,8 @@ from starlette.responses import Response
 from app.analysis_runner import AnalysisProcessingTimeoutError, AnalysisRunner
 from app.config import get_settings
 from app.embedding_artifact import EmbeddingArtifactError, EmbeddingArtifactStore
+from app.index_rebuild import IndexRebuildManager
+from app.index_rebuild_models import RebuildError, RebuildRequest, RebuildStatus
 from app.internal_auth import (
     InternalServiceAuthenticationError,
     InternalServiceAuthenticator,
@@ -20,8 +27,12 @@ from app.knowledge import KnowledgeReleaseMismatchError, KnowledgeRetriever
 from app.knowledge_source import KnowledgeSourceInvalidError
 from app.models import TRACE_ID_PATTERN, AnalyzeRequest, AnalyzeResponse
 from app.observability import (
-    STRUCTURED_LOG_FORMAT,
-    StructuredLogDefaults,
+    STRUCTURED_LOG_FORMAT as STRUCTURED_LOG_FORMAT,
+)
+from app.observability import (
+    StructuredLogDefaults as StructuredLogDefaults,
+)
+from app.observability import (
     configure_structured_logging,
 )
 from app.workflow import AnalysisWorkflow
@@ -43,10 +54,29 @@ internal_authenticator = InternalServiceAuthenticator(
     internal_service_token
 )
 
+
+@dataclass(frozen=True, slots=True)
+class RebuildRuntime:
+    manager: IndexRebuildManager
+    task_group: TaskGroup
+
+
+class LifespanState(TypedDict):
+    index_rebuild: RebuildRuntime
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[LifespanState]:
+    # A graceful shutdown drains accepted builds; no detached worker can outlive its lock.
+    async with anyio.create_task_group() as task_group:
+        yield {"index_rebuild": RebuildRuntime(IndexRebuildManager(settings), task_group)}
+
+
 app = FastAPI(
     title="Support Copilot AI",
     version="0.1.0",
     description="Ticket classification, knowledge retrieval, and grounded reply service.",
+    lifespan=lifespan,
 )
 
 
@@ -130,7 +160,7 @@ async def request_validation_error(
     request: Request,
     exception: RequestValidationError,
 ) -> JSONResponse:
-    errors = [
+    errors: list[JsonValue] = [
         {
             "type": error["type"],
             "loc": list(error["loc"]),
@@ -156,6 +186,16 @@ async def knowledge_release_mismatch_error(
         409,
         "KNOWLEDGE_RELEASE_MISMATCH",
         "Requested knowledge release does not match the active corpus.",
+        request.state.trace_id,
+    )
+
+
+@app.exception_handler(RebuildError)
+async def rebuild_error(request: Request, exception: RebuildError) -> JSONResponse:
+    return error_response(
+        exception.status_code,
+        exception.code,
+        exception.message,
         request.state.trace_id,
     )
 
@@ -274,6 +314,38 @@ async def list_index_versions(
         "chunkCount": corpus.chunk_count,
     }
     return JSONResponse(content=payload)
+
+
+@app.post("/knowledge/index/rebuild", response_model=RebuildStatus, status_code=202)
+async def rebuild_index(
+    body: RebuildRequest,
+    request: Request,
+    response: Response,
+    _authenticated: Annotated[None, Depends(internal_authenticator.require)],
+) -> RebuildStatus | JSONResponse:
+    """Accept a bounded build of the configured disk corpus without activating it."""
+    if not settings.knowledge_index_mutation_enabled:
+        return error_response(
+            403,
+            "INDEX_MUTATION_DISABLED",
+            "Index mutation is disabled by configuration.",
+            request.state.trace_id,
+        )
+    runtime: RebuildRuntime = request.state.index_rebuild
+    task = await runtime.manager.start(body, request.state.trace_id, runtime.task_group)
+    response.headers["Location"] = f"/knowledge/index/rebuild/{task.task_id}"
+    return task
+
+
+@app.get("/knowledge/index/rebuild/{taskId}", response_model=RebuildStatus)
+async def get_index_rebuild(
+    task_id: Annotated[UUID, ApiPath(alias="taskId")],
+    request: Request,
+    _authenticated: Annotated[None, Depends(internal_authenticator.require)],
+) -> RebuildStatus:
+    """Keep completed or failed build evidence readable even when mutation is disabled."""
+    runtime: RebuildRuntime = request.state.index_rebuild
+    return await runtime.manager.get(task_id)
 
 
 @app.post("/knowledge/index/reload")

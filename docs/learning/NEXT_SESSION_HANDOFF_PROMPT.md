@@ -1,12 +1,12 @@
 # Support Copilot 下一会话交接提示词
 
-> 2026-09-19 恢复入口：先读[本轮对抗式审查记录](../verification/adversarial-review-2026-09-18/README.md)，核对 Git、远端和 CI；安全修复边界为 `6800f13`，首次推送为 `093cd52`，随后干净检出修复边界为 `1ae47ce`。首次四条 CI 失败已定位到本地 fixture/runner 工具依赖，后续改动已在干净归档通过本地回归，最新远端结果仍须查实际记录。用户已明确授权“审查并修复问题后推送 GitHub”，不要再次索要同一推送授权。审查修复不包含第 7 节的重建任务功能。
+> 2026-09-19 恢复入口：先读[索引重建任务切片 A](../verification/index-rebuild-tasks-2026-09-19/README.md)，核对 Git、文档门禁与最新 CI。上一轮对抗式审查已完成，`1de4a77` 已推送且四条 CI 通过；用户随后明确要求“推送，然后开始下一步”。切片 A 已实现并通过本地 Python 回归和真实 Uvicorn + localhost Embedding 替身验收；最终提交与远端结果以交付消息和 Actions 为准，不用旧 SHA 的绿色替代新提交证据。
 
 > 当前事实以 [STATUS](../STATUS.md) 为准，详细数字以各独立报告为准。新评测工具要求执行时计划/向量摘要；09-17/09-18 旧缓存缺少它们，当前工具拒绝直接重算，不能补写事后哈希或自动重跑付费请求。
 >
 > 索引可以不重启热重载，且现在 reload 绝不隐式建库或付费，失败保留旧快照；语料与索引必须匹配。评估集 76 题（development 40 / holdout 36 封印）。切片参数可配，1000/800 实验没有显示显著收益。比较协议已预注册，但最后一次真实探测仍被 provider chat 端点 503 阻塞，本轮没有重新探测。
 >
-> **下一步（已选定）**：把索引重建任务化——让"换切片"从三条手工命令变成一次请求加轮询。分层与验收见下文第 7 节。
+> **下一步**：先核对切片 A 的最终交付与 diff，再进入第 7 节的语料生成方案决策。不要重复实现后台重建，也不要把本机替身验收当成已授权的付费建库。Java/前端入口、语料生成与上传解析尚未实现。
 
 项目路径：`/Users/shika/Documents/Support-Copilot`。
 
@@ -14,13 +14,13 @@
 
 用户要可追溯的回答质量、全链路延迟、正常产出/降级/超时和持久化证据，并要作者本人能读懂、能复述、能审核自己的代码（理解优先，见 `docs/learning/TEACHING_PROTOCOL.md`）。没有内部客户数据，只用公开归档文档、Doc2Dial 人工构建对话和真实公开 issue；不得称为企业真实客服日志。
 
-本轮已授权：对抗式审查、必要修复、回归、本地提交并推送既有 GitHub 分支。既有付费比较授权与一次性执行边界继续保留，但本轮不触发模型/Embedding 调用，不消耗 holdout；不将本轮推送授权扩大为部署、客户数据或新的大额实验授权。真实模型测量不等于人工质量审核；AI 标签、人审状态和未知费用不能虚构。
+本轮已授权：推送已审查代码，并实现已选定的索引重建任务切片 A、回归与本地提交。既有付费比较授权与一次性执行边界继续保留，但本轮只用 localhost Embedding 替身，不触发真实供应方模型调用、不消耗 holdout；不将推送授权扩大为部署、客户数据或新的大额实验授权。真实模型测量不等于人工质量审核；AI 标签、人审状态和未知费用不能虚构。
 
 ## 2. 恢复顺序
 
 1. 完整阅读 `AGENTS.md`、`MISSION.md`、`docs/learning/TEACHING_PROTOCOL.md`、`V1_PROJECT_MAP.md`、`ONE_WEEK_INTERVIEW_SPRINT.md`、`LIVE_RAG_COMPLETION_CRITERIA.md`、`docs/optimizations/ROADMAP.md`、`docs/STATUS.md`、`docs/ROADMAP.md`、`docs/learning/READING_LOG.md`。
-2. 查看 Git 状态、分支与最近提交，先确认本轮审查的文档门禁、推送和 GitHub Actions 是否完成。代码提交列表见审查记录；`315b535` 是此前热重载历史切片。禁止回退或覆盖已提交历史。
-3. 若确有新改动或失败需要验证，使用以下入口；本轮已执行结果以审查记录为准，不无故重跑全部历史实验：
+2. 查看 Git 状态、分支与最近提交，先确认重建任务切片的文档门禁、提交和 GitHub Actions；上一轮审查结果见独立报告。`315b535` 是此前热重载历史切片，禁止回退或覆盖已提交历史。
+3. 若确有新改动或失败需要验证，使用以下入口；本轮已执行结果以重建切片记录为准，不无故重跑全部历史实验：
 
 ```bash
 (cd services/support-copilot-ai && .venv/bin/python -m pytest -q)
@@ -73,36 +73,17 @@ node scripts/benchmark/prepare-doc2dial.mjs --verify-against docs/verification/b
 - 旧验证器（isolated-runner、quality、query-context-fix 的 `verify.mjs`）绑定修复前工作树，会因后续授权改动失败。**保留原件，不改旧门禁制造通过**。
 - 14 个 Java MySQL 用例需 Docker/环境变量；`verify-docs.sh --full` 未运行。真实 live 质量门禁仍 partial（人工审核 0、质量分数 null）。
 
-## 7. 下一步：把索引重建任务化（已选定方向）
+## 7. 重建任务已实现，下一切片是语料生成方案决策
 
-**业务问题**：现在换切片要人手敲三条命令（Node 生成语料 → Python 建索引 → 移文件并重启重载），中间任何一步顺序错就会被 409 拒绝。用户要的是"前端可调切片大小、上传数据集文档"，而这两个需求**都卡在同一段缺失的能力**上：服务端能自己生成语料与索引。没有它，前面的清单和热重载只是给人看的仪表盘。
+**业务问题**：目标仍是前端可调切片、后续上传文档。切片 A 已把“现有磁盘语料 → 构建索引”变成请求加轮询；语料生成、显式激活、reload、Java/前端接入仍有各自边界，不能把当前后端能力描述为完整上传或一键换切片。
 
-**建议分成两个垂直切片，先做 A**：
+按两个垂直切片推进，A 的实现与证据已独立记录：
 
 ### 切片 A：索引重建任务化（语料已在磁盘上）
 
-目标：一次请求触发重建，轮询进度，完成后可选自动重载；不阻塞其他请求、不并发、失败保留现场。
+已实现并完成本地验收：202 + Location、持久化任务查询、线程构建、同 artifact root 的 API 文件锁、真实批次进度、显式调用次数上限、重启可读及中断失败恢复。成功只生成或复用已验证 artifact，绝不自动激活或 reload。接口、文件、命令、故障证据和准确限制统一见[切片 A 报告](../verification/index-rebuild-tasks-2026-09-19/README.md)。
 
-影响范围：新端点（`POST /knowledge/index/rebuild` + `GET /knowledge/index/rebuild/{taskId}`）、`EmbeddingArtifactStore.build` 的任务包装、`app/main.py` 装配、`KnowledgeView` 之后接。**不改**校验语义、不改检索路径、不改切片逻辑。
-
-必须做对的点（都来自本轮踩过的坑）：
-
-- 构建是 CPU/IO 密集 + 数千次外部调用，**必须在线程里跑**（`anyio.to_thread`），不能占住事件循环。
-- **单任务串行**：已有任务运行时拒绝新任务（409），不是排队。
-- **绝不自动覆盖 active 指针**：构建产出一个新 artifact；激活与重载是独立的一步。本轮已经证明"只换索引不动语料"会被正当拒绝，让重建顺手激活等于制造半成品状态。
-- **失败必须留下 artifact 目录与错误原因**，不静默重试、不自动清理、不吞异常。
-- 默认关闭（沿用 `KNOWLEDGE_INDEX_MUTATION_ENABLED`），内部服务鉴权优先于功能开关。
-- 进度要有真实含义（已完成片段数 / 总片段数），不是假百分比。
-- 成本可见：估算调用次数与耗时（3015 chunks 约 50 秒），与冻结预算口径一致。
-
-验收标准：状态机 `RUNNING → SUCCEEDED | FAILED`；并发第二个任务被拒；失败时旧 active 与旧语料完全不变；重启进程后能读出上次任务状态或明确报"任务信息已丢失"（二选一，写清楚）；真实演练一次并保存 probe 证据。
-
-验证命令：
-
-```bash
-cd services/support-copilot-ai && .venv/bin/python -m pytest -q
-# 真实演练：起服务 → POST 重建 → 轮询 → GET /knowledge/index/versions 看到新 artifact 且 active 未自动改变
-```
+该验收使用真实本机 HTTP 和合成 Embedding 服务，没有真实供应方调用；尚无可信耗时预测，接口明确返回 null，不延用历史“3015 chunks 约 50 秒”作为承诺。下一轮不得自动发起付费演练、恢复旧任务或清理失败候选目录。
 
 ### 切片 B：语料生成任务化（需要先做决策）
 

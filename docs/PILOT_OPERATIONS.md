@@ -99,9 +99,11 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 | GET | `/health/live` | FastAPI liveness |
 | GET | `/health/ready` | FastAPI readiness 快照 |
 | GET | `/knowledge/index/versions` | 列出检索索引版本与当前生效版本（只读） |
+| GET | `/knowledge/index/rebuild/{taskId}` | 查询持久化索引构建任务、真实进度与失败原因（需内部鉴权） |
 | PATCH | `/api/tickets/{id}` | 携带 expectedVersion 修改工单 |
 | POST | `/analyze` | Java 调用内部 AI 分析 |
 | POST | `/knowledge/index/reload` | 重载语料与向量索引（默认关闭，需内部鉴权） |
+| POST | `/knowledge/index/rebuild` | 有预算上限地后台构建配置语料的索引，不自动激活（默认关闭，需内部鉴权） |
 | POST | `/api/knowledge/releases` | 创建 DRAFT release |
 | POST | `/api/knowledge/releases/{releaseId}/approve` | 审批 release |
 | POST | `/api/knowledge/releases/{releaseId}/publish` | 发布 release |
@@ -133,6 +135,9 @@ model 不是同一协议职责，不能只因名称相同就假设端点兼容�
 - `ANALYSIS_REVIEW_STALE`：审核目标不是最新分析或工单版本已变化。
 - `KNOWLEDGE_RELEASE_MISMATCH`：Java active release 与 Python corpus 不一致，失败关闭。
 - `TRACE_ID_MISMATCH`：FastAPI header/body trace 不一致，请求不进入 workflow。
+
+索引重建接口的调用步骤、预算、进度、重启和失败保留语义统一见
+[索引重建任务切片 A](verification/index-rebuild-tasks-2026-09-19/README.md)。
 
 ## 5. 认证、知识与数据治理
 

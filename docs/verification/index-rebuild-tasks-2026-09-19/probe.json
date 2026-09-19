@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "evidenceKind": "real-uvicorn-http-with-localhost-synthetic-embedding-provider",
+  "scope": "Actual HTTP requests and real OpenAI SDK; synthetic vectors only. No external model or paid API is used. This does not measure live provider quality, latency, or reliability.",
+  "git": {
+    "baseSha": "1de4a77f2c78c01eb78d9c09aa4db9e361131e95",
+    "worktreeDirty": true,
+    "binding": "Base SHA plus uncommitted slice A changes; this run is not evidence for the base SHA alone."
+  },
+  "execution": {
+    "workingDirectory": "services/support-copilot-ai",
+    "command": ".venv/bin/python -m pytest -q tests/test_index_rebuild_http.py -o junit_family=xunit1 --junitxml=../../.local/rebuild-http-review/http-probe.xml",
+    "recordedAt": "2026-09-19T13:13:50.560742+08:00",
+    "tests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "durationSeconds": 8.085,
+    "capture": "Decoded pytest record_property values from the actual JUnit XML run; HTTP bodies contain only allowlisted status fields."
+  },
+  "cases": [
+    {
+      "test": "test_rebuild_http_stays_responsive_and_preserves_active_after_success",
+      "result": "passed",
+      "durationSeconds": 2.954,
+      "observations": {
+        "accepted": {
+          "statusCode": 202,
+          "body": {
+            "taskId": "87d3f402-85d6-4f6e-9600-c54acef81d1a",
+            "status": "RUNNING",
+            "totalChunks": 2,
+            "completedChunks": 0,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 0,
+            "artifactId": null,
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_fb8758fd7555",
+            "startedAt": "2026-09-19T05:13:52.702420Z",
+            "updatedAt": "2026-09-19T05:13:52.702420Z",
+            "finishedAt": null,
+            "elapsedSeconds": 0.0,
+            "estimatedDurationSeconds": null,
+            "failureCode": null
+          },
+          "location": "/knowledge/index/rebuild/87d3f402-85d6-4f6e-9600-c54acef81d1a"
+        },
+        "running": {
+          "statusCode": 200,
+          "body": {
+            "taskId": "87d3f402-85d6-4f6e-9600-c54acef81d1a",
+            "status": "RUNNING",
+            "totalChunks": 2,
+            "completedChunks": 0,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 1,
+            "artifactId": null,
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_fb8758fd7555",
+            "startedAt": "2026-09-19T05:13:52.702420Z",
+            "updatedAt": "2026-09-19T05:13:52.704325Z",
+            "finishedAt": null,
+            "elapsedSeconds": 0.333382,
+            "estimatedDurationSeconds": null,
+            "failureCode": null
+          },
+          "location": null
+        },
+        "responsiveness": {
+          "healthStatusCode": 200,
+          "providerBlockedDuringPoll": true
+        },
+        "conflict": {
+          "statusCode": 409,
+          "body": {
+            "code": "REBUILD_ALREADY_RUNNING",
+            "traceId": "trace_5079ae4e0edc"
+          },
+          "location": null
+        },
+        "terminal": {
+          "statusCode": 200,
+          "body": {
+            "taskId": "87d3f402-85d6-4f6e-9600-c54acef81d1a",
+            "status": "SUCCEEDED",
+            "totalChunks": 2,
+            "completedChunks": 2,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 1,
+            "artifactId": "7d509250637fef458a874428f5d59eb799f25c615a7d77ac3df944f963068ff7",
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_fb8758fd7555",
+            "startedAt": "2026-09-19T05:13:52.702420Z",
+            "updatedAt": "2026-09-19T05:13:53.044150Z",
+            "finishedAt": "2026-09-19T05:13:53.044150Z",
+            "elapsedSeconds": 0.34173,
+            "estimatedDurationSeconds": null,
+            "failureCode": null
+          },
+          "location": null
+        },
+        "completionInvariants": {
+          "providerCalls": 1,
+          "activePointerUnchanged": true,
+          "corpusUnchanged": true,
+          "candidateListed": true,
+          "candidateActive": false
+        },
+        "restarted": {
+          "statusCode": 200,
+          "body": {
+            "taskId": "87d3f402-85d6-4f6e-9600-c54acef81d1a",
+            "status": "SUCCEEDED",
+            "totalChunks": 2,
+            "completedChunks": 2,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 1,
+            "artifactId": "7d509250637fef458a874428f5d59eb799f25c615a7d77ac3df944f963068ff7",
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_fb8758fd7555",
+            "startedAt": "2026-09-19T05:13:52.702420Z",
+            "updatedAt": "2026-09-19T05:13:53.044150Z",
+            "finishedAt": "2026-09-19T05:13:53.044150Z",
+            "elapsedSeconds": 0.34173,
+            "estimatedDurationSeconds": null,
+            "failureCode": null
+          },
+          "location": null
+        },
+        "restartInvariants": {
+          "statusPreserved": true,
+          "providerCalls": 1
+        }
+      }
+    },
+    {
+      "test": "test_rebuild_http_provider_failure_is_durable_sanitized_and_never_retried",
+      "result": "passed",
+      "durationSeconds": 2.581,
+      "observations": {
+        "accepted": {
+          "statusCode": 202,
+          "body": {
+            "taskId": "a609f186-89dc-4ec4-be40-09c03e025637",
+            "status": "RUNNING",
+            "totalChunks": 2,
+            "completedChunks": 0,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 0,
+            "artifactId": null,
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_171235ab846d",
+            "startedAt": "2026-09-19T05:13:55.428383Z",
+            "updatedAt": "2026-09-19T05:13:55.428383Z",
+            "finishedAt": null,
+            "elapsedSeconds": 0.0,
+            "estimatedDurationSeconds": null,
+            "failureCode": null
+          },
+          "location": "/knowledge/index/rebuild/a609f186-89dc-4ec4-be40-09c03e025637"
+        },
+        "terminal": {
+          "statusCode": 200,
+          "body": {
+            "taskId": "a609f186-89dc-4ec4-be40-09c03e025637",
+            "status": "FAILED",
+            "totalChunks": 2,
+            "completedChunks": 0,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 1,
+            "artifactId": null,
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_171235ab846d",
+            "startedAt": "2026-09-19T05:13:55.428383Z",
+            "updatedAt": "2026-09-19T05:13:55.627034Z",
+            "finishedAt": "2026-09-19T05:13:55.627034Z",
+            "elapsedSeconds": 0.198651,
+            "estimatedDurationSeconds": null,
+            "failureCode": "EMBEDDING_PROVIDER_FAILED"
+          },
+          "location": null
+        },
+        "failureInvariants": {
+          "providerCalls": 1,
+          "activePointerUnchanged": true,
+          "corpusUnchanged": true,
+          "candidateRetained": true,
+          "providerDetailAbsentFromResponse": true,
+          "secretAbsentFromResponse": true
+        },
+        "restarted": {
+          "statusCode": 200,
+          "body": {
+            "taskId": "a609f186-89dc-4ec4-be40-09c03e025637",
+            "status": "FAILED",
+            "totalChunks": 2,
+            "completedChunks": 0,
+            "estimatedEmbeddingCalls": 1,
+            "maxEmbeddingCalls": 1,
+            "embeddingCalls": 1,
+            "artifactId": null,
+            "corpusChecksum": "fa1e1f30cdb9c9d4618b34cbd2f4e168c01863a1aafcbc765088dcb5919aadca",
+            "traceId": "trace_171235ab846d",
+            "startedAt": "2026-09-19T05:13:55.428383Z",
+            "updatedAt": "2026-09-19T05:13:55.627034Z",
+            "finishedAt": "2026-09-19T05:13:55.627034Z",
+            "elapsedSeconds": 0.198651,
+            "estimatedDurationSeconds": null,
+            "failureCode": "EMBEDDING_PROVIDER_FAILED"
+          },
+          "location": null
+        },
+        "restartInvariants": {
+          "statusPreserved": true,
+          "providerCalls": 1
+        },
+        "logSanitization": {
+          "providerDetailAbsentFromLog": true,
+          "secretAbsentFromLog": true
+        }
+      }
+    },
+    {
+      "test": "test_rebuild_http_auth_precedes_disabled_mutation_and_unknown_task_is_missing",
+      "result": "passed",
+      "durationSeconds": 1.511,
+      "observations": {
+        "unauthenticated": {
+          "statusCode": 401,
+          "body": {
+            "code": "INTERNAL_SERVICE_AUTHENTICATION_REQUIRED",
+            "traceId": "trace_d210c5492bf7"
+          },
+          "location": null
+        },
+        "mutationDisabled": {
+          "statusCode": 403,
+          "body": {
+            "code": "INDEX_MUTATION_DISABLED",
+            "traceId": "trace_e3fc39d7cfae"
+          },
+          "location": null
+        },
+        "unknownTask": {
+          "statusCode": 404,
+          "body": {
+            "code": "REBUILD_TASK_NOT_FOUND",
+            "traceId": "trace_b20115a98b05"
+          },
+          "location": null
+        },
+        "providerCalls": 0
+      }
+    }
+  ]
+}

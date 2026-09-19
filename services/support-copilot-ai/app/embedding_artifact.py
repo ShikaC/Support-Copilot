@@ -81,7 +81,13 @@ class EmbeddingArtifactStore:
         self._corpus = corpus
         self._build_lock = anyio.Lock()
 
-    async def build(self, provider: EmbeddingProvider) -> EmbeddingArtifactManifest:
+    async def build(
+        self,
+        provider: EmbeddingProvider,
+        *,
+        candidate_directory: Path | None = None,
+    ) -> EmbeddingArtifactManifest:
+        """Build without activation; an explicit candidate retains failure evidence."""
         dimension = self._expected_dimension
         if dimension is None:
             raise EmbeddingArtifactError("embedding-dimension-required")
@@ -105,6 +111,8 @@ class EmbeddingArtifactStore:
         async with self._build_lock:
             if final_path.exists():
                 return self.load(artifact_id).manifest
+            if candidate_directory is not None:
+                candidate_directory.mkdir()
             texts = [redact_sensitive_text(chunk.content) for chunk in self._corpus.chunks]
             matrix = np.asarray(await provider.embed_documents(texts), dtype=np.float32)
             if matrix.ndim != 2 or matrix.shape[0] != len(texts) or matrix.shape[1] == 0:
@@ -114,7 +122,11 @@ class EmbeddingArtifactStore:
             if matrix.shape[1] != dimension:
                 raise EmbeddingArtifactError("provider-dimension-mismatch")
             self._root.mkdir(parents=True, exist_ok=True)
-            temporary = Path(tempfile.mkdtemp(prefix=".candidate-", dir=self._root))
+            temporary = (
+                candidate_directory
+                if candidate_directory is not None
+                else Path(tempfile.mkdtemp(prefix=".candidate-", dir=self._root))
+            )
             try:
                 matrix_path = temporary / "matrix.npy"
                 with matrix_path.open("wb") as stream:
@@ -153,7 +165,7 @@ class EmbeddingArtifactStore:
                 fsync_directory(self._root)
                 return manifest
             finally:
-                if temporary.exists():
+                if candidate_directory is None and temporary.exists():
                     shutil.rmtree(temporary)
 
     def load_active(self) -> LoadedEmbeddingArtifact:
