@@ -649,7 +649,8 @@ SHIM
 
 chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
 	"$bootstrap_bin_dir/mkdir" \
-	"$wrong_tool_dir"/* "$venv_python" "$override_python" \
+	"$wrong_tool_dir/actionlint" "$wrong_tool_dir/osv-scanner" "$wrong_tool_dir/gitleaks" \
+	"$venv_python" "$override_python" \
 	"$fixture_repo/services/support-copilot-api/gradlew" \
 	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh" \
 	"$fixture_repo/scripts/tests/verify-secret-scan.sh"

@@ -36,6 +36,10 @@
 
 本地最终结果：新输出目录中的真实构建返回版本 **8.30.1**，`go version -m` 确认声明模块、固定版本与 linker 参数；真实 secret-scan 对抗控制通过；GNU tar 下完整 aggregate contract **PASS**。失败基线与绿色契约分别保存在 `gitleaks-bootstrap-contract-red.log` 和 `gitleaks-bootstrap-contract-green.log`，真实构建为 `gitleaks-pinned-bootstrap.log`。这些结果绑定 `fbea6b4` 加本节安装器改动，尚不能代替后续远端运行。
 
+`cba2e87` 的 [release CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35418492759) 随后已完成三个工具的真实安装与版本检查、工作流语法检查，确认上述修复在 GitHub runner 生效。该次运行又发现契约 fixture 的 `chmod "$wrong_tool_dir"/*` 跟随 java/rg 链接，试图修改 runner 所有的可执行文件，因没有权限而失败。权限设置现只列出 fixture 自己创建的 actionlint、osv-scanner、gitleaks 脚本；不会沿链接修改宿主工具，也不修改 runner 权限来绕过失败。
+
+该最小修复在 `cba2e87` 加本节脚本与文档改动的工作树上执行 `PATH="$PWD/.local/prepush-review/gnu-tar/tar-1.35/src:$PATH" ./scripts/tests/verify-ci-gates-contract.sh`，结果为 **PASS: Task 13 aggregate behavioral contract**、退出码 0；日志为 `.local/prepush-review/contract-owned-scripts.log`。独立只读审查确认其余权限修改目标均为自有临时目录中的生成文件，未发现另一个宿主工具写入。该证据证明本地 GNU tar 契约通过；最终提交的远端 release 结果仍以 Actions 与交付消息为准。
+
 ## 范围与基线
 
 - 用户明确要求进行对抗式审查，修复发现的问题后推送 GitHub。
