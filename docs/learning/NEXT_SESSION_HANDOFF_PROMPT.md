@@ -1,8 +1,10 @@
 # Support Copilot 下一会话交接提示词
 
-> 更新：2026-09-18（第二版）。恢复入口；当前事实以 [STATUS](../STATUS.md) 为准，详细数字以各独立报告为准。
+> 2026-09-19 恢复入口：先读[本轮对抗式审查记录](../verification/adversarial-review-2026-09-18/README.md)，核对 Git、远端和 CI；修复代码边界为 `6800f13`。用户已明确授权“审查并修复问题后推送 GitHub”，不要再次索要同一推送授权。模块回归和本地安全门禁已通过，文档提交与远端结果须查实际记录。审查修复不包含第 7 节的重建任务功能。
+
+> 当前事实以 [STATUS](../STATUS.md) 为准，详细数字以各独立报告为准。新评测工具要求执行时计划/向量摘要；09-17/09-18 旧缓存缺少它们，当前工具拒绝直接重算，不能补写事后哈希或自动重跑付费请求。
 >
-> 截至本次更新：master `315b535`、工作树 clean、未推送（本地领先 `origin/master`，推送需单独授权）。**索引现在可以不重启热切换**：`chunking_version` 已从校验字段降级为观测字段，`POST /knowledge/index/reload` 在真实语料上验证通过（1686 ms，1564 → 3015 chunks），只换一半时 409 并保留旧快照。评估集 76 题（development 40 / holdout 36 封印）。切片参数可配，1000/800 实验证明切片粒度不是瓶颈。比较协议已预注册但**执行仍被 provider chat 端点 503 阻塞**。
+> 索引可以不重启热重载，且现在 reload 绝不隐式建库或付费，失败保留旧快照；语料与索引必须匹配。评估集 76 题（development 40 / holdout 36 封印）。切片参数可配，1000/800 实验没有显示显著收益。比较协议已预注册，但最后一次真实探测仍被 provider chat 端点 503 阻塞，本轮没有重新探测。
 >
 > **下一步（已选定）**：把索引重建任务化——让"换切片"从三条手工命令变成一次请求加轮询。分层与验收见下文第 7 节。
 
@@ -12,18 +14,18 @@
 
 用户要可追溯的回答质量、全链路延迟、正常产出/降级/超时和持久化证据，并要作者本人能读懂、能复述、能审核自己的代码（理解优先，见 `docs/learning/TEACHING_PROTOCOL.md`）。没有内部客户数据，只用公开归档文档、Doc2Dial 人工构建对话和真实公开 issue；不得称为企业真实客服日志。
 
-已授权：直接优化产品、使用既有范围内的模型/Embedding 调用、本地提交（**不推送**）。付费比较运行已授权但被 503 阻塞，未消耗。真实模型测量不等于人工质量审核；AI 标签、人审状态和未知费用不能虚构。远端写入、部署、客户数据、新的大额范围仍需单独明确授权。
+本轮已授权：对抗式审查、必要修复、回归、本地提交并推送既有 GitHub 分支。既有付费比较授权与一次性执行边界继续保留，但本轮不触发模型/Embedding 调用，不消耗 holdout；不将本轮推送授权扩大为部署、客户数据或新的大额实验授权。真实模型测量不等于人工质量审核；AI 标签、人审状态和未知费用不能虚构。
 
 ## 2. 恢复顺序
 
 1. 完整阅读 `AGENTS.md`、`MISSION.md`、`docs/learning/TEACHING_PROTOCOL.md`、`V1_PROJECT_MAP.md`、`ONE_WEEK_INTERVIEW_SPRINT.md`、`LIVE_RAG_COMPLETION_CRITERIA.md`、`docs/optimizations/ROADMAP.md`、`docs/STATUS.md`、`docs/ROADMAP.md`、`docs/learning/READING_LOG.md`。
-2. 查看 Git 状态、分支与最近提交。本轮提交 `315b535`（索引热重载）；上一轮链 `51ff66b`（扩容评估集）→ `1f7dcad`（切片参数化）→ `0efa9d1`（索引版本清单）。禁止回退或覆盖已提交历史。
-3. 第一条验证命令（三分门禁，均应为绿）：
+2. 查看 Git 状态、分支与最近提交，先确认本轮审查的文档门禁、推送和 GitHub Actions 是否完成。代码提交列表见审查记录；`315b535` 是此前热重载历史切片。禁止回退或覆盖已提交历史。
+3. 若确有新改动或失败需要验证，使用以下入口；本轮已执行结果以审查记录为准，不无故重跑全部历史实验：
 
 ```bash
-cd services/support-copilot-ai && .venv/bin/python -m pytest -q      # 375 passed
-cd ../.. && node --test scripts/benchmark/*.test.mjs                 # 77 项
-./scripts/verify-docs.sh --static                                    # 16 项 + 文档契约
+(cd services/support-copilot-ai && .venv/bin/python -m pytest -q)
+node --test scripts/benchmark/*.test.mjs
+./scripts/verify-docs.sh --static
 ```
 
 `verify-docs.sh` 在 `git archive HEAD` 的临时副本里跑，**只反映已提交状态**：工作区改动未提交时它看不见，也正因此它是最强的"提交是否自洽"门禁。文档契约会把 FastAPI 装饰器与 Java controller 的实际路由和 `docs/PILOT_OPERATIONS.md` 表格逐项比对——新增端点必须同步登记，否则门禁红。
@@ -45,7 +47,7 @@ development 40 题上：纯向量 gold@1 50.0% / gold@3 80.0% / MRR 0.625；等�
 
 - 扩展集与冻结开发集**只能各自纵向比较**，绝对命中率不得混算。扩展题 `audit.label=PENDING`，**不产生答案性或质量结论**。
 - **holdout 36 题未运行**，只能验证事先固定的方案（当前仅等权 k=60 合格）。参数扫描里最好看的 `bm25x0.5` 是在 40 题上挑出来的，**不许**用 holdout 验证它。用 holdout 是不可逆消耗，需先确认。
-- **不显著就不改生产检索**。任何检索改动先在离线口径比较（`query-vectors.json` 可零调用复现排序实验），再决定是否花真实调用。
+- **不显著就不改生产检索**。新的完整取证缓存可以零调用复现排序实验；历史缺失执行摘要的缓存只保留原报告，不用当前 CLI 重新认证。新真实调用仍按独立计划和预算决定。
 - 调大 top_k 是成本决策，不是质量修复。
 - 扩展集暴露了旧集看不到的问题：3 题 gold 排在 10 名之外（第 97 / 35 / 12 名），重排救不回；旧集"召回够用、只差排序"的结论只在 11 题上成立。
 
