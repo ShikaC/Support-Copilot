@@ -75,3 +75,6 @@ docs/verification/chunking-1000-800-2026-09-18/query-vectors.json
 
 # Index version inventory: the read-only capability and its real-data probe.
 !docs/verification/index-versions-2026-09-18/**
+
+# Sanitized actual corpus task HTTP responses, required in clean evidence checkouts.
+!docs/verification/corpus-build-tasks-2026-09-19/probe.json

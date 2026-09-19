@@ -10,71 +10,26 @@
 //   node scripts/benchmark/prepare-doc2dial.mjs --verify-against <目录>  # 自检默认规则未漂移
 //   node scripts/benchmark/prepare-doc2dial.mjs --window 1000 --stride 800 --output <新目录>
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const defaultWindow = 2000;
-export const defaultStride = 1600;
+import {buildCorpus, chunkDocument, chunkingVersion, defaultStride, defaultWindow,
+  docKey, hash, releaseId, validateSlicing} from '../../services/support-copilot-ai/knowledge-tools/doc2dial-corpus.mjs';
+export {buildCorpus, chunkDocument, chunkingVersion, defaultStride, defaultWindow, releaseId};
 export const defaultPerDomain = 8;
 export const defaultSource = '.local/business-benchmark-source';
 export const defaultOutput = 'docs/verification/business-benchmark-2026-09-10';
 export const dataset = 'Doc2Dial official archive named v1.0.1';
 
-const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
-const canonical = (value) => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
-  ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
-
-/** artifact 身份：切片参数唯一决定版本串，参数不同就不可能撞版本。 */
-export function chunkingVersion(window, stride) {
-  return `doc2dial-codepoints-${window}-${stride}-v1`;
-}
-
-/** 默认切片沿用历史 release 名，其他参数自动派生新名，避免两个不同语料同名。 */
-export function releaseId(window, stride) {
-  return window === defaultWindow && stride === defaultStride
-    ? 'doc2dial-business-benchmark-v1'
-    : `doc2dial-business-benchmark-${window}-${stride}-v1`;
-}
-
 export function validateChunking({window, stride, perDomain}) {
-  assert(Number.isInteger(window) && window > 0, '窗口必须是正整数');
-  assert(Number.isInteger(stride) && stride > 0, '步长必须是正整数');
-  assert(stride <= window, '步长不能大于窗口，否则会静默丢掉中间内容');
+  validateSlicing(window, stride);
   assert(Number.isInteger(perDomain) && perDomain > 0, '每领域题数必须是正整数');
-}
-
-/** 按 Unicode code point 滑窗切片；窗口与步长与冻结实现逐行一致。 */
-export function chunkDocument(docText, window, stride) {
-  const points = [...docText];
-  const slices = [];
-  for (let start = 0; start < points.length; start += stride) {
-    const end = Math.min(start + window, points.length);
-    slices.push({start, end, content: points.slice(start, end).join('').trim()});
-    if (end === points.length) break;
-  }
-  return slices.filter((slice) => slice.content);
 }
 
 export function buildArtifacts({documents, dialogues, sourceDir, window, stride, perDomain}) {
   validateChunking({window, stride, perDomain});
-  const chunks = [];
-  const chunkMap = {};
-  const docKey = (domain, id) => `d2d-${domain}-${hash(id).slice(0, 16)}`;
-  for (const [domain, docs] of Object.entries(documents)) {
-    for (const [id, doc] of Object.entries(docs)) {
-      assert.equal(doc.doc_id, id);
-      for (const slice of chunkDocument(doc.doc_text, window, stride)) {
-        const chunkId = `${docKey(domain, id)}-${slice.start}-${slice.end}`;
-        chunks.push({chunk_id: chunkId, document_id: docKey(domain, id), document_title: doc.title,
-          section: `Unicode code points ${slice.start}:${slice.end}`, content: slice.content,
-          source_uri: `https://doc2dial.github.io/#${encodeURIComponent(id)}`,
-          categories: ['GENERAL'], keywords: [domain], allowed_scopes: ['GENERAL'],
-          document_version: 'doc2dial-archive-v1.0.1', status: 'PUBLISHED', updated_at: '2021-02-26'});
-        chunkMap[chunkId] = {domain, original_document_id: id, start: slice.start, end: slice.end};
-      }
-    }
-  }
+  const {corpus, chunkMap} = buildCorpus({documents, window, stride});
+  const chunks = corpus.chunks;
   const cases = [];
   const selection = [];
   for (const domain of Object.keys(dialogues).sort()) {
@@ -107,8 +62,6 @@ export function buildArtifacts({documents, dialogues, sourceDir, window, stride,
     cases.push(...selected);
     selection.push({domain, eligible: candidates.length, selected: selected.map((item) => item.id)});
   }
-  const corpus = {release_id: releaseId(window, stride), release_version: 1,
-    corpus_checksum: hash(canonical(chunks)), chunks};
   // 切片身份单独存一份，不进 corpus/protocol：那两份是被冻结的产物，字段不能变。
   const chunking = {chunking_version: chunkingVersion(window, stride), release_id: corpus.release_id,
     window, stride, per_domain: perDomain, source: 'doc2dial doc_text, Unicode code points'};

@@ -1,0 +1,102 @@
+{
+  "accepted": {
+    "statusCode": 202,
+    "location": "/knowledge/corpus/build/949a8161-5ff0-461f-9ac0-4928bc3ba3df",
+    "body": {
+      "taskId": "949a8161-5ff0-461f-9ac0-4928bc3ba3df",
+      "request": {
+        "expectedSourceChecksum": "f197e349a5faef8930f77e2258041547d2dd5ed3197263dada1a299465076530",
+        "window": 4,
+        "stride": 3
+      },
+      "status": "RUNNING",
+      "result": null,
+      "failureCode": null,
+      "traceId": "trace_74a9c89a4de0",
+      "startedAt": "2026-09-19T06:28:47.646070Z",
+      "finishedAt": null,
+      "elapsedSeconds": 0.0,
+      "estimatedDurationSeconds": null
+    }
+  },
+  "succeeded": {
+    "taskId": "949a8161-5ff0-461f-9ac0-4928bc3ba3df",
+    "request": {
+      "expectedSourceChecksum": "f197e349a5faef8930f77e2258041547d2dd5ed3197263dada1a299465076530",
+      "window": 4,
+      "stride": 3
+    },
+    "status": "SUCCEEDED",
+    "result": {
+      "sourceChecksum": "f197e349a5faef8930f77e2258041547d2dd5ed3197263dada1a299465076530",
+      "corpusChecksum": "00cfaa42fefab98c4868ddf7aec2ed30c1d6dd9a1bbbd60a7c2748a5f98f761c",
+      "corpusFileChecksum": "6b65ce17c56b4462f40f82ed7cfd4cf9fd62962387db8ef1da225f1ec6ce1dd4",
+      "documentCount": 1,
+      "chunkCount": 2,
+      "window": 4,
+      "stride": 3
+    },
+    "failureCode": null,
+    "traceId": "trace_74a9c89a4de0",
+    "startedAt": "2026-09-19T06:28:47.646070Z",
+    "finishedAt": "2026-09-19T06:28:47.945265Z",
+    "elapsedSeconds": 0.299195,
+    "estimatedDurationSeconds": null
+  },
+  "failed": {
+    "taskId": "d9032562-fd3d-41e8-8d3c-18007bb836f6",
+    "request": {
+      "expectedSourceChecksum": "4c86f016286e305eae509a2ce0269b6bbac4152c3fbe05cbfe519526aba170cc",
+      "window": 4,
+      "stride": 3
+    },
+    "status": "FAILED",
+    "result": null,
+    "failureCode": "CORPUS_PROCESS_FAILED",
+    "traceId": "trace_be6b9d7eb241",
+    "startedAt": "2026-09-19T06:28:47.959836Z",
+    "finishedAt": "2026-09-19T06:28:48.094648Z",
+    "elapsedSeconds": 0.134812,
+    "estimatedDurationSeconds": null
+  },
+  "restartedSuccess": {
+    "taskId": "949a8161-5ff0-461f-9ac0-4928bc3ba3df",
+    "request": {
+      "expectedSourceChecksum": "f197e349a5faef8930f77e2258041547d2dd5ed3197263dada1a299465076530",
+      "window": 4,
+      "stride": 3
+    },
+    "status": "SUCCEEDED",
+    "result": {
+      "sourceChecksum": "f197e349a5faef8930f77e2258041547d2dd5ed3197263dada1a299465076530",
+      "corpusChecksum": "00cfaa42fefab98c4868ddf7aec2ed30c1d6dd9a1bbbd60a7c2748a5f98f761c",
+      "corpusFileChecksum": "6b65ce17c56b4462f40f82ed7cfd4cf9fd62962387db8ef1da225f1ec6ce1dd4",
+      "documentCount": 1,
+      "chunkCount": 2,
+      "window": 4,
+      "stride": 3
+    },
+    "failureCode": null,
+    "traceId": "trace_74a9c89a4de0",
+    "startedAt": "2026-09-19T06:28:47.646070Z",
+    "finishedAt": "2026-09-19T06:28:47.945265Z",
+    "elapsedSeconds": 0.299195,
+    "estimatedDurationSeconds": null
+  },
+  "restartedFailure": {
+    "taskId": "d9032562-fd3d-41e8-8d3c-18007bb836f6",
+    "request": {
+      "expectedSourceChecksum": "4c86f016286e305eae509a2ce0269b6bbac4152c3fbe05cbfe519526aba170cc",
+      "window": 4,
+      "stride": 3
+    },
+    "status": "FAILED",
+    "result": null,
+    "failureCode": "CORPUS_PROCESS_FAILED",
+    "traceId": "trace_be6b9d7eb241",
+    "startedAt": "2026-09-19T06:28:47.959836Z",
+    "finishedAt": "2026-09-19T06:28:48.094648Z",
+    "elapsedSeconds": 0.134812,
+    "estimatedDurationSeconds": null
+  }
+}

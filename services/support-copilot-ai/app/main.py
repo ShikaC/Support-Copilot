@@ -16,6 +16,8 @@ from starlette.responses import Response
 
 from app.analysis_runner import AnalysisProcessingTimeoutError, AnalysisRunner
 from app.config import get_settings
+from app.corpus_build import CorpusBuildManager
+from app.corpus_build_models import CorpusBuildError, CorpusBuildRequest, CorpusBuildStatus
 from app.embedding_artifact import EmbeddingArtifactError, EmbeddingArtifactStore
 from app.index_rebuild import IndexRebuildManager
 from app.index_rebuild_models import RebuildError, RebuildRequest, RebuildStatus
@@ -63,13 +65,23 @@ class RebuildRuntime:
 
 class LifespanState(TypedDict):
     index_rebuild: RebuildRuntime
+    corpus_build: "CorpusRuntime"
+
+
+@dataclass(frozen=True, slots=True)
+class CorpusRuntime:
+    manager: CorpusBuildManager
+    task_group: TaskGroup
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[LifespanState]:
     # A graceful shutdown drains accepted builds; no detached worker can outlive its lock.
     async with anyio.create_task_group() as task_group:
-        yield {"index_rebuild": RebuildRuntime(IndexRebuildManager(settings), task_group)}
+        yield {
+            "index_rebuild": RebuildRuntime(IndexRebuildManager(settings), task_group),
+            "corpus_build": CorpusRuntime(CorpusBuildManager(settings), task_group),
+        }
 
 
 app = FastAPI(
@@ -191,7 +203,8 @@ async def knowledge_release_mismatch_error(
 
 
 @app.exception_handler(RebuildError)
-async def rebuild_error(request: Request, exception: RebuildError) -> JSONResponse:
+@app.exception_handler(CorpusBuildError)
+async def rebuild_error(request: Request, exception: RebuildError | CorpusBuildError) -> JSONResponse:
     return error_response(
         exception.status_code,
         exception.code,
@@ -335,6 +348,31 @@ async def rebuild_index(
     task = await runtime.manager.start(body, request.state.trace_id, runtime.task_group)
     response.headers["Location"] = f"/knowledge/index/rebuild/{task.task_id}"
     return task
+
+
+@app.post("/knowledge/corpus/build", response_model=CorpusBuildStatus, status_code=202)
+async def create_corpus_build(
+    body: CorpusBuildRequest,
+    request: Request,
+    response: Response,
+    _authenticated: Annotated[None, Depends(internal_authenticator.require)],
+) -> CorpusBuildStatus | JSONResponse:
+    if not settings.knowledge_corpus_mutation_enabled:
+        return error_response(403, "CORPUS_MUTATION_DISABLED", "Corpus generation is disabled.", request.state.trace_id)
+    runtime: CorpusRuntime = request.state.corpus_build
+    status = await runtime.manager.start(body, request.state.trace_id, runtime.task_group)
+    response.headers["Location"] = f"/knowledge/corpus/build/{status.task_id}"
+    return status
+
+
+@app.get("/knowledge/corpus/build/{taskId}", response_model=CorpusBuildStatus)
+async def get_corpus_build(
+    task_id: Annotated[UUID, ApiPath(alias="taskId")],
+    request: Request,
+    _authenticated: Annotated[None, Depends(internal_authenticator.require)],
+) -> CorpusBuildStatus:
+    runtime: CorpusRuntime = request.state.corpus_build
+    return await runtime.manager.get(task_id)
 
 
 @app.get("/knowledge/index/rebuild/{taskId}", response_model=RebuildStatus)
