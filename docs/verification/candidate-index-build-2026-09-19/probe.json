@@ -1,0 +1,192 @@
+{
+  "test_generated_corpus_to_index_http_preserves_active_and_source_identity[False]": {
+    "corpus": {
+      "taskId": "97a48ed0-ca5f-40fa-8917-4c1333065bea",
+      "request": {
+        "expectedSourceChecksum": "abe5e2950d8c54c9abb6f510885708fb331e244859095b285ab234dcff7b4a08",
+        "window": 4,
+        "stride": 3
+      },
+      "status": "SUCCEEDED",
+      "result": {
+        "sourceChecksum": "abe5e2950d8c54c9abb6f510885708fb331e244859095b285ab234dcff7b4a08",
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "corpusFileChecksum": "0f99c1c956c3a012b59202e8f307cb951cfdcdfa4f9be1180d75643b414d823c",
+        "documentCount": 1,
+        "chunkCount": 2,
+        "window": 4,
+        "stride": 3
+      },
+      "failureCode": null,
+      "traceId": "trace_ac43232bad56",
+      "startedAt": "2026-09-19T08:02:10.638281Z",
+      "finishedAt": "2026-09-19T08:02:10.716278Z",
+      "elapsedSeconds": 0.077997,
+      "estimatedDurationSeconds": null
+    },
+    "accepted": {
+      "statusCode": 202,
+      "body": {
+        "taskId": "21a339ca-8072-4e85-82d6-ffd2edad3e89",
+        "corpusBuildTaskId": "97a48ed0-ca5f-40fa-8917-4c1333065bea",
+        "status": "RUNNING",
+        "totalChunks": 2,
+        "completedChunks": 0,
+        "estimatedEmbeddingCalls": 1,
+        "maxEmbeddingCalls": 1,
+        "embeddingCalls": 0,
+        "artifactId": null,
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "traceId": "trace_5259e613cb3e",
+        "startedAt": "2026-09-19T08:02:10.727537Z",
+        "updatedAt": "2026-09-19T08:02:10.727537Z",
+        "finishedAt": null,
+        "elapsedSeconds": 0.0,
+        "estimatedDurationSeconds": null,
+        "failureCode": null
+      },
+      "location": "/knowledge/index/rebuild/21a339ca-8072-4e85-82d6-ffd2edad3e89"
+    },
+    "terminal": {
+      "statusCode": 200,
+      "body": {
+        "taskId": "21a339ca-8072-4e85-82d6-ffd2edad3e89",
+        "corpusBuildTaskId": "97a48ed0-ca5f-40fa-8917-4c1333065bea",
+        "status": "SUCCEEDED",
+        "totalChunks": 2,
+        "completedChunks": 2,
+        "estimatedEmbeddingCalls": 1,
+        "maxEmbeddingCalls": 1,
+        "embeddingCalls": 1,
+        "artifactId": "ee93c9599745bd9b3b65ef723cc1132230fa3b524155cab01ce86cc3e56ab7f2",
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "traceId": "trace_5259e613cb3e",
+        "startedAt": "2026-09-19T08:02:10.727537Z",
+        "updatedAt": "2026-09-19T08:02:11.046371Z",
+        "finishedAt": "2026-09-19T08:02:11.046371Z",
+        "elapsedSeconds": 0.318834,
+        "estimatedDurationSeconds": null,
+        "failureCode": null
+      },
+      "location": null
+    },
+    "restarted": {
+      "statusCode": 200,
+      "body": {
+        "taskId": "21a339ca-8072-4e85-82d6-ffd2edad3e89",
+        "corpusBuildTaskId": "97a48ed0-ca5f-40fa-8917-4c1333065bea",
+        "status": "SUCCEEDED",
+        "totalChunks": 2,
+        "completedChunks": 2,
+        "estimatedEmbeddingCalls": 1,
+        "maxEmbeddingCalls": 1,
+        "embeddingCalls": 1,
+        "artifactId": "ee93c9599745bd9b3b65ef723cc1132230fa3b524155cab01ce86cc3e56ab7f2",
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "traceId": "trace_5259e613cb3e",
+        "startedAt": "2026-09-19T08:02:10.727537Z",
+        "updatedAt": "2026-09-19T08:02:11.046371Z",
+        "finishedAt": "2026-09-19T08:02:11.046371Z",
+        "elapsedSeconds": 0.318834,
+        "estimatedDurationSeconds": null,
+        "failureCode": null
+      },
+      "location": null
+    }
+  },
+  "test_generated_corpus_to_index_http_preserves_active_and_source_identity[True]": {
+    "corpus": {
+      "taskId": "1270ff88-44fb-4cda-afba-2a5ee67dbf59",
+      "request": {
+        "expectedSourceChecksum": "abe5e2950d8c54c9abb6f510885708fb331e244859095b285ab234dcff7b4a08",
+        "window": 4,
+        "stride": 3
+      },
+      "status": "SUCCEEDED",
+      "result": {
+        "sourceChecksum": "abe5e2950d8c54c9abb6f510885708fb331e244859095b285ab234dcff7b4a08",
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "corpusFileChecksum": "0f99c1c956c3a012b59202e8f307cb951cfdcdfa4f9be1180d75643b414d823c",
+        "documentCount": 1,
+        "chunkCount": 2,
+        "window": 4,
+        "stride": 3
+      },
+      "failureCode": null,
+      "traceId": "trace_de060f56e639",
+      "startedAt": "2026-09-19T08:02:13.542588Z",
+      "finishedAt": "2026-09-19T08:02:13.896326Z",
+      "elapsedSeconds": 0.353738,
+      "estimatedDurationSeconds": null
+    },
+    "accepted": {
+      "statusCode": 202,
+      "body": {
+        "taskId": "788ba301-915c-4693-9d42-f27f922fec48",
+        "corpusBuildTaskId": "1270ff88-44fb-4cda-afba-2a5ee67dbf59",
+        "status": "RUNNING",
+        "totalChunks": 2,
+        "completedChunks": 0,
+        "estimatedEmbeddingCalls": 1,
+        "maxEmbeddingCalls": 1,
+        "embeddingCalls": 0,
+        "artifactId": null,
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "traceId": "trace_5522cb0e49d3",
+        "startedAt": "2026-09-19T08:02:13.922621Z",
+        "updatedAt": "2026-09-19T08:02:13.922621Z",
+        "finishedAt": null,
+        "elapsedSeconds": 0.0,
+        "estimatedDurationSeconds": null,
+        "failureCode": null
+      },
+      "location": "/knowledge/index/rebuild/788ba301-915c-4693-9d42-f27f922fec48"
+    },
+    "terminal": {
+      "statusCode": 200,
+      "body": {
+        "taskId": "788ba301-915c-4693-9d42-f27f922fec48",
+        "corpusBuildTaskId": "1270ff88-44fb-4cda-afba-2a5ee67dbf59",
+        "status": "FAILED",
+        "totalChunks": 2,
+        "completedChunks": 0,
+        "estimatedEmbeddingCalls": 1,
+        "maxEmbeddingCalls": 1,
+        "embeddingCalls": 1,
+        "artifactId": null,
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "traceId": "trace_5522cb0e49d3",
+        "startedAt": "2026-09-19T08:02:13.922621Z",
+        "updatedAt": "2026-09-19T08:02:14.280817Z",
+        "finishedAt": "2026-09-19T08:02:14.280817Z",
+        "elapsedSeconds": 0.358196,
+        "estimatedDurationSeconds": null,
+        "failureCode": "EMBEDDING_PROVIDER_FAILED"
+      },
+      "location": null
+    },
+    "restarted": {
+      "statusCode": 200,
+      "body": {
+        "taskId": "788ba301-915c-4693-9d42-f27f922fec48",
+        "corpusBuildTaskId": "1270ff88-44fb-4cda-afba-2a5ee67dbf59",
+        "status": "FAILED",
+        "totalChunks": 2,
+        "completedChunks": 0,
+        "estimatedEmbeddingCalls": 1,
+        "maxEmbeddingCalls": 1,
+        "embeddingCalls": 1,
+        "artifactId": null,
+        "corpusChecksum": "929af543def542d2d757302458029c3338bcd317b17dd48cecb8513a731f49b5",
+        "traceId": "trace_5522cb0e49d3",
+        "startedAt": "2026-09-19T08:02:13.922621Z",
+        "updatedAt": "2026-09-19T08:02:14.280817Z",
+        "finishedAt": "2026-09-19T08:02:14.280817Z",
+        "elapsedSeconds": 0.358196,
+        "estimatedDurationSeconds": null,
+        "failureCode": "EMBEDDING_PROVIDER_FAILED"
+      },
+      "location": null
+    }
+  }
+}

@@ -78,3 +78,6 @@ docs/verification/chunking-1000-800-2026-09-18/query-vectors.json
 
 # Sanitized actual corpus task HTTP responses, required in clean evidence checkouts.
 !docs/verification/corpus-build-tasks-2026-09-19/probe.json
+
+# Sanitized candidate-to-index HTTP evidence.
+!docs/verification/candidate-index-build-2026-09-19/probe.json

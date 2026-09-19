@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import shutil
 import socket
 import subprocess
 import sys
@@ -30,7 +31,7 @@ PUBLIC_RESPONSE_FIELDS: Final = frozenset({
     "taskId", "status", "totalChunks", "completedChunks", "estimatedEmbeddingCalls",
     "maxEmbeddingCalls", "embeddingCalls", "artifactId", "corpusChecksum", "traceId",
     "startedAt", "updatedAt", "finishedAt", "elapsedSeconds", "estimatedDurationSeconds",
-    "failureCode", "code",
+    "failureCode", "code", "corpusBuildTaskId",
 })
 
 
@@ -149,7 +150,8 @@ def seeded_index(directory: Path, provider: WireProvider) -> IndexFixture:
 
 @contextmanager
 def running_api(
-    fixture: IndexFixture, provider: WireProvider, *, enabled: bool = True,
+    fixture: IndexFixture, provider: WireProvider, *,
+    enabled: bool = True, corpus_enabled: bool = False,
 ) -> Iterator[httpx2.Client]:
     """An allowlisted environment plus fresh cwd prevents loading developer credentials."""
     environment = {
@@ -163,7 +165,16 @@ def running_api(
         "EMBEDDING_VECTOR_DIMENSION": "2", "OPENAI_TIMEOUT_SECONDS": "15",
         "OPENAI_MAX_RETRIES": "0", "EMBEDDING_CHUNKING_VERSION": "rebuilt-slicing",
         "KNOWLEDGE_INDEX_MUTATION_ENABLED": str(enabled).lower(),
+        "KNOWLEDGE_CORPUS_BUILD_ROOT": str(fixture.directory / "corpus-builds"),
+        "KNOWLEDGE_CORPUS_MUTATION_ENABLED": str(corpus_enabled).lower(),
     }
+    if corpus_enabled:
+        node = shutil.which("node")
+        assert node is not None
+        environment.update({
+            "KNOWLEDGE_CORPUS_NODE_COMMAND": node,
+            "KNOWLEDGE_CORPUS_SOURCE_PATH": str(fixture.directory / "documents.json"),
+        })
     with socket.socket() as listener, (fixture.directory / "uvicorn.log").open("a+") as log:
         listener.bind(("127.0.0.1", 0))
         listener.listen(128)

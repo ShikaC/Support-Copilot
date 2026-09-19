@@ -27,12 +27,9 @@ from app.index_rebuild_provider import (
     RebuildProgress,
     managed_embedding_provider,
 )
+from app.index_rebuild_source import select_rebuild_source
 from app.index_rebuild_storage import RebuildStorage
-from app.knowledge_source import (
-    KnowledgeCorpus,
-    KnowledgeSourceInvalidError,
-    load_knowledge_corpus,
-)
+from app.knowledge_source import KnowledgeCorpus
 
 logger: Final = logging.getLogger(__name__)
 
@@ -40,6 +37,7 @@ logger: Final = logging.getLogger(__name__)
 @dataclass(frozen=True, slots=True)
 class _PreparedRebuild:
     corpus: KnowledgeCorpus
+    chunking_version: str
     progress: RebuildProgress
     ownership: ExitStack
 
@@ -94,21 +92,13 @@ class IndexRebuildManager:
             )
         with ownership:
             self.storage.recover()
-            try:
-                corpus = load_knowledge_corpus(
-                    settings.knowledge_path, settings.knowledge_provenance_path
-                )
-            except KnowledgeSourceInvalidError:
-                raise RebuildError(
-                    409,
-                    "KNOWLEDGE_SOURCE_INVALID",
-                    "Configured knowledge corpus is unavailable.",
-                ) from None
+            selected = select_rebuild_source(settings, request.corpus_build_task_id)
+            corpus = selected.corpus
             if corpus.corpus_checksum != request.expected_corpus_checksum:
                 raise RebuildError(
                     409,
                     "CORPUS_CHECKSUM_MISMATCH",
-                    "Configured corpus differs from the authorized checksum.",
+                    "Selected corpus differs from the authorized checksum.",
                 )
             estimate = (len(corpus.chunks) + BATCH_SIZE - 1) // BATCH_SIZE
             if estimate > request.max_embedding_calls:
@@ -120,6 +110,7 @@ class IndexRebuildManager:
             now = datetime.now(timezone.utc)
             status = RebuildStatus(
                 task_id=uuid4(),
+                corpus_build_task_id=request.corpus_build_task_id,
                 status="RUNNING",
                 total_chunks=len(corpus.chunks),
                 estimated_embedding_calls=estimate,
@@ -131,7 +122,8 @@ class IndexRebuildManager:
             )
             self.storage.save(status)
             return _PreparedRebuild(
-                corpus, RebuildProgress(self.storage, status), ownership.pop_all()
+                corpus, selected.chunking_version,
+                RebuildProgress(self.storage, status), ownership.pop_all()
             )
 
     async def get(self, task_id: UUID) -> RebuildStatus:
@@ -179,7 +171,10 @@ class IndexRebuildManager:
         provider = BatchedRebuildProvider(
             self.settings, prepared.progress, self.provider_factory
         )
-        store = EmbeddingArtifactStore(self.settings, prepared.corpus)
+        build_settings = self.settings.model_copy(
+            update={"embedding_chunking_version": prepared.chunking_version}
+        )
+        store = EmbeddingArtifactStore(build_settings, prepared.corpus)
         manifest = await store.build(
             provider,
             candidate_directory=self.storage.directory(prepared.progress.status.task_id)

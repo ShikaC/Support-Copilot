@@ -15,6 +15,7 @@ class RebuildRequest(BaseModel):
         frozen=True, extra="forbid", alias_generator=to_camel, populate_by_name=True
     )
 
+    corpus_build_task_id: UUID | None = None
     max_embedding_calls: int = Field(gt=0, strict=True)
     expected_corpus_checksum: str = Field(pattern=SHA256_PATTERN)
 
@@ -35,6 +36,7 @@ class RebuildStatus(BaseModel):
     )
 
     task_id: UUID
+    corpus_build_task_id: UUID | None = None
     status: Literal["RUNNING", "SUCCEEDED", "FAILED"]
     total_chunks: int = Field(gt=0)
     completed_chunks: int = Field(default=0, ge=0)
