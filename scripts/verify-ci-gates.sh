@@ -8,7 +8,7 @@ readonly GITLEAKS_VERSION="8.30.1"
 readonly GO_VERSION="1.26.4"
 readonly ACTIONLINT_MODULE="github.com/rhysd/actionlint/cmd/actionlint@v1.7.7"
 readonly OSV_SCANNER_MODULE="github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4"
-readonly GITLEAKS_MODULE="github.com/gitleaks/gitleaks/v8@v8.30.1"
+readonly GITLEAKS_MODULE="github.com/zricethezav/gitleaks/v8@v8.30.1"
 
 actionlint_bin=''
 osv_scanner_bin=''
@@ -218,6 +218,10 @@ install_ci_tool() {
 	local module="$3"
 	shift 3
 	local tools_root tool_dir final_bin lock_dir staging_dir go_bin lock_deadline lock_acquired=0
+	local install_args=(install "$module")
+	if [[ "$name" == gitleaks ]]; then
+		install_args=(install "-ldflags=-X=github.com/zricethezav/gitleaks/v8/version.Version=$expected" "$module")
+	fi
 	tools_root="$(ci_tools_root)" || return 1
 	tool_dir="$tools_root/$name/$expected"
 	final_bin="$tool_dir/$name"
@@ -278,7 +282,7 @@ install_ci_tool() {
 	if ! env GOBIN="$staging_dir" GOENV=off GOTOOLCHAIN=local GOFLAGS= \
 		GOSUMDB=sum.golang.org GOPROXY=https://proxy.golang.org,direct \
 		GONOSUMDB= GOPRIVATE= GONOPROXY= GOINSECURE= \
-		"$go_bin" install "$module"; then
+		"$go_bin" "${install_args[@]}"; then
 		cleanup_ci_tool_staging "$staging_dir" "$tool_dir" "$name" "$expected" || true
 		rmdir "$lock_dir" 2>/dev/null || true
 		rmdir "$tool_dir" 2>/dev/null || true

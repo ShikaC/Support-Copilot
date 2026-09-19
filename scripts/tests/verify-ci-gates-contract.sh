@@ -362,10 +362,17 @@ if [[ "${1:-}" == "version" ]]; then
 	printf 'go version go1.26.4 fixture/amd64\n'
 	exit 0
 fi
-[[ "${1:-}" == "install" && $# -eq 2 ]] || exit 64
+[[ "${1:-}" == "install" ]] || exit 64
+install_ldflags=''
+if [[ $# -eq 3 && "$2" == -ldflags=* ]]; then
+	install_ldflags="$2"
+	set -- install "$3"
+fi
+[[ $# -eq 2 ]] || exit 64
 {
 	printf 'BEGIN_GO_INSTALL\n'
 	printf 'module=%s\n' "$2"
+	printf 'ldflags=%s\n' "$install_ldflags"
 	printf 'GOBIN=%s\n' "${GOBIN:-}"
 	printf 'GOSUMDB=%s\n' "${GOSUMDB:-}"
 	printf 'GOPROXY=%s\n' "${GOPROXY:-}"
@@ -383,9 +390,14 @@ fi
 case "$2" in
 	github.com/rhysd/actionlint/cmd/actionlint@v1.7.7) binary=actionlint ;;
 	github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4) binary=osv-scanner ;;
-	github.com/gitleaks/gitleaks/v8@v8.30.1) binary=gitleaks ;;
+	github.com/zricethezav/gitleaks/v8@v8.30.1) binary=gitleaks ;;
 	*) exit 66 ;;
 esac
+if [[ "$binary" == gitleaks ]]; then
+	[[ "$install_ldflags" == '-ldflags=-X=github.com/zricethezav/gitleaks/v8/version.Version=8.30.1' ]] || exit 67
+else
+	[[ -z "$install_ldflags" ]] || exit 68
+fi
 if [[ "$binary" == actionlint && -n "${CI_GATE_FAKE_GO_BARRIER_DIR:-}" ]]; then
 	if mkdir "$CI_GATE_FAKE_GO_BARRIER_DIR/first-actionlint" 2>/dev/null; then
 		: >"$CI_GATE_FAKE_GO_BARRIER_DIR/ready"
@@ -1313,9 +1325,11 @@ fi
 for module in \
 	github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 \
 	github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.2.4 \
-	github.com/gitleaks/gitleaks/v8@v8.30.1; do
+	github.com/zricethezav/gitleaks/v8@v8.30.1; do
 	grep -Fxq "module=$module" "$go_install_log" || fail "exact Go install pin was not used: $module"
 done
+grep -Fxq 'ldflags=-ldflags=-X=github.com/zricethezav/gitleaks/v8/version.Version=8.30.1' \
+	"$go_install_log" || fail "gitleaks bootstrap did not set its pinned upstream version symbol"
 grep -Eq '^GOBIN=.*/tools path with spaces/missing/actionlint/1\.7\.7/\.actionlint-1\.7\.7\.tmp\.[^/]+$' \
 	"$go_install_log" || fail "Go install did not preserve the staged GOBIN containing spaces"
 for expected_go_environment in \
