@@ -7,6 +7,9 @@ plugins {
 group = "com.cyagent"
 version = "0.0.1-SNAPSHOT"
 
+// Spring Boot 4.0.8 manages 11.0.24; keep the security fixes in the 11.0.25 patch release.
+extra["tomcat.version"] = "11.0.25"
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
