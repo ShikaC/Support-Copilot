@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { createServer } from 'node:net'
 import test from 'node:test'
+import { setImmediate as nextTurn } from 'node:timers/promises'
 import { ChildProcessError, ManagedChildRunner, isAddressCollision, portIsReleased, retryPortCollisions } from './managed-child.mjs'
 
 async function availablePort() {
@@ -34,6 +35,59 @@ test('terminate stops the active process group before the owned port check', asy
 
   // Then: the child server port is bindable before evidence would be written.
   assert.equal(await portIsReleased(port), true)
+})
+
+test('parent exit retains cleanup ownership until inherited pipes close', { timeout: 10_000 }, async (t) => {
+  // Given: a grandchild holds both a port and the managed stdout pipe after its parent exits.
+  const port = await availablePort()
+  const runner = new ManagedChildRunner()
+  let ready
+  const readySignal = new Promise((resolve) => { ready = resolve })
+  const serverScript = `process.on('SIGTERM',()=>{}); require('node:http').createServer((_,r)=>r.end('ok')).listen(${port},'127.0.0.1',()=>console.log('READY'))`
+  const parentScript = `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(serverScript)}],{stdio:['ignore','inherit','inherit']}); setInterval(()=>{},1000)`
+  let settled = false
+  const running = runner.run(process.execPath, ['-e', parentScript], process.env, 8_000, (output) => {
+    if (output.includes('READY')) ready()
+  })
+  const outcome = running.then(() => { settled = true }, (error) => { settled = true; return error })
+  const parent = runner.active
+  const closed = once(parent, 'close')
+  t.after(async () => {
+    // Cleanup also works against the broken implementation, which has already lost active.
+    try { process.kill(-parent.pid, 'SIGKILL') } catch (error) {
+      if (error.code !== 'ESRCH') throw error
+    }
+    await closed
+    await outcome
+  })
+  await readySignal
+
+  // When: only the direct parent exits; the descendant is deliberately still alive.
+  const exited = once(parent, 'exit')
+  parent.kill('SIGTERM')
+  await exited
+  await nextTurn()
+
+  // Then: run cannot settle or relinquish the group before resource completion.
+  assert.equal(settled, false, 'direct parent exit must not complete the managed run')
+  assert.equal(await portIsReleased(port), false)
+  await runner.terminate('SIGTERM')
+  assert.ok(await outcome instanceof ChildProcessError)
+  assert.equal(await portIsReleased(port), true)
+})
+
+test('timeout remains a failure when the child handles SIGTERM with exit zero', { timeout: 10_000 }, async () => {
+  // Given: a real child explicitly reports successful exit from its shutdown handler.
+  const runner = new ManagedChildRunner()
+  const script = `process.on('SIGTERM',()=>process.exit(0)); console.log('READY'); setInterval(()=>{},1000)`
+  let ready = false
+
+  // When/Then: expiration must still reject with a nonzero status for CLI callers.
+  await assert.rejects(
+    runner.run(process.execPath, ['-e', script], process.env, 5_000, (output) => { ready ||= output.includes('READY') }),
+    (error) => error instanceof ChildProcessError && error.exitCode !== 0,
+  )
+  assert.equal(ready, true)
 })
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

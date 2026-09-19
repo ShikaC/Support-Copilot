@@ -10,11 +10,24 @@ export class ChildProcessError extends Error {
   }
 }
 
-function waitForExit(child) {
-  return new Promise((resolve, reject) => {
-    child.once('error', reject)
-    child.once('exit', (code, signal) => resolve({ code: code ?? 1, signal }))
-  })
+function waitForClose(child) {
+  const completion = Promise.withResolvers()
+  child.once('error', completion.reject)
+  // Descendants can retain these pipes after the direct parent has exited.
+  child.once('close', (code, signal) => completion.resolve({ code: code ?? 1, signal }))
+  return completion
+}
+
+async function closesWithinGrace(completion) {
+  let timeout
+  try {
+    return await Promise.race([
+      completion.then(() => true),
+      new Promise((resolve) => { timeout = setTimeout(() => resolve(false), 2_000) }),
+    ])
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function signalProcessGroup(pid, signal) {
@@ -28,7 +41,8 @@ async function signalProcessGroup(pid, signal) {
 
 export class ManagedChildRunner {
   active = null
-  activeExit = null
+  activeCompletion = null
+  termination = null
   stopping = false
 
   async run(command, args, environment, timeoutMs = 300_000, onOutput = () => undefined) {
@@ -39,7 +53,7 @@ export class ManagedChildRunner {
       stdio: ['inherit', 'pipe', 'pipe'],
     })
     this.active = child
-    this.activeExit = waitForExit(child)
+    this.activeCompletion = waitForClose(child)
     let output = ''
     const record = (stream, chunk) => {
       const text = chunk.toString()
@@ -53,36 +67,46 @@ export class ManagedChildRunner {
       void this.terminate('SIGTERM')
     }, timeoutMs)
     try {
-      const result = await this.activeExit
-      if (result.code !== 0 || result.signal !== null) {
-        throw new ChildProcessError(`${command} ${args.join(' ')}`, result.code, output)
+      const result = await this.activeCompletion.promise
+      if (this.stopping || result.code !== 0 || result.signal !== null) {
+        throw new ChildProcessError(`${command} ${args.join(' ')}`, result.code || 1, output)
       }
     } finally {
       clearTimeout(timeout)
-      if (this.active === child) {
-        this.active = null
-        this.activeExit = null
+      try {
+        await this.termination
+      } finally {
+        if (this.active === child) {
+          this.active = null
+          this.activeCompletion = null
+        }
       }
     }
   }
 
-  async terminate(signal = 'SIGTERM') {
+  terminate(signal = 'SIGTERM') {
     this.stopping = true
+    if (this.termination !== null) return this.termination
     const child = this.active
-    const exit = this.activeExit
-    if (child === null || exit === null) return
-    if (child.pid === undefined) throw new ChildProcessError('terminate child process group', 1, 'child PID is unavailable')
-    const childPid = child.pid
-    await signalProcessGroup(childPid, signal)
-    const stopped = await Promise.race([
-      exit.then(() => true),
-      new Promise((resolve) => setTimeout(() => resolve(false), 2_000)),
-    ])
-    if (!stopped) {
-      await signalProcessGroup(childPid, 'SIGKILL')
-      await exit
-    }
-    if (process.platform !== 'win32') await signalProcessGroup(childPid, 'SIGKILL')
+    const completion = this.activeCompletion
+    if (child === null || completion === null) return Promise.resolve()
+    this.termination = (async () => {
+      if (child.pid === undefined) throw new ChildProcessError('terminate child process group', 1, 'child PID is unavailable')
+      await signalProcessGroup(child.pid, signal)
+      const stopped = await closesWithinGrace(completion.promise)
+      if (!stopped || process.platform !== 'win32') await signalProcessGroup(child.pid, 'SIGKILL')
+      if (!await closesWithinGrace(completion.promise)) {
+        throw new ChildProcessError('terminate child process group', 1, 'process pipes did not close after SIGKILL')
+      }
+    })().catch((error) => {
+      completion.reject(error)
+      child.stdout.destroy()
+      child.stderr.destroy()
+      throw error
+    })
+    // Signal/timeout callbacks cannot await; run observes this same failure before finishing.
+    void this.termination.catch(() => undefined)
+    return this.termination
   }
 }
 

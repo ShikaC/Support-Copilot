@@ -79,4 +79,22 @@
 
 首次提交 `7ccf9d9` 的文档门禁在 tracked-copy 阶段失败：`probe.json` 虽已显式入库，但通用 `docs/verification/**/*.json` ignore 规则使验证器重新建立的 Git 仓库漏掉它。独立归档确认唯一遗漏就是该 probe；仅补回该文件后 tree 恢复为源 tree `ebc94b3029d2b23afd91a8f370435c7891c36ba4`。现仅为这个已脱敏证据文件增加精确 `.gitignore` 例外，不改验证器、不放宽其他运行产物规则。原失败日志保存在 `.local/index-rebuild-docs-committed-red.log`，修复后已提交门禁结果以最终交付为准。
 
+## 推送后 CI 发现与修复
+
+切片 A 已随 `7ccf9d9` 和打包修正 `e79d925` 推送到 `origin/master`。在 `e79d92560ea048c6768128851404e22d98d2be03` 的干净 GitHub 检出中，[Python CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35423707724)、[Java CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35423707665) 和[非容器发布门禁](https://github.com/ShikaC/Support-Copilot/actions/runs/35423707683) 通过；Python 再次得到 449 passed 与 31 条 mock 评估通过。发布扫描准确覆盖 Python production/development 57/66、Java 183、Node 234 个依赖记录，已知漏洞为 0，tracked tree 与 179 个提交的凭据扫描均为 0。
+
+同一提交的 [React CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35423707654) 在 `managed-child.test.mjs` 的即时端口释放断言失败，不能将这一提交描述为四项全绿。组件测试、构建和体积检查已通过，失败发生于 Node 进程清理契约。原日志保留在 `.local/index-rebuild-github-react-attempt1.log`，未用无修改重跑替代诊断。
+
+确定性反例让受管父进程先退出，后代继续持有继承管道和监听端口，并忽略 SIGTERM；旧 `run()` 在 `exit` 后提前结束并丢弃进程组所有权。`terminate()` 发送 SIGKILL 也没有等待实际关闭。它影响共享测试运行器及 `run-playwright.mjs` 的清理证据，修复应落在 `apps/support-copilot-web/scripts/managed-child.mjs`，保留调用方“清理返回后立即检查端口”的要求。反例原失败保存在 `.local/index-rebuild-cleanup-red.log`，绑定 `e79d925` 加新回归测试的工作区。
+
+当前修复将完成点改为 `close`，一直保留所有权到继承管道关闭；信号、超时和最终清理共享同一个终止 Promise。SIGTERM 和 SIGKILL 后各有 2 秒的关闭等待上限，及时取消已结束的计时器；超限作为明确失败返回，不无限等待。追加反例还确认了候选修复中“超时后子进程自行 exit(0)，错误仍携带退出码 0”的假成功风险，现强制失败退出码非零。该失败记录为 `.local/index-rebuild-cleanup-timeout-red.log`，不是原始 `e79d925` 的运行结果。
+
+`node --test apps/support-copilot-web/scripts/managed-child.test.mjs` 在 `e79d925` 加修复的工作区中得到 **7 passed**，包括两个新增真实进程回归；日志为 `.local/index-rebuild-cleanup-green.log`。没有新增测试重试、固定等待来掩盖原端口断言，原失败要求仍然保留。该机制覆盖现有运行器中留在受管进程组并继承输出管道的后代；自行脱离进程组或提前关闭全部继承管道的后台服务不在此保证内。Windows 的进程组语义未在本轮验证。
+
+根目录 `./scripts/verify-ci-gates.sh --mode react` 在同一修复工作区通过：108 项组件测试通过、3 项既有环境门控跳过，14 项 Node 契约、构建/体积检查、21 个三视口 Playwright 场景全部通过，退出 0。实际浏览器运行后两个临时端口均已释放，记录为 `.local/index-rebuild-react-final.log` 与 `.local/index-rebuild-browser-cleanup.txt`。这是本机合成业务 API 的浏览器验证，不是新 Java/Python 全栈或真实模型验收。
+
+完整回归后仅将新增测试的清理移到 `node:test` 的 `t.after`，提前注册并消除 `no-unsafe-finally` 提示，产品运行器不再改动。随后在前端目录重跑 `npm run test:node` 为 14 passed，`npm run lint` 无诊断、退出 0，`git diff --check` 通过；最终日志分别为 `.local/index-rebuild-cleanup-node-final.log` 和 `.local/index-rebuild-cleanup-lint-final.log`。
+
+独立只读复查没有剩余可确认的实现阻断项。真实 Node 故障注入确认信号权限错误传递给 `terminate()` 与 `run()`，重复终止共享结果；模拟丢失 close 事件时约 4 秒后明确失败并传回调用方，所创建进程均已退出，记录在 `.local/index-rebuild-cleanup-qa.log`。这些故障证据仅绑定本轮工作区；最终提交的文档门禁、完整远端复验与 SHA 仍以交付消息和 Actions 为准。
+
 只有最终通过的任务调度、持久化、故障回归和本地网络演练可以成为新增简历证据；不能由此宣称真实 Embedding 质量、生产容量、完整上传功能或线上成本改善。
