@@ -629,11 +629,18 @@ set -euo pipefail
 printf 'workflow-contract %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
 SHIM
 
+cat >"$fixture_repo/scripts/tests/verify-secret-scan.sh" <<'SHIM'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'secret-scan-contract %s\n' "$*" >>"$CI_GATE_COMMAND_LOG"
+SHIM
+
 chmod +x "$shim_dir"/* "$fallback_shim_dir"/* "$bootstrap_bin_dir/go" \
 	"$bootstrap_bin_dir/mkdir" \
 	"$wrong_tool_dir"/* "$venv_python" "$override_python" \
 	"$fixture_repo/services/support-copilot-api/gradlew" \
-	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh"
+	"$fixture_repo/scripts/tests/verify-ci-gates-contract.sh" \
+	"$fixture_repo/scripts/tests/verify-secret-scan.sh"
 
 export CI_GATE_FIXTURE_REPO="$fixture_repo"
 export CI_GATE_FIXTURE_PUBLISHER="$fixture_publisher"
@@ -938,10 +945,20 @@ for gate in \
 	java-tests java-profile-contracts java-flyway-contracts \
 	react-install react-lint react-tests react-build react-budget react-node-contracts react-e2e \
 	ci-tooling workflow-syntax workflow-contract static-migration-profile static-security \
-	scan-evidence-python-tests dependency-vulnerabilities tracked-secrets; do
+	scan-evidence-python-tests dependency-vulnerabilities secret-scan-contract tracked-secrets; do
 	grep -q "^\[RUN\] $gate$" "$all_output" || fail "all mode did not invoke gate: $gate"
 	grep -q "^\[PASS\] $gate$" "$all_output" || fail "all mode did not complete gate: $gate"
 done
+
+grep -Fqx "secret-scan-contract $shim_dir/gitleaks" "$command_log" || \
+	fail "secret scanner controls did not receive the resolved scanner"
+grep -Fqx "gitleaks git $fixture_repo --log-opts=--all --config $fixture_repo/.gitleaks.toml --no-banner --redact --exit-code 1" \
+	"$command_log" || fail "history secret scan must preserve paths, scan all refs, and load the repository config"
+if grep -q '^gitleaks stdin ' "$command_log"; then
+	fail "history secret scan discarded file paths through stdin"
+fi
+grep -Fqx "gitleaks dir . --config $fixture_repo/.gitleaks.toml --no-banner --redact --exit-code 1" "$command_log" || \
+	fail "snapshot secret scan must use relative paths and the repository config"
 
 grep -q '^venv-python -m scripts.check_dependency_locks$' "$command_log" || \
 	fail "project venv did not run the Python lock gate"

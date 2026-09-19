@@ -861,9 +861,11 @@ tracked_secrets() {
   tracked_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-tracked.XXXXXX")"
   trap 'rm -rf "$tracked_snapshot"' RETURN
   git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$tracked_snapshot" -xf -
-  "$gitleaks_bin" dir "$tracked_snapshot" --no-banner --redact --exit-code 1 || scan_status=$?
+  (cd "$tracked_snapshot" && "$gitleaks_bin" dir . --config "$repo_root/.gitleaks.toml" \
+    --no-banner --redact --exit-code 1) || scan_status=$?
   if [[ $scan_status -eq 0 ]]; then
-    git -C "$repo_root" log -p --all | "$gitleaks_bin" stdin --no-banner --redact --exit-code 1 || scan_status=$?
+    "$gitleaks_bin" git "$repo_root" --log-opts=--all --config "$repo_root/.gitleaks.toml" \
+      --no-banner --redact --exit-code 1 || scan_status=$?
   fi
   rm -rf "$tracked_snapshot"
   trap - RETURN
@@ -901,6 +903,7 @@ run_release() {
   run_gate static-security static_security
   run_gate scan-evidence-python-tests scan_evidence_python_tests
   run_gate dependency-vulnerabilities dependency_vulnerabilities
+  run_gate secret-scan-contract "$repo_root/scripts/tests/verify-secret-scan.sh" "$gitleaks_bin"
   run_gate tracked-secrets tracked_secrets
 }
 

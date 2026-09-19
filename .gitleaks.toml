@@ -1,0 +1,15 @@
+title = "Support Copilot secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "SHA-256 file checksums in three historical workspace evidence records"
+condition = "AND"
+paths = ['''^docs/enterprise-workspace/(source-manifest(-r1)?|persistence-results)\.json$''']
+regexTarget = "line"
+# Gitleaks includes the preceding newline in line context after the first line.
+regexes = ['''^\n?[ \t]*"(\.github/workflows/|apps/|services/|scripts/)[A-Za-z0-9_./-]+\.(ts|tsx|mjs|py|java|json|yml|sh|jar)": "[a-f0-9]{64}",?[ \t]*$''']
