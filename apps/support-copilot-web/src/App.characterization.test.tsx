@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -45,12 +45,15 @@ it('preserves the established four-view console structure before extraction', as
   expect(screen.getByText('运行分析后将在这里显示处理轨迹与知识证据')).toBeTruthy()
 
   fireEvent.click(screen.getAllByRole('button', { name: '运营概览' })[0])
+  await act(() => vi.dynamicImportSettled())
   expect(await screen.findByText('工单趋势')).toBeTruthy()
 
   fireEvent.click(screen.getAllByRole('button', { name: '知识库' })[0])
+  await act(() => vi.dynamicImportSettled())
   expect(await screen.findByRole('heading', { name: '知识服务暂不可用' })).toBeTruthy()
 
   fireEvent.click(screen.getAllByRole('button', { name: '质量评估' })[0])
+  await act(() => vi.dynamicImportSettled())
   expect(await screen.findByText('评估运行')).toBeTruthy()
 })
 
