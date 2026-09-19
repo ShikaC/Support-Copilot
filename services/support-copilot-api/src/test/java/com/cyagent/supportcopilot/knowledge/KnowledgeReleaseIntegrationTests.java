@@ -124,6 +124,31 @@ class KnowledgeReleaseIntegrationTests {
 	}
 
 	@Test
+	void duplicateReleaseVersionCannotReplacePublishedRelease() throws Exception {
+		createDraft("release-version-owner", 20, CHECKSUM_A, List.of("GENERAL"), "trusted-reviewer");
+		approve("release-version-owner", 0, "trusted-reviewer").andExpect(status().isOk());
+		publish("release-version-owner", 1, "trusted-admin").andExpect(status().isOk());
+		var auditCount = knowledgeAuditCount();
+
+		mockMvc.perform(post("/api/knowledge/releases")
+				.with(reviewer("trusted-reviewer"))
+				.contentType(APPLICATION_JSON)
+				.content(draftJson("release-conflicting-candidate", 20, CHECKSUM_B, List.of("GENERAL"))))
+			.andExpect(status().isBadRequest());
+
+		mockMvc.perform(get("/api/knowledge/releases/active").with(agent("agent-subject")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.releaseId").value("release-version-owner"))
+			.andExpect(jsonPath("$.corpusChecksum").value(CHECKSUM_A))
+			.andExpect(jsonPath("$.status").value("PUBLISHED"));
+		assertThat(jdbcTemplate.queryForObject(
+			"select count(*) from knowledge_releases where release_id = 'release-conflicting-candidate'",
+			Long.class
+		)).isZero();
+		assertThat(knowledgeAuditCount()).isEqualTo(auditCount);
+	}
+
+	@Test
 	void staleIllegalMissingAndInvalidRequestsReturnStableErrorsWithoutAudit() throws Exception {
 		createDraft("release-errors", 4, CHECKSUM_A, List.of(), "trusted-reviewer");
 		var initialAuditCount = knowledgeAuditCount();

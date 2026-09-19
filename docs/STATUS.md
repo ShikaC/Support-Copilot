@@ -1,9 +1,15 @@
 # Support Copilot 当前状态
 
 > 更新时间：2026-09-19
-> 状态分类：候选语料到索引交接已实现并完成本地验收；最终提交与远端结果以最新交付核对。B1 最终边界 `860434a` 已推送且四条 CI 通过，该证据不覆盖本轮交接。
+> 状态分类：成组切换契约已记录，运行时成组激活仍未实现。候选到索引切片 `b43aad1` 已推送且四条 CI 通过；不以该结果替代本轮测试/文档证据。
 
-## 最新：成功候选语料到索引构建（2026-09-19）
+## 最新：成组切换契约与身份阻塞（2026-09-19）
+
+已记录 [ADR-0002](decisions/ADR-0002-paired-knowledge-switch.md)：首版采用单实例维护窗口，先解决候选 release 身份，再实现成组切换、重启恢复与回滚。当前候选固定 releaseVersion=1 与 Java 全局唯一约束冲突；Python 内存 reload 与 Java 数据库 publish 不构成跨服务事务。
+
+已新增并验证重复版本不得替换当前发布的 Java 回归，复核现有 reload 正常/失败路径与本机 HTTP 显式恢复；[证据与限制](verification/paired-switch-contract-2026-09-19/README.md)记录验证时 SHA/dirty 状态。本轮没有激活接口或真实知识库切换，也没有付费调用或人工质量结论。下一切片是显式 releaseId/releaseVersion 贯穿候选生成与索引，保持冻结 benchmark 默认输出；具体验收只维护在 ADR。
+
+## 已完成：成功候选语料到索引构建（2026-09-19）
 
 已实现与本地已验证：现有 rebuild 请求可用 corpusBuildTaskId 选择成功的 B1 候选。接受前校验保存的文件/语义摘要和调用预算，任务保留来源 UUID；artifact 使用候选切片版本。当前知识文件、active 指针和检索快照不自动改变。真实 Node → Uvicorn → localhost Embedding SDK 的成功、失败、重启和零调用复用已验证，证据与限制见 [候选到索引报告](verification/candidate-index-build-2026-09-19/README.md)。最终提交/远端状态以最新交付为准。
 

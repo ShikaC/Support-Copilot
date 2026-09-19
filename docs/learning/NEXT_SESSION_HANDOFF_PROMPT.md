@@ -1,6 +1,8 @@
 # Support Copilot 下一会话交接提示词
 
-> 2026-09-19 最新恢复入口：先读[候选语料到索引构建](../verification/candidate-index-build-2026-09-19/README.md)，核对最终提交、文档门禁与 CI。用户在 B1 推送后要求继续，现已接通成功候选到索引任务，下一步是匹配语料/索引的一组显式切换契约。B1 在 `860434a` 已推送且四条 CI 通过，不用它替代当前提交证据。
+> 2026-09-19 最新恢复入口：成组切换契约已记录，先读 [ADR-0002](../decisions/ADR-0002-paired-knowledge-switch.md) 和[本轮边界核对](../verification/paired-switch-contract-2026-09-19/README.md)。第一步核对本轮 Git/测试边界，然后实现 ADR 第 2、6 节的显式发布身份。完整成组激活尚未实现，不再次把“定义契约”当待办，也不直接增加 artifact-only 激活按钮。
+
+> 前一切片记录（后续顺序以文首 ADR 为准）：先读[候选语料到索引构建](../verification/candidate-index-build-2026-09-19/README.md)，核对最终提交、文档门禁与 CI。用户在 B1 推送后要求继续，现已接通成功候选到索引任务，下一步是匹配语料/索引的一组显式切换契约。B1 在 `860434a` 已推送且四条 CI 通过，不用它替代当前提交证据。
 
 > 上一切片恢复入口：先读[语料生成任务 B1](../verification/corpus-build-tasks-2026-09-19/README.md)，核对 Git、文档门禁与最新 CI。索引重建 A 在 `444bbde` 已推送且四条 CI 通过。用户随后要求“继续”，B1 沿用 Python 调 Node 的推荐方案，已实现候选语料构建；实际验证、审查修复和限制见 B1 报告，不用旧提交的绿色替代新提交证据。
 
@@ -8,7 +10,7 @@
 >
 > 索引可以不重启热重载，且现在 reload 绝不隐式建库或付费，失败保留旧快照；语料与索引必须匹配。评估集 76 题（development 40 / holdout 36 封印）。切片参数可配，1000/800 实验没有显示显著收益。比较协议已预注册，但最后一次真实探测仍被 provider chat 端点 503 阻塞，本轮没有重新探测。
 >
-> **下一步**：先核对当前交接切片的最终交付与 diff，再定义成组切换语料/索引的契约，包含 Java release、一致性、失败/重启与回滚。候选选择与建索引已实现，不要重复开发，也不要自动激活或发起真实付费建库。Java/前端入口与上传解析尚未实现。
+> **下一步**：以文首 ADR 为准，先解决候选发布身份，再实现成组维护切换。候选选择与建索引已实现，不重复开发，不自动激活或发起真实付费建库。Java/前端入口与上传解析尚未实现。
 
 项目路径：`/Users/shika/Documents/Support-Copilot`。
 
@@ -16,7 +18,7 @@
 
 用户要可追溯的回答质量、全链路延迟、正常产出/降级/超时和持久化证据，并要作者本人能读懂、能复述、能审核自己的代码（理解优先，见 `docs/learning/TEACHING_PROTOCOL.md`）。没有内部客户数据，只用公开归档文档、Doc2Dial 人工构建对话和真实公开 issue；不得称为企业真实客服日志。
 
-本轮已授权：继续实现 B1 后的成功候选语料到索引交接，并沿用推送已审查代码的授权，完成回归、提交和推送。本轮只在本机使用合成数据和 Embedding 替身，不触发真实模型调用或消耗 holdout；不将授权扩大为部署、客户数据或新的付费实验。既有付费比较的一次性执行边界继续保留。真实模型测量不等于人工质量审核；AI 标签、人审状态和未知费用不能虚构。
+本轮已授权：用户在候选到索引切片之后继续推进，先完成成组切换契约与边界核对；沿用推送已审查改动的授权，完成回归、提交和推送。本轮只在本机使用合成数据和 Embedding 替身，不触发真实模型调用或消耗 holdout；不将授权扩大为部署、客户数据或新的付费实验。既有付费比较的一次性执行边界继续保留。真实模型测量不等于人工质量审核；AI 标签、人审状态和未知费用不能虚构。
 
 ## 2. 恢复顺序
 
@@ -64,7 +66,7 @@ node scripts/benchmark/prepare-doc2dial.mjs --verify-against docs/verification/b
 - 切片身份由参数推导（`doc2dial-codepoints-{window}-{stride}-v1`）；步长大于窗口会被拒绝（会静默丢内容）；切片一变就是新基线，不得与冻结集混算。
 - 评分时**必须同时传 `--corpus`**，否则 `retrieval-eval.mjs` 因 chunk_id 对不上直接报错（fail-closed，不匹配率 >10% 即失败）。
 - **`chunking_version` 现在是观测字段，不再参与兼容校验**。该保护的是"索引每一行是不是它声称的那块内容"，由 `corpus_checksum` ＋逐行 chunk 对齐保证；切片版本只是标签。**不要再恢复 activate/rollback**：换切片必然换语料，"只换索引不动语料"在语义上是错的。不同语料的 artifact 仍被拒绝，这是**有意保留**的边界。
-- **运维顺序不能乱**：换语料文件 → 用**新语料**建索引并移 active 指针（用运行中进程的旧 store 会被正确拒绝）→ `POST /knowledge/index/reload`。
+- **历史 Python 局部顺序，不能用于跨服务上线**：换语料文件 → 以新语料准备匹配 active → reload。它不处理 Java release、版本唯一性或重启中断；完整切换必须先实现文首 ADR 的前置条件，不能直接在工作台照此操作。
 - `evaluation/live_verifier.py` 的 chunking_version 校验**不能拿掉**：那是评测取证，不是运行时保护。换 embedding 模型仍需改配置并重启（`provider_identity` 与 `model` 仍在校验内，查询侧要用同一模型）。
 - 清单里的 `modifiedAt` 是文件系统时间，不是构建证据。
 
@@ -75,7 +77,7 @@ node scripts/benchmark/prepare-doc2dial.mjs --verify-against docs/verification/b
 - 旧验证器（isolated-runner、quality、query-context-fix 的 `verify.mjs`）绑定修复前工作树，会因后续授权改动失败。**保留原件，不改旧门禁制造通过**。
 - 14 个 Java MySQL 用例需 Docker/环境变量；`verify-docs.sh --full` 未运行。真实 live 质量门禁仍 partial（人工审核 0、质量分数 null）。
 
-## 7. A、B1 与候选到索引交接已实现，下一步是成组切换契约
+## 7. A、B1 与候选到索引交接已实现，成组契约见 ADR-0002
 
 **业务问题**：目标仍是前端可调切片、后续上传文档。A 把“现有磁盘语料 → 构建索引”变成请求加轮询；B1 把“配置文档 → 候选语料”任务化。现已接通成功候选选择与构建，成组切换流程仍未实现，不能把当前后端能力描述为完整上传或一键换切片。
 
@@ -91,7 +93,7 @@ node scripts/benchmark/prepare-doc2dial.mjs --verify-against docs/verification/b
 
 沿用 Python 调 Node，复用唯一的切片模块，避免两套实现漂移。已经分离文档切片与评测配额：B1 不接 `perDomain`、对话或评估集。接口、参数上限、失败码、父进程死亡修复、逐字节对拍和真实 HTTP 证据统一见 [B1 报告](../verification/corpus-build-tasks-2026-09-19/README.md)。本地源码需要 Node，现有 Docker 镜像尚未集成该运行时。
 
-候选到索引交接已实现：现有 rebuild 接口接受可选 corpusBuildTaskId，只有已成功且文件/内容摘要匹配的候选可被接纳，仍需显式调用预算。来源 ID 随任务持久化，artifact 切片版本来自候选；具体证据见最新报告。下一步在本轮 diff 阅读后，定义匹配语料/索引的成组切换与失败恢复；未明确契约前不自动修改 knowledge_path、active 指针或运行付费建库。
+候选到索引交接已实现：现有 rebuild 接口接受可选 corpusBuildTaskId，只有已成功且文件/内容摘要匹配的候选可被接纳，仍需显式调用预算。来源 ID 随任务持久化，artifact 切片版本来自候选；具体证据见最新报告。成组切换与失败恢复契约现已记录于文首 ADR。下一步先实现显式发布身份；维护/恢复机制完成并验收前，不自动修改 knowledge_path、active 指针或运行付费建库。
 
 ### 更远的（现在不要做）
 

@@ -107,3 +107,10 @@ AI 已实现并测试这些边界；尚无作者对本轮 diff 的新复述或�
 ## 2026-09-19：成功候选语料到索引交接（已实现并说明，未记录作者新复述）
 
 本轮解释“候选任务 ID → 严格成功状态 → 文件摘要与内容摘要 → 内存快照 → 有预算的索引任务”数据流。选择在接纳层完成，可以不替换在线知识文件就生成匹配索引；结果关联来源任务，切片版本来自候选。接受前文件变化被拒绝，接受后变化不改变已固定输入；provider 失败保持 FAILED，不自动激活。代码、真实 HTTP/重启与故障证据见 [本轮报告](../verification/candidate-index-build-2026-09-19/README.md)。未记为作者人工审核或已理解。
+
+
+## 2026-09-19：成组切换契约（已说明边界，运行时功能计划中）
+
+本轮解释“候选身份 → 索引身份 → Java 发布事实 → 两端加载 → 重启恢复”这一条数据流。releaseVersion 与数据库行 version 不同：前者全局唯一并进入 corpus/artifact，后者保护目标行并发更新，不能代替 expected-current active。Python 失败保留内存不等于磁盘恢复；Java 重启会拒绝数据库与 corpus 不一致。
+
+[ADR-0002](../decisions/ADR-0002-paired-knowledge-switch.md)记录维护窗口方案与下一切片；[本轮证据](../verification/paired-switch-contract-2026-09-19/README.md)区分 Java MockMvc、Python 回归与真实本机 HTTP。只有现有保护和新增版本冲突回归已验证，成组激活/恢复仍计划中。没有记录作者新复述、人工 diff 审核或已掌握结论。
