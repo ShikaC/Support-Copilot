@@ -1,5 +1,5 @@
-import liveReport from '../../../../docs/verification/product-quality-center-2026-09-10/reports/live.json'
-import businessReport from '../../../../docs/verification/product-quality-center-2026-09-10/reports/business.json'
+import liveReport from '../../../../tests/fixtures/quality-reports/live.json'
+import businessReport from '../../../../tests/fixtures/quality-reports/business.json'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createAuthSession } from '../auth/authSession'
 import { ApiContractError, createApiClient } from './api'
@@ -8,10 +8,11 @@ import { qualityReportsFixture } from '../features/quality/qualityTestFixture'
 
 afterEach(() => vi.unstubAllGlobals())
 
-it('accepts real exported source reports with independent failure outcomes', () => {
+it('accepts shared synthetic report contracts with independent failure outcomes', () => {
   const parsed = qualityReportsSchema.parse({ liveEvaluation: { status: 'AVAILABLE', report: liveReport }, businessBenchmark: { status: 'AVAILABLE', report: businessReport } })
-  expect(parsed.liveEvaluation.report?.outcomes).toEqual({ normalLive: 17, evidenceInsufficient: 3, timeout: 2, otherFallback: 0, error: 0 })
-  expect(parsed.businessBenchmark.report).toMatchObject({ sampleCount: 96, distinctCaseCount: 32, humanReviewedCount: 0, answerAccuracy: null, outcomes: { normalLive: 64, evidenceInsufficient: 14, timeout: 18, otherFallback: 0, error: 0 } })
+  expect(parsed.liveEvaluation.report?.outcomes).toEqual({ normalLive: 1, evidenceInsufficient: 1, timeout: 1, otherFallback: 0, error: 0 })
+  expect(parsed.businessBenchmark.report).toMatchObject({ sampleCount: 6, distinctCaseCount: 3, humanReviewedCount: 0, answerAccuracy: null, outcomes: { normalLive: 2, evidenceInsufficient: 2, timeout: 2, otherFallback: 0, error: 0 } })
+  expect(parsed.businessBenchmark.report?.groups.map((group) => group.concurrency)).toEqual([1, 2])
 })
 
 it('rejects a claimed normal success with unreconciled failure count', () => {

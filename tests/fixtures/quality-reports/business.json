@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "dataset": "synthetic-contract-cases",
+  "generatedAt": "2026-09-19T00:00:00Z",
+  "sourceFiles": [
+    {
+      "name": "synthetic/cases.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "distinctCaseCount": 3,
+  "humanReviewedCount": 0,
+  "answerAccuracy": null,
+  "businessResolutionRate": null,
+  "timeSavedMinutes": null,
+  "cost": null,
+  "gateReasons": [
+    "human-review-not-performed"
+  ],
+  "limitations": [
+    "Synthetic contract fixture; not measured model or business quality."
+  ],
+  "id": "synthetic-business",
+  "kind": "BUSINESS_BENCHMARK",
+  "title": "Synthetic business report contract",
+  "sampleCount": 6,
+  "outcomes": {
+    "normalLive": 2,
+    "evidenceInsufficient": 2,
+    "timeout": 2,
+    "otherFallback": 0,
+    "error": 0
+  },
+  "metrics": [],
+  "groups": [
+    {
+      "concurrency": 1,
+      "total": 3,
+      "normalLive": 1,
+      "evidenceInsufficient": 1,
+      "timeout": 1,
+      "otherFallback": 0,
+      "error": 0,
+      "p50Ms": 100,
+      "p95Ms": 200,
+      "apiCompleted": 3,
+      "persisted": 3
+    },
+    {
+      "concurrency": 2,
+      "total": 3,
+      "normalLive": 1,
+      "evidenceInsufficient": 1,
+      "timeout": 1,
+      "otherFallback": 0,
+      "error": 0,
+      "p50Ms": 100,
+      "p95Ms": 200,
+      "apiCompleted": 3,
+      "persisted": 3
+    }
+  ],
+  "failures": [
+    {
+      "caseId": "synthetic-insufficient",
+      "concurrency": 1,
+      "outcome": "EVIDENCE_INSUFFICIENT",
+      "reason": "Synthetic missing-evidence outcome",
+      "traceId": "synthetic-trace-insufficient"
+    },
+    {
+      "caseId": "synthetic-timeout",
+      "concurrency": 1,
+      "outcome": "TIMEOUT",
+      "reason": "Synthetic timeout outcome",
+      "traceId": null
+    },
+    {
+      "caseId": "synthetic-insufficient",
+      "concurrency": 2,
+      "outcome": "EVIDENCE_INSUFFICIENT",
+      "reason": "Synthetic missing-evidence outcome",
+      "traceId": "synthetic-trace-insufficient"
+    },
+    {
+      "caseId": "synthetic-timeout",
+      "concurrency": 2,
+      "outcome": "TIMEOUT",
+      "reason": "Synthetic timeout outcome",
+      "traceId": null
+    }
+  ]
+}

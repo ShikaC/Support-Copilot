@@ -64,20 +64,27 @@ class QualityReportsReaderTests {
 	}
 
 	@Test
-	void readsExportedFrozenEvidenceWithItsManifestDigests() throws Exception {
-		var evidence = Path.of("../../docs/verification/product-quality-center-2026-09-10/reports");
+	void readsSharedSyntheticReportsWithTheirManifestDigests() throws Exception {
+		var evidence = Path.of("../../tests/fixtures/quality-reports");
 		var manifest = mapper.readTree(Files.readAllBytes(evidence.resolve("manifest.json")));
 		var result = new QualityReportsReader(mapper, evidence.resolve("live.json").toString(),
 			manifest.get("files").get(0).get("sha256").asString(), evidence.resolve("business.json").toString(),
 			manifest.get("files").get(1).get("sha256").asString()).read();
 		assertThat(result.liveEvaluation().status()).isEqualTo(QualityReportsReader.Status.AVAILABLE);
 		assertThat(result.businessBenchmark().status()).isEqualTo(QualityReportsReader.Status.AVAILABLE);
-		assertThat(result.liveEvaluation().report().sampleCount()).isEqualTo(22);
-		assertThat(result.liveEvaluation().report().outcomes()).isEqualTo(new QualityReport.Outcomes(17, 3, 2, 0, 0));
-		assertThat(result.businessBenchmark().report().sampleCount()).isEqualTo(96);
-		assertThat(result.businessBenchmark().report().distinctCaseCount()).isEqualTo(32);
-		assertThat(result.businessBenchmark().report().outcomes()).isEqualTo(new QualityReport.Outcomes(64, 14, 18, 0, 0));
-		assertThat(result.businessBenchmark().report().failures()).hasSize(32);
+		assertThat(result.liveEvaluation().report().sampleCount()).isEqualTo(3);
+		assertThat(result.liveEvaluation().report().outcomes()).isEqualTo(new QualityReport.Outcomes(1, 1, 1, 0, 0));
+		assertThat(result.businessBenchmark().report().sampleCount()).isEqualTo(6);
+		assertThat(result.businessBenchmark().report().distinctCaseCount()).isEqualTo(3);
+		assertThat(result.businessBenchmark().report().outcomes()).isEqualTo(new QualityReport.Outcomes(2, 2, 2, 0, 0));
+		assertThat(result.businessBenchmark().report().groups()).hasSize(2);
+		assertThat(result.businessBenchmark().report().failures()).hasSize(4);
+
+		var modified = write("modified-live.json", Files.readString(evidence.resolve("live.json")) + " ");
+		var tampered = new QualityReportsReader(mapper, modified.toString(),
+			manifest.get("files").get(0).get("sha256").asString(), "", "").read();
+		assertThat(tampered.liveEvaluation().status()).isEqualTo(QualityReportsReader.Status.INVALID);
+		assertThat(tampered.liveEvaluation().report()).isNull();
 	}
 
 	@Test
