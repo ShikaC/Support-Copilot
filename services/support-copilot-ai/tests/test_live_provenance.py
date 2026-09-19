@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import sys
 from typing import Never
 
 import pytest
@@ -23,7 +24,6 @@ from evaluation.live_runner import run_live_cases
 
 DATASET = Path(__file__).parents[1] / "evaluation" / "data" / "live-v1.json"
 SERVICE_DIR = Path(__file__).parents[1]
-VENV_PYTHON = SERVICE_DIR / ".venv" / "bin" / "python"
 REPO_ROOT = Path(__file__).parents[3]
 SHA = "a" * 64
 ARTIFACT = "b" * 64
@@ -132,7 +132,7 @@ def test_live_entrypoints_show_help_from_external_cwd(
     entrypoint: Path,
 ) -> None:
     result = subprocess.run(
-        (str(VENV_PYTHON), str(entrypoint), "--help"),
+        (sys.executable, str(entrypoint), "--help"),
         cwd=tmp_path,
         check=False,
         capture_output=True,

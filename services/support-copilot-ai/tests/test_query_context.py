@@ -26,9 +26,7 @@ class FrozenCase(BaseModel):
     input: FrozenInput
 
 
-INPUTS = Path(__file__).resolve().parents[3] / (
-    "docs/verification/quality-runs/development-live-diagnostic-20260910/planned-inputs.json"
-)
+INPUTS = Path(__file__).with_name("fixtures") / "query-context-inputs.json"
 CASES = TypeAdapter(list[FrozenCase]).validate_json(INPUTS.read_bytes())
 
 CLIENT = TestClient(app, headers={

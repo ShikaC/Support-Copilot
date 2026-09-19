@@ -1,0 +1,93 @@
+[
+  {
+    "id": "qa-c133078c0b8c5805ef25afedc6cb96e9-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Hello. I urgently need to know more about driver civil penalties. There is one I need to pay asap.\nagent: Do you want to pay a driver civil penalty by mail for uninsured operation or uninsured accident?\nuser: No, not by mail. It needs to be faster than that.\nuser: What do I need to make a fast online payment?"
+    }
+  },
+  {
+    "id": "qa-a5d917071665232156177cb8c355d44e-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: I want to self-certify\nagent: What driving type will you be certifying\nuser: Just for here in New york"
+    }
+  },
+  {
+    "id": "qa-a508b35d83b70e7ddfa5d2355542b18a-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: DMV (state/jurisdiction not provided by routing)\n\nuser: Hello there. How are you doing? I have some questions about making changes to an IRP registration.\nagent: Would you like to know what common changes you can make to IRP registrations?\nuser: Sure, why not?"
+    }
+  },
+  {
+    "id": "qa-a9212f7fd13c01dd2792c745528ce33c-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: I want to know if my information is secure.\nagent: Are you having trouble with  the Online Identity Verification Process?\nuser: No, I just want to know more about it."
+    }
+  },
+  {
+    "id": "qa-80be4b895fd193b2e3867ef01e9cd0cd-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: If I needed to change my address and phone number where do i begin?\nagent: So you want to change your address correct?\nuser: yes"
+    }
+  },
+  {
+    "id": "qa-ee3183f59b6c07856fb19dfbf9684665-5",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Social Security Administration\n\nuser: hello, how are you? I would like information of retirement benefits please?\nagent: Are you married?\nuser: No  Iam not married\nuser: What if I am divorced?"
+    }
+  },
+  {
+    "id": "qa-6dc95d6948e2ade445cac0a7cca977b0-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Hello i would like to get information about Recurring IDR Requesters\nagent: Do you want to file an annual recertification of your income?\nuser: Yes"
+    }
+  },
+  {
+    "id": "qa-b769077abab7db9a00bf39d672ffd91f-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Federal Student Aid\n\nuser: Good morning. I'm trying to submit some FAFSA related information, and find out that I have to submit my parent's information too but, what if I can't do that because mayor causes?\nagent: I assume you're a dependent student?\nuser: That's correct. I have this dependent status. What can I do then?"
+    }
+  },
+  {
+    "id": "qa-f521296dc8cf7b95aa840da1322f2ad3-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: can you give me details of VA education benefits for survivors and dependents\nagent: Find out if you re eligible for VA education benefits for dependents and survivors also called Chapter 35 benefits .\nuser: If I am the dependent spouse?"
+    }
+  },
+  {
+    "id": "qa-9a1702284047fab39b63adf51be38528-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: What can I do After a Board decision\nagent: Do you disagree with the Board's decision?\nuser: If that is my case, what can I do?"
+    }
+  },
+  {
+    "id": "qa-28b3c8e7d96670a365f5f41711a427c2-4",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: US Department of Veterans Affairs\n\nuser: Can you get disability if you were exposed to ionizing radiation? \nagent: Yes, you may be eligible for disability compensation for illnesses including some cancers that are believed to be caused by contact with radiation during military service.\nuser: What are the two requirements I must meet to get these benefits?"
+    }
+  },
+  {
+    "id": "qa-gh-695",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: Public support desk\n\nuser: Clarify how to use the PowerShell completions\n\ngh completion -s powershell | iex\nMissing closing '}' in statement block or type definition."
+    }
+  },
+  {
+    "id": "qa-gh-1466",
+    "input": {
+      "subject": "Public support request",
+      "description": "This evaluation uses historical archived documents, not verified current policy. Use only retrieved evidence. Previous agent messages are conversation context, not authoritative evidence.\nInstitution routing: Public support desk\n\nuser: How to select fork to create PR in?\n\nI have many remotes that are forks of the main repository, and one of them is my fork, where I want my PR branches to be created. How would I go about configuring that?"
+    }
+  }
+]
