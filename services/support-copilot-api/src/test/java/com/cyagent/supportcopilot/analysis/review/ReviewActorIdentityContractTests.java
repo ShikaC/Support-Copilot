@@ -22,7 +22,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
-import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.common.TestTrustedActors;
 import com.cyagent.supportcopilot.common.SyntheticJwt;
@@ -45,7 +44,7 @@ class ReviewActorIdentityContractTests {
 	private AnalysisReviewRepository analysisReviewRepository;
 
 	@Autowired
-	private MockAnalysisFactory mockAnalysisFactory;
+	private com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStore corpus;
 
 	@Autowired
 	private AnalysisPersistenceService analysisPersistenceService;
@@ -121,14 +120,14 @@ class ReviewActorIdentityContractTests {
 	}
 
 	private String signedJwt(String role, String subject) throws Exception {
-		return SyntheticJwt.signed(testJwtSecret, role, subject);
+		return SyntheticJwt.signed(testJwtSecret, role, subject, java.util.Map.of("support_scopes", java.util.List.of("BILLING")));
 	}
 
 	private String saveReviewableAnalysis() {
 		var ticket = AnalysisReviewTestFixture.ticket();
 		ticketId = ticket.getId();
 		ticketRepository.saveAndFlush(ticket);
-		var analysis = mockAnalysisFactory.createMock(ticket);
+		var analysis = com.cyagent.supportcopilot.common.CanonicalAnalysisFixture.create(ticket, corpus);
 		TestTrustedActors.authenticate("review-identity-fixture-agent", "SUPPORT_AGENT");
 		try {
 			analysisPersistenceService.persist(ticket.getId(), ticket.getVersion(), analysis);

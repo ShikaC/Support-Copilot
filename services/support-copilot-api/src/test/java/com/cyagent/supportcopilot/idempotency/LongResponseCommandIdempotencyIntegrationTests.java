@@ -15,7 +15,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.cyagent.supportcopilot.analysis.AnalysisCommandService;
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
-import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
+import com.cyagent.supportcopilot.common.CanonicalAnalysisFixture;
+import com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStore;
 import com.cyagent.supportcopilot.common.TestTrustedActors;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 
@@ -38,7 +39,7 @@ class LongResponseCommandIdempotencyIntegrationTests {
 			try (var first = rig.startContext()) {
 				first.getBean(TicketRepository.class).saveAndFlush(ticket);
 				var response = withReplyContent(
-					first.getBean(MockAnalysisFactory.class).createMock(ticket),
+					CanonicalAnalysisFixture.create(ticket, first.getBean(KnowledgeCorpusStore.class)),
 					longReply
 				);
 				var objectMapper = first.getBean(ObjectMapper.class);
@@ -99,7 +100,7 @@ class LongResponseCommandIdempotencyIntegrationTests {
 	}
 
 	private AnalysisResponse analyze(ConfigurableApplicationContext context, String ticketId, String key) {
-		TestTrustedActors.authenticate("task-6-long-response-agent", "SUPPORT_AGENT");
+		TestTrustedActors.authenticateWithScopes("task-6-long-response-agent", List.of("BILLING"), "SUPPORT_AGENT");
 		try {
 			return context.getBean(AnalysisCommandService.class).analyze(ticketId, IdempotencyKey.parse(key));
 		} finally {

@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.cyagent.supportcopilot.analysis.AnalysisCommandService;
@@ -28,7 +30,11 @@ import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.AnalysisService;
 import com.cyagent.supportcopilot.analysis.IdempotentAnalysisPersistence;
-import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
+import com.cyagent.supportcopilot.common.CanonicalAnalysisFixture;
+import com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStore;
+import com.cyagent.supportcopilot.knowledge.KnowledgeActiveRelease;
+import com.cyagent.supportcopilot.knowledge.KnowledgeActiveReleaseRepository;
+import com.cyagent.supportcopilot.knowledge.KnowledgeReleaseRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewCommandService;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewController;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewService;
@@ -89,7 +95,7 @@ class CommandIdempotencyIntegrationTests {
 			var secondContext = rig.startContext()) {
 			var ticket = rig.ticket("ticket-cross-context");
 			firstContext.getBean(TicketRepository.class).saveAndFlush(ticket);
-			var response = firstContext.getBean(MockAnalysisFactory.class).createMock(ticket);
+			var response = CanonicalAnalysisFixture.create(ticket, firstContext.getBean(KnowledgeCorpusStore.class));
 			rig.aiServer().respondWith(firstContext.getBean(ObjectMapper.class).writeValueAsString(response));
 			rig.aiServer().block();
 			com.cyagent.supportcopilot.analysis.AnalysisResponse original;
@@ -127,9 +133,15 @@ class CommandIdempotencyIntegrationTests {
 				assertThat(analyze(restarted, ticket.getId(), "analysis-shared-key-0001")).isEqualTo(original);
 				assertThat(rig.aiServer().invocations()).isEqualTo(1);
 				assertCounts(restarted, 1, 0, 1, 1);
-				assertThatThrownBy(() -> analyze(restarted, "ticket-different", "analysis-shared-key-0001"))
-					.isInstanceOf(IdempotencyConflictException.class);
-				assertCounts(restarted, 1, 0, 1, 1);
+					assertThatThrownBy(() -> analyze(restarted, "ticket-different", "analysis-shared-key-0001"))
+						.isInstanceOf(IdempotencyConflictException.class);
+					assertCounts(restarted, 1, 0, 1, 1);
+
+					archiveActiveRelease(restarted);
+					assertThatThrownBy(() -> analyze(restarted, ticket.getId(), "analysis-shared-key-0001"))
+						.isInstanceOf(AccessDeniedException.class);
+					assertThat(rig.aiServer().invocations()).isEqualTo(1);
+					assertCounts(restarted, 1, 0, 1, 1);
 			}
 		}
 	}
@@ -141,18 +153,18 @@ class CommandIdempotencyIntegrationTests {
 			var second = rig.startContext()) {
 			var ticket = rig.ticket("ticket-review-replay");
 			first.getBean(TicketRepository.class).saveAndFlush(ticket);
-			var analysis = first.getBean(MockAnalysisFactory.class).createMock(ticket);
-			TestTrustedActors.authenticate("analysis-agent", "SUPPORT_AGENT");
+			var analysis = CanonicalAnalysisFixture.create(ticket, first.getBean(KnowledgeCorpusStore.class));
+			TestTrustedActors.authenticateWithScopes("analysis-agent", List.of("BILLING"), "SUPPORT_AGENT");
 			first.getBean(AnalysisPersistenceService.class).persist(ticket.getId(), ticket.getVersion(), analysis);
 			TestTrustedActors.clear();
 
-			TestTrustedActors.authenticate("reviewer-one", "SUPPORT_REVIEWER");
+			TestTrustedActors.authenticateWithScopes("reviewer-one", List.of("BILLING"), "SUPPORT_REVIEWER");
 			var original = first.getBean(AnalysisReviewCommandService.class).review(
 				ticket.getId(), analysis.id(), analysis.suggestedReply().content(),
 				IdempotencyKey.parse("review-replay-key-0001")
 			);
 			TestTrustedActors.clear();
-			TestTrustedActors.authenticate("reviewer-two", "SUPPORT_REVIEWER");
+			TestTrustedActors.authenticateWithScopes("reviewer-one", List.of("BILLING"), "SUPPORT_REVIEWER");
 			var replay = second.getBean(AnalysisReviewCommandService.class).review(
 				ticket.getId(), analysis.id(), analysis.suggestedReply().content(),
 				IdempotencyKey.parse("review-replay-key-0001")
@@ -166,8 +178,25 @@ class CommandIdempotencyIntegrationTests {
 				ticket.getId(), analysis.id(), "different command",
 				IdempotencyKey.parse("review-replay-key-0001")
 			)).isInstanceOf(IdempotencyConflictException.class);
+			TestTrustedActors.authenticateWithScopes("reviewer-two", List.of("BILLING"), "SUPPORT_REVIEWER");
+			assertThatThrownBy(() -> second.getBean(AnalysisReviewCommandService.class).review(
+				ticket.getId(), analysis.id(), analysis.suggestedReply().content(),
+				IdempotencyKey.parse("review-replay-key-0001")
+			)).isInstanceOf(IdempotencyConflictException.class);
 			TestTrustedActors.clear();
 
+			assertCounts(first, 1, 1, 2, 1);
+			archiveActiveRelease(second);
+			TestTrustedActors.authenticateWithScopes("reviewer-one", List.of("BILLING"), "SUPPORT_REVIEWER");
+			try {
+				assertThatThrownBy(() -> second.getBean(AnalysisReviewCommandService.class).review(
+					ticket.getId(), analysis.id(), analysis.suggestedReply().content(),
+					IdempotencyKey.parse("review-replay-key-0001")
+				)).isInstanceOf(AccessDeniedException.class);
+			} finally {
+				TestTrustedActors.clear();
+			}
+			assertThat(rig.aiServer().invocations()).isZero();
 			assertCounts(first, 1, 1, 2, 1);
 		}
 	}
@@ -177,14 +206,16 @@ class CommandIdempotencyIntegrationTests {
 		try (var rig = new CommandIdempotencyTestRig(); var abandoned = rig.startContext()) {
 			var ticket = rig.ticket("ticket-owner-recovery");
 			abandoned.getBean(TicketRepository.class).saveAndFlush(ticket);
+			TestTrustedActors.authenticateWithScopes("task-6-agent", List.of("BILLING"), "SUPPORT_AGENT");
 			var request = abandoned.getBean(CommandRequestFactory.class)
 				.analysis(IdempotencyKey.parse("owner-recovery-key-0001"), ticket.getId());
+			TestTrustedActors.clear();
 			var resolution = abandoned.getBean(CommandIdempotencyStore.class).resolve(request);
 			assertThat(resolution).isInstanceOf(CommandResolution.Owned.class);
 			abandoned.close();
 
 			try (var recovered = rig.startContext()) {
-				var response = recovered.getBean(MockAnalysisFactory.class).createMock(ticket);
+				var response = CanonicalAnalysisFixture.create(ticket, recovered.getBean(KnowledgeCorpusStore.class));
 				rig.aiServer().respondWith(recovered.getBean(ObjectMapper.class).writeValueAsString(response));
 				assertThat(analyze(recovered, ticket.getId(), "owner-recovery-key-0001"))
 					.usingRecursiveComparison()
@@ -194,8 +225,8 @@ class CommandIdempotencyIntegrationTests {
 
 				var rollbackTicket = rig.ticket("ticket-completion-rollback");
 				recovered.getBean(TicketRepository.class).saveAndFlush(rollbackTicket);
-				var rollbackResponse = recovered.getBean(MockAnalysisFactory.class).createMock(rollbackTicket);
-				TestTrustedActors.authenticate("rollback-agent", "SUPPORT_AGENT");
+				var rollbackResponse = CanonicalAnalysisFixture.create(rollbackTicket, recovered.getBean(KnowledgeCorpusStore.class));
+				TestTrustedActors.authenticateWithScopes("rollback-agent", List.of("BILLING"), "SUPPORT_AGENT");
 				assertThatThrownBy(() -> recovered.getBean(AnalysisPersistenceService.class).persistIdempotent(
 					new IdempotentAnalysisPersistence(
 						rollbackTicket.getId(), rollbackTicket.getVersion(), rollbackResponse,
@@ -247,12 +278,21 @@ class CommandIdempotencyIntegrationTests {
 		}
 	}
 
+	private void archiveActiveRelease(ConfigurableApplicationContext context) {
+		var pointer = context.getBean(KnowledgeActiveReleaseRepository.class)
+			.findById(KnowledgeActiveRelease.SINGLETON_ID).orElseThrow();
+		var releases = context.getBean(KnowledgeReleaseRepository.class);
+		var release = releases.findById(pointer.getReleaseId()).orElseThrow();
+		release.archive();
+		releases.saveAndFlush(release);
+	}
+
 	private com.cyagent.supportcopilot.analysis.AnalysisResponse analyze(
 		ConfigurableApplicationContext context,
 		String ticketId,
 		String key
 	) {
-		TestTrustedActors.authenticate("task-6-agent", "SUPPORT_AGENT");
+		TestTrustedActors.authenticateWithScopes("task-6-agent", List.of("BILLING"), "SUPPORT_AGENT");
 		try {
 			return context.getBean(AnalysisCommandService.class).analyze(ticketId, IdempotencyKey.parse(key));
 		} finally {

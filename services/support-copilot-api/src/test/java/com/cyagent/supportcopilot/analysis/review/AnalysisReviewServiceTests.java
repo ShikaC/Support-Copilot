@@ -20,7 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
-import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.ticket.Ticket;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 import com.cyagent.supportcopilot.ticket.TicketService;
@@ -59,7 +58,7 @@ class AnalysisReviewServiceTests {
 	private AnalysisRunRepository analysisRunRepository;
 
 	@Autowired
-	private MockAnalysisFactory mockAnalysisFactory;
+	private com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStore corpus;
 
 	@Autowired
 	private TicketRepository ticketRepository;
@@ -245,6 +244,7 @@ class AnalysisReviewServiceTests {
 			assertThat(lockAcquired.await(2, TimeUnit.SECONDS)).isTrue();
 
 			var reviewFuture = executor.submit(() -> {
+				AnalysisReviewTestFixture.authenticateReviewer();
 				try {
 					analysisReviewService.review(
 						ticketId,
@@ -254,6 +254,8 @@ class AnalysisReviewServiceTests {
 					return null;
 				} catch (RuntimeException exception) {
 					return exception;
+				} finally {
+					AnalysisReviewTestFixture.clearAuthentication();
 				}
 			});
 			assertThatThrownBy(() -> reviewFuture.get(200, TimeUnit.MILLISECONDS))
@@ -280,7 +282,7 @@ class AnalysisReviewServiceTests {
 
 	private AnalysisResponse saveAnalysis() {
 		var ticket = saveTicket();
-		var analysis = mockAnalysisFactory.createMock(ticket);
+		var analysis = com.cyagent.supportcopilot.common.CanonicalAnalysisFixture.create(ticket, corpus);
 		analysisPersistenceService.persist(ticket.getId(), ticket.getVersion(), analysis);
 		return analysis;
 	}

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cyagent.supportcopilot.analysis.AnalysisResponse;
+import com.cyagent.supportcopilot.analysis.AnalysisResponseAccessPolicy;
 import com.cyagent.supportcopilot.analysis.AnalysisRun;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewDtos.AnalysisReviewResponse;
@@ -41,6 +42,7 @@ public class AnalysisReviewService {
 	private final TrustedActorProvider trustedActorProvider;
 	private final AuditEventRecorder auditEventRecorder;
 	private final CommandIdempotencyCompletion idempotencyCompletion;
+	private final AnalysisResponseAccessPolicy accessPolicy;
 
 	public AnalysisReviewService(
 		AnalysisReviewRepository analysisReviewRepository,
@@ -49,7 +51,8 @@ public class AnalysisReviewService {
 		ObjectMapper objectMapper,
 		TrustedActorProvider trustedActorProvider,
 		AuditEventRecorder auditEventRecorder,
-		CommandIdempotencyCompletion idempotencyCompletion
+		CommandIdempotencyCompletion idempotencyCompletion,
+		AnalysisResponseAccessPolicy accessPolicy
 	) {
 		this.analysisReviewRepository = analysisReviewRepository;
 		this.analysisRunRepository = analysisRunRepository;
@@ -58,6 +61,7 @@ public class AnalysisReviewService {
 		this.trustedActorProvider = trustedActorProvider;
 		this.auditEventRecorder = auditEventRecorder;
 		this.idempotencyCompletion = idempotencyCompletion;
+		this.accessPolicy = accessPolicy;
 	}
 
 	@Transactional
@@ -135,6 +139,7 @@ public class AnalysisReviewService {
 
 	@Transactional(readOnly = true)
 	public Optional<AnalysisReviewResponse> latest(String analysisId) {
+		if (!canRead(analysisId)) return Optional.empty();
 		return analysisReviewRepository.findFirstByAnalysisIdOrderByCreatedAtDesc(analysisId)
 			.map(this::toResponse);
 	}
@@ -147,7 +152,7 @@ public class AnalysisReviewService {
 
 		var latestByAnalysis = new HashMap<String, AnalysisReviewResponse>();
 		for (var review : analysisReviewRepository.findByAnalysisIdInOrderByCreatedAtDescIdDesc(analysisIds)) {
-			if (!latestByAnalysis.containsKey(review.getAnalysisId())) {
+			if (!latestByAnalysis.containsKey(review.getAnalysisId()) && canRead(review.getAnalysisId())) {
 				latestByAnalysis.put(review.getAnalysisId(), toResponse(review));
 			}
 		}
@@ -168,7 +173,17 @@ public class AnalysisReviewService {
 		if (!run.getTicketId().equals(ticketId)) {
 			throw new EntityNotFoundException("分析记录不属于工单：" + ticketId);
 		}
+		accessPolicy.requireReadable(deserialize(run));
 		return run;
+	}
+
+	public void requireReadable(String ticketId, String analysisId) {
+		findRun(ticketId, analysisId);
+	}
+
+	private boolean canRead(String analysisId) {
+		return analysisRunRepository.findById(analysisId).map(this::deserialize)
+			.map(accessPolicy::canRead).orElse(false);
 	}
 
 	private ReviewContext prepareReview(String ticketId, String analysisId) {

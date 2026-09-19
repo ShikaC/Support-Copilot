@@ -52,6 +52,8 @@ class MockAnalysisFactoryTests {
 		assertThat(response.status()).isEqualTo("FALLBACK");
 		assertThat(response.fallbackReason()).isEqualTo(FallbackReason.AI_SERVICE_UNAVAILABLE);
 		assertThat(response.classification().confidence()).isLessThanOrEqualTo(0.5);
+		assertThat(response.retrieval().hits()).isEmpty();
+		assertThat(response.suggestedReply().citations()).isEmpty();
 		assertThat(response.suggestedReply().warnings()).contains("AI 服务不可用，本次为降级结果，必须人工复核。");
 		assertThat(response.decision().escalationRequired()).isTrue();
 	}

@@ -32,6 +32,7 @@ public class AnalysisService {
 	private final AiServiceClient aiServiceClient;
 	private final MockAnalysisFactory mockAnalysisFactory;
 	private final ObjectMapper objectMapper;
+	private final AnalysisResponseAccessPolicy accessPolicy;
 
 	public AnalysisService(
 		TicketRepository ticketRepository,
@@ -40,7 +41,8 @@ public class AnalysisService {
 		AnalysisSingleFlightCoordinator singleFlightCoordinator,
 		AiServiceClient aiServiceClient,
 		MockAnalysisFactory mockAnalysisFactory,
-		ObjectMapper objectMapper
+		ObjectMapper objectMapper,
+		AnalysisResponseAccessPolicy accessPolicy
 	) {
 		this.ticketRepository = ticketRepository;
 		this.analysisRunRepository = analysisRunRepository;
@@ -49,6 +51,7 @@ public class AnalysisService {
 		this.aiServiceClient = aiServiceClient;
 		this.mockAnalysisFactory = mockAnalysisFactory;
 		this.objectMapper = objectMapper;
+		this.accessPolicy = accessPolicy;
 	}
 
 	public AnalysisResponse analyze(String ticketId) {
@@ -71,7 +74,7 @@ public class AnalysisService {
 				execution.response().traceId()
 			);
 		}
-		return execution.response();
+		return accessPolicy.requireReadable(execution.response());
 	}
 
 	public AnalysisResponse analyzeOwned(String ticketId, CommandOwnership ownership) {
@@ -79,13 +82,13 @@ public class AnalysisService {
 			.orElseThrow(() -> new EntityNotFoundException("工单不存在：" + ticketId));
 		var sourceTicketVersion = ticket.getVersion();
 		var traceId = TraceId.currentOrCreate();
-		return singleFlightCoordinator.execute(
+		return accessPolicy.requireReadable(singleFlightCoordinator.execute(
 			ownership.idempotencyKey(),
 			ticketId,
 			sourceTicketVersion,
 			AnalysisPolicy.VERSION,
 			() -> executeOwnedAnalysis(ticket, sourceTicketVersion, traceId, ownership)
-		).response();
+		).response());
 	}
 
 	private AnalysisResponse executeAnalysis(Ticket ticket, long sourceTicketVersion, String traceId) {
@@ -130,7 +133,7 @@ public class AnalysisService {
 			);
 		}
 
-		return response;
+		return accessPolicy.requireReadable(response);
 	}
 
 	public void seed(Ticket ticket) {
@@ -145,7 +148,8 @@ public class AnalysisService {
 	}
 
 	public Optional<AnalysisResponse> latest(String ticketId) {
-		return analysisRunRepository.findFirstByTicketIdOrderByCreatedAtDesc(ticketId).map(this::deserialize);
+		return analysisRunRepository.findFirstByTicketIdOrderByCreatedAtDesc(ticketId)
+			.map(this::deserialize).filter(accessPolicy::canRead);
 	}
 
 	public Map<String, AnalysisResponse> latestForTickets(Collection<String> ticketIds) {
@@ -154,9 +158,11 @@ public class AnalysisService {
 		}
 
 		var latestByTicket = new HashMap<String, AnalysisResponse>();
+		var seen = new java.util.HashSet<String>();
 		for (var run : analysisRunRepository.findByTicketIdInOrderByCreatedAtDescIdDesc(ticketIds)) {
-			if (!latestByTicket.containsKey(run.getTicketId())) {
-				latestByTicket.put(run.getTicketId(), deserialize(run));
+			if (seen.add(run.getTicketId())) {
+				var response = deserialize(run);
+				if (accessPolicy.canRead(response)) latestByTicket.put(run.getTicketId(), response);
 			}
 		}
 		return Map.copyOf(latestByTicket);
@@ -165,6 +171,7 @@ public class AnalysisService {
 	public List<AnalysisResponse> history(String ticketId) {
 		return analysisRunRepository.findByTicketIdOrderByCreatedAtDesc(ticketId).stream()
 			.map(this::deserialize)
+			.filter(accessPolicy::canRead)
 			.toList();
 	}
 

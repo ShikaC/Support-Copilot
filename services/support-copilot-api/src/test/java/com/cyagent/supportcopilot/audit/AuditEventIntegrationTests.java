@@ -179,7 +179,8 @@ class AuditEventIntegrationTests {
 	void eachNewReviewDecisionCreatesOneEventWhileSameContentReplayCreatesNone() throws Exception {
 		var ticketId = createTicket("review-creator", "trace-review-create");
 		var ticket = ticketRepository.findById(ticketId).orElseThrow();
-		var analysis = mockAnalysisFactory.createMock(ticket);
+		var analysis = mockAnalysisFactory.createFallback(ticket, "trace-review-audit-fixture",
+			com.cyagent.supportcopilot.analysis.FallbackReason.AI_SERVICE_UNAVAILABLE);
 		authenticate("analysis-agent", "SUPPORT_AGENT");
 		MDC.put("traceId", analysis.traceId());
 		analysisPersistenceService.persist(ticketId, ticket.getVersion(), analysis);

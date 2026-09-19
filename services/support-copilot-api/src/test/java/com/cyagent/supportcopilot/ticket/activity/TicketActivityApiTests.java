@@ -63,7 +63,8 @@ class TicketActivityApiTests {
         var unassigned = tickets.unassign(ticket.id(), updated.version());
         notes.add(ticket.id(), new CreateNoteRequest(UUID.randomUUID().toString(), "PRIVATE_NOTE_CANARY", unassigned.version()));
         var current = repository.findById(ticket.id()).orElseThrow();
-        var first = mockAnalysis.createMock(current);
+        var first = mockAnalysis.createFallback(current, "trace-activity-first",
+            com.cyagent.supportcopilot.analysis.FallbackReason.AI_SERVICE_UNAVAILABLE);
         var firstSourceVersion = current.getVersion();
         analysis.persist(ticket.id(), firstSourceVersion, first);
         TestTrustedActors.authenticate("activity-reviewer", "SUPPORT_REVIEWER");
@@ -71,12 +72,14 @@ class TicketActivityApiTests {
         reviews.review(ticket.id(), first.id(), "PRIVATE_REPLY_CANARY");
         reviews.reject(ticket.id(), first.id(), "PRIVATE_REJECTION_CANARY");
         current = repository.findById(ticket.id()).orElseThrow();
-        var second = mockAnalysis.createMock(current);
+        var second = mockAnalysis.createFallback(current, "trace-activity-second",
+            com.cyagent.supportcopilot.analysis.FallbackReason.AI_SERVICE_UNAVAILABLE);
         analysis.persist(ticket.id(), current.getVersion(), second);
         reviews.review(ticket.id(), second.id(), second.suggestedReply().content());
         var unrelated = create();
         var unrelatedTicket = repository.findById(unrelated.id()).orElseThrow();
-        var unrelatedAnalysis = mockAnalysis.createMock(unrelatedTicket);
+        var unrelatedAnalysis = mockAnalysis.createFallback(unrelatedTicket, "trace-activity-unrelated",
+            com.cyagent.supportcopilot.analysis.FallbackReason.AI_SERVICE_UNAVAILABLE);
         analysis.persist(unrelated.id(), unrelatedTicket.getVersion(), unrelatedAnalysis);
         reviews.review(unrelated.id(), unrelatedAnalysis.id(), unrelatedAnalysis.suggestedReply().content());
 

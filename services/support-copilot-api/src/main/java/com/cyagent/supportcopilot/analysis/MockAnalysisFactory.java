@@ -46,7 +46,7 @@ public class MockAnalysisFactory {
 			: lowEvidence ? FallbackReason.INSUFFICIENT_EVIDENCE : null;
 		var escalation = fallback
 			|| List.of("BILLING", "PRIVACY", "ACCOUNT_ACCESS", "DATA_RECOVERY").contains(category);
-		var hits = lowEvidence ? List.<RetrievalHit>of() : hitsFor(category);
+		var hits = fallback ? List.<RetrievalHit>of() : hitsFor(category);
 		var effectiveMode = fallback ? "fallback" : mode;
 
 		return new AnalysisResponse(

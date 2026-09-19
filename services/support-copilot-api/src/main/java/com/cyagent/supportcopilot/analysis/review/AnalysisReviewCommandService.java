@@ -30,14 +30,17 @@ public class AnalysisReviewCommandService {
 		String replyContent,
 		IdempotencyKey key
 	) {
+		reviewService.requireReadable(ticketId, analysisId);
 		var request = commandRequestFactory.review(key, ticketId, analysisId, replyContent);
-		return idempotencyCoordinator.execute(
+		var response = idempotencyCoordinator.execute(
 			request,
 			AnalysisReviewResponse.class,
 			ownership -> reviewService.reviewIdempotent(
 				new IdempotentAnalysisReview(ticketId, analysisId, replyContent, ownership)
 			)
 		);
+		reviewService.requireReadable(ticketId, analysisId);
+		return response;
 	}
 
 	public AnalysisReviewResponse reject(
@@ -46,13 +49,16 @@ public class AnalysisReviewCommandService {
 		String reason,
 		IdempotencyKey key
 	) {
+		reviewService.requireReadable(ticketId, analysisId);
 		var request = commandRequestFactory.reject(key, ticketId, analysisId, reason);
-		return idempotencyCoordinator.execute(
+		var response = idempotencyCoordinator.execute(
 			request,
 			AnalysisReviewResponse.class,
 			ownership -> reviewService.rejectIdempotent(
 				new IdempotentAnalysisReview(ticketId, analysisId, reason, ownership)
 			)
 		);
+		reviewService.requireReadable(ticketId, analysisId);
+		return response;
 	}
 }

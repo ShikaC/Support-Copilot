@@ -21,6 +21,7 @@ final class AnalysisReviewTestFixture {
 		var jwt = Jwt.withTokenValue("synthetic-reviewer-jwt")
 			.header("alg", "none")
 			.subject("service-test-reviewer")
+			.claim("support_scopes", List.of("BILLING"))
 			.build();
 		var authentication = new JwtAuthenticationToken(
 			jwt,

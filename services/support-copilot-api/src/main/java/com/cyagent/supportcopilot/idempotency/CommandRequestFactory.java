@@ -4,6 +4,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
+
+import com.cyagent.supportcopilot.identity.TrustedActorProvider;
+import com.cyagent.supportcopilot.knowledge.KnowledgeScope;
+import com.cyagent.supportcopilot.knowledge.TrustedSupportScopeProvider;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -19,9 +24,17 @@ public class CommandRequestFactory {
 	private static final String REJECT_ROUTE = REVIEW_ROUTE + "/reject";
 
 	private final ObjectMapper objectMapper;
+	private final TrustedActorProvider actorProvider;
+	private final TrustedSupportScopeProvider scopeProvider;
 
-	public CommandRequestFactory(ObjectMapper objectMapper) {
+	public CommandRequestFactory(
+		ObjectMapper objectMapper,
+		TrustedActorProvider actorProvider,
+		TrustedSupportScopeProvider scopeProvider
+	) {
 		this.objectMapper = objectMapper;
+		this.actorProvider = actorProvider;
+		this.scopeProvider = scopeProvider;
 	}
 
 	public CommandRequest creation(IdempotencyKey key, com.cyagent.supportcopilot.ticket.TicketDtos.CreateTicketRequest payload) {
@@ -63,12 +76,16 @@ public class CommandRequestFactory {
 		String analysisId,
 		String normalizedPayload
 	) {
+		var actor = actorProvider.currentActor();
 		var canonical = new CanonicalCommand(
 			commandType.name(),
 			routeScope,
 			ticketId,
 			analysisId,
-			normalizedPayload
+			normalizedPayload,
+			actor.type().name(),
+			actor.subject(),
+			KnowledgeScope.names(scopeProvider.currentScopes().stream().distinct().sorted().toList())
 		);
 		return new CommandRequest(key, commandType, routeScope, sha256(serialize(canonical)));
 	}
@@ -94,7 +111,10 @@ public class CommandRequestFactory {
 		String routeScope,
 		String ticketId,
 		String analysisId,
-		String normalizedPayload
+		String normalizedPayload,
+		String actorType,
+		String actorSubject,
+		List<String> supportScopes
 	) {
 	}
 }

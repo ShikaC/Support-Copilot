@@ -13,9 +13,14 @@ public final class TestTrustedActors {
 	}
 
 	public static void authenticate(String subject, String... roles) {
+		authenticateWithScopes(subject, java.util.List.of(), roles);
+	}
+
+	public static void authenticateWithScopes(String subject, java.util.List<String> scopes, String... roles) {
 		var jwt = Jwt.withTokenValue("synthetic-trusted-test-jwt")
 			.header("alg", "none")
 			.subject(subject)
+			.claim("support_scopes", scopes)
 			.build();
 		var authorities = Arrays.stream(roles)
 			.map(role -> new SimpleGrantedAuthority("ROLE_" + role))

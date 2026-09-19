@@ -32,6 +32,7 @@ class AnalysisServiceTests {
 	private final AnalysisPersistenceService persistenceService = mock(AnalysisPersistenceService.class);
 	private final AiServiceClient aiServiceClient = mock(AiServiceClient.class);
 	private final MockAnalysisFactory fallbackFactory = new MockAnalysisFactory();
+	private final AnalysisResponseAccessPolicy accessPolicy = mock(AnalysisResponseAccessPolicy.class);
 	private final AnalysisService analysisService = new AnalysisService(
 		ticketRepository,
 		analysisRunRepository,
@@ -39,8 +40,14 @@ class AnalysisServiceTests {
 		new AnalysisSingleFlightCoordinator(),
 		aiServiceClient,
 		fallbackFactory,
-		mock(ObjectMapper.class)
+		mock(ObjectMapper.class),
+		accessPolicy
 	);
+
+	@org.junit.jupiter.api.BeforeEach
+	void permitSyntheticUnitResponses() {
+		when(accessPolicy.requireReadable(any())).thenAnswer(invocation -> invocation.getArgument(0));
+	}
 
 	@Test
 	void namedAiServiceFailureIsPersistedAsFallback() {
@@ -57,6 +64,19 @@ class AnalysisServiceTests {
 		// Then: the named reason survives into the result passed to persistence.
 		assertThat(response.fallbackReason()).isEqualTo(FallbackReason.AI_SERVICE_UNAVAILABLE);
 		verify(persistenceService).persist(ticket.getId(), ticket.getVersion(), response);
+	}
+
+	@Test
+	void inaccessibleAiResponseIsRejectedBeforePersistence() {
+		var ticket = ticket();
+		when(ticketRepository.findById(ticket.getId())).thenReturn(Optional.of(ticket));
+		var response = fallbackFactory.createMock(ticket);
+		when(aiServiceClient.analyze(eq(ticket), anyString())).thenReturn(response);
+		when(accessPolicy.requireReadable(response)).thenThrow(
+			new org.springframework.security.access.AccessDeniedException("Restricted evidence"));
+		assertThatThrownBy(() -> analysisService.analyze(ticket.getId()))
+			.isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+		verify(persistenceService, never()).persist(anyString(), anyLong(), any());
 	}
 
 	@Test

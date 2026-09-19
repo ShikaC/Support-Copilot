@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -21,6 +22,8 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.cyagent.supportcopilot.analysis.AnalysisCommandService;
 import com.cyagent.supportcopilot.common.TestTrustedActors;
+import com.cyagent.supportcopilot.common.CanonicalAnalysisFixture;
+import com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStore;
 import com.cyagent.supportcopilot.ticket.TicketRepository;
 
 @EnabledIfEnvironmentVariable(named = "SUPPORT_COPILOT_RUN_MYSQL_TESTS", matches = "true")
@@ -39,8 +42,7 @@ class CommandIdempotencyMySqlIntegrationTests {
 			var secondContext = rig.startContext()) {
 			var ticket = rig.ticket("ticket-mysql-concurrent");
 			firstContext.getBean(TicketRepository.class).saveAndFlush(ticket);
-			var response = firstContext.getBean(com.cyagent.supportcopilot.analysis.MockAnalysisFactory.class)
-				.createMock(ticket);
+			var response = CanonicalAnalysisFixture.create(ticket, firstContext.getBean(KnowledgeCorpusStore.class));
 			rig.aiServer().respondWith(firstContext.getBean(ObjectMapper.class).writeValueAsString(response));
 			rig.aiServer().block();
 			com.cyagent.supportcopilot.analysis.AnalysisResponse original;
@@ -85,15 +87,16 @@ class CommandIdempotencyMySqlIntegrationTests {
 		)); var abandoned = rig.startContext()) {
 			var ticket = rig.ticket("ticket-mysql-owner-recovery");
 			abandoned.getBean(TicketRepository.class).saveAndFlush(ticket);
+			TestTrustedActors.authenticateWithScopes("mysql-idempotency-agent", List.of("BILLING"), "SUPPORT_AGENT");
 			var request = abandoned.getBean(CommandRequestFactory.class)
 				.analysis(IdempotencyKey.parse("mysql-owner-recovery-0001"), ticket.getId());
+			TestTrustedActors.clear();
 			assertThat(abandoned.getBean(CommandIdempotencyStore.class).resolve(request))
 				.isInstanceOf(CommandResolution.Owned.class);
 			abandoned.close();
 
 			try (var restarted = rig.startContext()) {
-				var response = restarted.getBean(com.cyagent.supportcopilot.analysis.MockAnalysisFactory.class)
-					.createMock(ticket);
+				var response = CanonicalAnalysisFixture.create(ticket, restarted.getBean(KnowledgeCorpusStore.class));
 				rig.aiServer().respondWith(restarted.getBean(ObjectMapper.class).writeValueAsString(response));
 
 				assertThat(analyze(restarted, ticket.getId(), "mysql-owner-recovery-0001"))
@@ -123,7 +126,7 @@ class CommandIdempotencyMySqlIntegrationTests {
 		String ticketId,
 		String key
 	) {
-		TestTrustedActors.authenticate("mysql-idempotency-agent", "SUPPORT_AGENT");
+		TestTrustedActors.authenticateWithScopes("mysql-idempotency-agent", List.of("BILLING"), "SUPPORT_AGENT");
 		try {
 			return context.getBean(AnalysisCommandService.class).analyze(ticketId, IdempotencyKey.parse(key));
 		} finally {

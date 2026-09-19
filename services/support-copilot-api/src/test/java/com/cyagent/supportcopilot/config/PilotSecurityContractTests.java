@@ -33,7 +33,6 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 import com.cyagent.supportcopilot.analysis.AnalysisPersistenceService;
 import com.cyagent.supportcopilot.analysis.AnalysisRunRepository;
-import com.cyagent.supportcopilot.analysis.MockAnalysisFactory;
 import com.cyagent.supportcopilot.analysis.review.AnalysisReviewRepository;
 import com.cyagent.supportcopilot.common.SyntheticJwt;
 import com.cyagent.supportcopilot.ticket.Ticket;
@@ -57,7 +56,7 @@ class PilotSecurityContractTests {
 	private AnalysisReviewRepository analysisReviewRepository;
 
 	@Autowired
-	private MockAnalysisFactory mockAnalysisFactory;
+	private com.cyagent.supportcopilot.knowledge.KnowledgeCorpusStore corpus;
 
 	@Autowired
 	private AnalysisPersistenceService analysisPersistenceService;
@@ -238,7 +237,8 @@ class PilotSecurityContractTests {
 	}
 
 	private String signedJwt(String role, String subject) throws Exception {
-		return SyntheticJwt.signed(testJwtSecret, role, subject);
+		return SyntheticJwt.signed(testJwtSecret, role, subject,
+			java.util.Map.of("support_scopes", java.util.List.of("ACCOUNT")));
 	}
 
 	private String reviewPath(String analysisId) {
@@ -247,7 +247,7 @@ class PilotSecurityContractTests {
 
 	private String saveReviewableAnalysis() {
 		var ticket = saveTicket();
-		var analysis = mockAnalysisFactory.createMock(ticket);
+		var analysis = com.cyagent.supportcopilot.common.CanonicalAnalysisFixture.create(ticket, corpus);
 		var jwt = Jwt.withTokenValue("synthetic-security-fixture-jwt")
 			.header("alg", "none")
 			.subject("security-fixture-agent")
