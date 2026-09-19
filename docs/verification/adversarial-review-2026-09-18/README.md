@@ -2,6 +2,30 @@
 
 状态：已实现、已完成各模块回归和本地发布安全门禁（2026-09-19）。本轮已确认问题均已修复，有界复查未发现剩余阻断项。审查没有证明绝对无 bug；结论限于下面的检查范围和明确列出的未验证项。远端推送与 CI 状态需另行核对，不能由本地通过推出。
 
+## 首次远端 CI 与干净检出修复（2026-09-19）
+
+首次已成功将 `093cd52b1d3de1d04959c66d001bd99b3fe2ca52` 正常推送到 `origin/master`，当时本地工作树 clean。GitHub 四条 CI 随后失败，揭示本地已有产物与 runner 工具差异；原失败记录保留：[Python](https://github.com/ShikaC/Support-Copilot/actions/runs/35417277711)、[Java](https://github.com/ShikaC/Support-Copilot/actions/runs/35417277758)、[React](https://github.com/ShikaC/Support-Copilot/actions/runs/35417277715)、[release](https://github.com/ShikaC/Support-Copilot/actions/runs/35417277717)。此前本地 PASS 不能代表这些远端运行通过。
+
+- Python 的查询上下文测试导入了 Git 忽略的历史 `planned-inputs.json`，CI 收集失败。现在把同一份 13 条公开 development 输入逐字节保存到测试 fixture，并记录来源与 SHA-256；完整上下文与 distinct query 断言保留。干净归档还复现了两个 CLI help 测试硬编码 `.venv/bin/python` 的失败，现使用 `sys.executable`。
+- Java/React 的报告契约测试读取了未入库的历史报告。改为共用 `tests/fixtures/quality-reports` 中明确标记的人工合成样本，保留正常、证据不足、超时、并发分组、不同 case 计数及未人审语义。Java 仍使用 manifest 固定摘要，另验证有效 JSON 增加一个空格后必须为 `INVALID`；没有更改生产解析器或放宽断言。真实历史报告继续留在原地。
+- Release runner 缺少 `rg`，且没有明确安装扫描证据测试需要的 Python/pytest。工作流新增固定 SHA 的 Python 3.11 setup、现有 hash lock 安装及系统 ripgrep 安装。没有关闭任一检查。
+- 继续在实际 GNU tar 1.35 上复现快照复制失败：`-C` 在 `-T` 之后会被忽略并退出 2。三处复制命令改为先设置目录再读取文件列表；有效载荷保持一致，GNU tar 下完整 aggregate contract 通过。
+
+四个修复提交：`3820d25`（CI 依赖）、`ff7c079`（Python fixture/解释器）、`1c26356`（共享报告 fixture）、`1ae47ce`（GNU tar 参数顺序）。该阶段代码边界为 `1ae47cec91526ab234fe298315c0e667cd4fbb26`，之后仅更新本说明。
+
+验证使用 `git archive 093cd52` 加各自明确改动的独立源码目录，没有复制 `.env`、服务 `.venv`、本地历史报告或既有 build。依赖使用已安装的解释器/包缓存；这些是本地干净检出证据，下一次 GitHub Linux 运行仍需单独观察：
+
+| 检查 | 结果 | 本地日志 |
+| --- | --- | --- |
+| Python `verify-ci-gates.sh --mode python` | 依赖锁通过、**413 passed**、**31 条 mock 评估通过** | `python-clean-aggregate-green.log` |
+| Java `./gradlew test --no-daemon` | **336 tests，0 failures/errors，14 skipped**，5 个 tasks 实际执行 | `java-ci-clean.log` |
+| React `npm test` / lint / Node / build:budget | **108 passed，3 skipped**；lint 通过、Node **12 passed**、四项构建预算通过 | `frontend-ci-{unit,lint,node,build}.log` |
+| React `npm run test:e2e` | **21 passed**，干净副本、真实 Chromium、本地 mock API；端口清理完成 | `frontend-ci-e2e.log` |
+| GNU tar 原参数 / 新参数及完整契约 | **退出 2 → 退出 0**；payload 一致；完整 contract PASS | `gnu-tar/reproduction.log`、`gnu-tar/contract-after.log` |
+| fixture 独立复查与扫描 | 6 个 fixture 均通过；Python 13 个 ID 全属 development；无凭据、客户数据、模型原文、gold 或 holdout；报告 manifest 摘要一致 | `ci-fixture-{input-review,report-review,gitleaks}.json` |
+
+后续推送及最新四条 CI 结果以最终交付消息和该提交的 GitHub Actions 为准；不要重新运行旧付费批次修复测试输入，也不要把合成报告当成真实模型质量证据。
+
 ## 范围与基线
 
 - 用户明确要求进行对抗式审查，修复发现的问题后推送 GitHub。
