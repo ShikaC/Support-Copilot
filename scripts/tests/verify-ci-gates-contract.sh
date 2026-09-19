@@ -179,7 +179,7 @@ PY
 mkdir -p "$fixture_repo" "$shim_dir" "$fallback_shim_dir" "$bootstrap_bin_dir" \
 	"$wrong_tool_dir" "$fixture_tmpdir" \
 	"$(dirname "$venv_python")"
-git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$fixture_repo" -xf -
+git -C "$repo_root" ls-files -z | tar -C "$repo_root" --null -T - -cf - | tar -C "$fixture_repo" -xf -
 cp "$repo_root/scripts/publish_scan_evidence.py" "$fixture_publisher"
 cp "$repo_root/scripts/validate_scan_evidence.py" "$fixture_validator"
 cp "$repo_root/services/support-copilot-api/gradle.lockfile" \

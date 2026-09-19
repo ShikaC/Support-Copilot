@@ -576,7 +576,7 @@ dependency_vulnerabilities() (
 	trap cleanup_dependency_workspaces EXIT
 	tracked_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-dependencies.XXXXXX")"
 	scan_workspace="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-scans.XXXXXX")"
-	git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$tracked_snapshot" -xf -
+	git -C "$repo_root" ls-files -z | tar -C "$repo_root" --null -T - -cf - | tar -C "$tracked_snapshot" -xf -
 	java_project="$tracked_snapshot/services/support-copilot-api"
 	cp "$java_project/gradle.lockfile" "$scan_workspace/committed-gradle.lockfile"
 	(
@@ -860,7 +860,7 @@ tracked_secrets() {
   local scan_status=0
   tracked_snapshot="$(mktemp -d "${TMPDIR:-/tmp}/support-copilot-tracked.XXXXXX")"
   trap 'rm -rf "$tracked_snapshot"' RETURN
-  git -C "$repo_root" ls-files -z | tar --null -T - -C "$repo_root" -cf - | tar -C "$tracked_snapshot" -xf -
+  git -C "$repo_root" ls-files -z | tar -C "$repo_root" --null -T - -cf - | tar -C "$tracked_snapshot" -xf -
   (cd "$tracked_snapshot" && "$gitleaks_bin" dir . --config "$repo_root/.gitleaks.toml" \
     --no-banner --redact --exit-code 1) || scan_status=$?
   if [[ $scan_status -eq 0 ]]; then
