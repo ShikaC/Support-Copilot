@@ -77,4 +77,6 @@
 
 测试均使用隔离临时语料、临时目录和合成凭据，不访问真实模型供应方或消耗 holdout。没有新增依赖，Java/React 产品代码未改；本轮没有重新验收 MySQL、Docker、Compose、完整发布演练或真人 RAG 质量。
 
+首次提交 `7ccf9d9` 的文档门禁在 tracked-copy 阶段失败：`probe.json` 虽已显式入库，但通用 `docs/verification/**/*.json` ignore 规则使验证器重新建立的 Git 仓库漏掉它。独立归档确认唯一遗漏就是该 probe；仅补回该文件后 tree 恢复为源 tree `ebc94b3029d2b23afd91a8f370435c7891c36ba4`。现仅为这个已脱敏证据文件增加精确 `.gitignore` 例外，不改验证器、不放宽其他运行产物规则。原失败日志保存在 `.local/index-rebuild-docs-committed-red.log`，修复后已提交门禁结果以最终交付为准。
+
 只有最终通过的任务调度、持久化、故障回归和本地网络演练可以成为新增简历证据；不能由此宣称真实 Embedding 质量、生产容量、完整上传功能或线上成本改善。

@@ -46,6 +46,9 @@ docs/verification/**/*.diff
 docs/verification/**/*-before.py.txt
 docs/verification/**/*-after.py.txt
 
+# Keep this small, sanitized localhost rebuild probe in clean verification copies.
+!docs/verification/index-rebuild-tasks-2026-09-19/probe.json
+
 # Pre-registered comparison protocols and provider checks are review material,
 # not bulk evidence output; keep them in Git even though sibling JSON is ignored.
 !docs/verification/development-comparison-2026-09-11/**
