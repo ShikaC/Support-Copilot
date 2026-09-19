@@ -26,6 +26,16 @@
 
 后续推送及最新四条 CI 结果以最终交付消息和该提交的 GitHub Actions 为准；不要重新运行旧付费批次修复测试输入，也不要把合成报告当成真实模型质量证据。
 
+### 第二次远端运行与 Gitleaks 首次安装
+
+`fbea6b4` 上的 [Python CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35417925013)、[Java CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35417924897)、[React CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35417925035) 已实际通过。Python 为 413 项测试及 31 条 mock 评估；React 为 108 项单测（3 项显式环境跳过）及 21 条 Chromium E2E。与首次失败相比，确认三个服务已能在 GitHub 的干净 Linux runner 上完成门禁。
+
+该提交的 [release CI](https://github.com/ShikaC/Support-Copilot/actions/runs/35417924910) 继续在首次安装 Gitleaks 时失败：v8.30.1 的 `go.mod` 声明 `github.com/zricethezav/gitleaks/v8`，原安装器误用重命名后的仓库地址。修正模块路径后的真实空缓存构建又确认，普通 `go install` 输出的版本是 `version is set by build process`，不能通过现有严格版本检查。本机原先预装的 8.30.1 掩盖了这一首次安装路径。
+
+安装器现使用声明的模块地址，仅为 Gitleaks 按上游方式注入 `version.Version=8.30.1`。Go/工具版本、sumdb、下载校验、安装后版本检查、暂存与锁边界均保留；契约还要求其他工具没有多余 linker 参数。真实构建与契约证据位于 `.local/prepush-review/gitleaks-*bootstrap*.log`。此修复只涉及安装器及其测试，三个业务服务代码和锁文件不变；最终远端 release 结果仍按最后推送 SHA 核对。
+
+本地最终结果：新输出目录中的真实构建返回版本 **8.30.1**，`go version -m` 确认声明模块、固定版本与 linker 参数；真实 secret-scan 对抗控制通过；GNU tar 下完整 aggregate contract **PASS**。失败基线与绿色契约分别保存在 `gitleaks-bootstrap-contract-red.log` 和 `gitleaks-bootstrap-contract-green.log`，真实构建为 `gitleaks-pinned-bootstrap.log`。这些结果绑定 `fbea6b4` 加本节安装器改动，尚不能代替后续远端运行。
+
 ## 范围与基线
 
 - 用户明确要求进行对抗式审查，修复发现的问题后推送 GitHub。
