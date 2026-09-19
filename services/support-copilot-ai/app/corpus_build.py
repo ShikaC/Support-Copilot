@@ -132,7 +132,7 @@ class CorpusBuildManager:
                     source,
                     request,
                     self.storage.directory(status.task_id),
-                    str(Path(node).resolve()),
+                    str(Path(node).absolute()),
                     self.settings.knowledge_corpus_build_timeout_seconds,
                     lease.descriptor,
                 ),

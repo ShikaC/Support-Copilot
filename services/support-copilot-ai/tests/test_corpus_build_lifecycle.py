@@ -1,4 +1,6 @@
 import os
+import shutil
+import sys
 from pathlib import Path
 from threading import Event
 
@@ -16,6 +18,33 @@ from tests.test_corpus_build_api import HEADERS, ROUTE, configure
 
 class InjectedBuilderError(RuntimeError):
     """Unexpected implementation failure used to verify the worker boundary."""
+
+
+def test_node_launcher_symlink_preserves_its_dispatch_name(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checksum = configure(tmp_path, monkeypatch)
+    node = shutil.which("node")
+    assert node is not None
+    launcher = tmp_path / "runtime-launcher"
+    launcher.write_text(
+        f"#!{sys.executable}\nimport os, sys\nfrom pathlib import Path\n"
+        "if Path(sys.argv[0]).name != 'node': sys.exit(64)\n"
+        f"os.execv({node!r}, [{node!r}, *sys.argv[1:]])\n"
+    )
+    launcher.chmod(0o700)
+    alias = tmp_path / "node"
+    alias.symlink_to(launcher)
+    monkeypatch.setattr(main.settings, "knowledge_corpus_node_command", str(alias))
+    with TestClient(main.app, headers=HEADERS) as client:
+        accepted = client.post(
+            ROUTE, json={"expectedSourceChecksum": checksum, "window": 4, "stride": 3}
+        )
+        assert accepted.status_code == 202
+    with TestClient(main.app, headers=HEADERS) as client:
+        finished = client.get(accepted.headers["Location"])
+    assert finished.json()["status"] == "SUCCEEDED"
 
 
 def test_source_snapshot_and_lock_survive_the_request(

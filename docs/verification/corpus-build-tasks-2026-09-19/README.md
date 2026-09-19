@@ -65,7 +65,7 @@ cmp .local/corpus-build-equivalence.ToiQHN/chunk-map.json docs/verification/busi
 
 源文件 46216432 bytes，488 篇文档、1564 片段。语料语义摘要为 `9c1e91d5fff7f1b9f2b2a48efe71275b01035eac88b8ea693df1215b0e307b27`；corpus 文件摘要 `e9c1795210db5a339d33cec6ef048074f93a4ba3e292de6c8aabd53ff5458dcb`；chunk-map 文件摘要 `704116cb9b075adf8173be87abfdbfa507e205a58617441e594f6d4e7d527e62`。原日志保存在 `.local/corpus-build-byte-comparison.log`。实际 HTTP 响应从 pytest JUnit 属性导出到同目录 `probe.json`，不手填成功结果。
 
-最终本地回归：`./scripts/verify-ci-gates.sh --mode python` 通过，467 项 Python 测试与 31 项 mock 评估通过（`.local/corpus-build-python-final.log`）。`actionlint .github/workflows/python-ai-ci.yml` 与 `./scripts/tests/verify-ci-gates-contract.sh` 通过。新 Python 模块/测试的 no-excuse 检查无违规；basedpyright 从服务目录运行时 0 errors，保留 1 条穷尽 match 的 unreachable 分支警告，未用 ignore 隐藏，也不把它描述为零警告。
+最终本地回归：`./scripts/verify-ci-gates.sh --mode python` 通过，468 项 Python 测试与 31 项 mock 评估通过（`.local/corpus-build-python-final.log`）。`actionlint .github/workflows/python-ai-ci.yml` 与 `./scripts/tests/verify-ci-gates-contract.sh` 通过。新 Python 模块/测试的 no-excuse 检查无违规；basedpyright 从服务目录运行时 0 errors，保留 1 条穷尽 match 的 unreachable 分支警告，未用 ignore 隐藏，也不把它描述为零警告。
 
 对抗审查的 Standards 与 Spec 两轴各发现 1 项，指向同一个父进程死亡缺陷：Python SIGKILL 后 Node 继续写入，但锁已释放，父进程的 timeout 也失效。`test_corpus_build_parent_death.py` 先失败（`.local/corpus-build-parent-death-red.log`），继承锁加 Node 自身期限后通过（`.local/corpus-build-parent-death-green.log`）。真实故障注入使用实际入口的临时副本，在 worker 中插入同步阻塞；杀死 Python 后锁保持，Node 到期退出后旧状态恢复为 INTERRUPTED。失败不发布 result。正常 HTTP 与全量回归在修复后重新执行。
 
@@ -76,3 +76,8 @@ cmp .local/corpus-build-equivalence.ToiQHN/chunk-map.json docs/verification/busi
 先阅读 B1 diff 和本说明。下一步只设计并实现“明确选择已成功候选语料 → 对它建索引”的交接，先确认语料/索引配对、显式切换、失败保留旧快照的验收，再扩展 Java/前端；上传解析仍是后续独立切片。不得把 B1 的成功当作自动激活或已授权付费建库。
 
 可用于简历的事实是：复用唯一切片实现，提供有边界的跨进程候选构建任务，验证正常、并发、超时和重启失败语义，并以冻结公开数据做兼容性对拍。不能声称提升回答质量、生产吞吐、真实客户效果、完成 Docker 部署或作者已人工审查。
+
+
+补充复查：`5d16ea4` 的独立 code/QA lane 发现 Node 的符号链接启动器被 `Path.resolve()` 改成其目标程序，导致 mise 按错误名称分发。改为绝对路径但不追踪符号链接，保留启动器身份；新增便携启动器回归先失败后通过（`.local/corpus-build-shim-red.log` / `-green.log`），不继承环境凭据。
+
+证据范围校正：80 项 Node 测试通过是在包含本地历史评测文件的作者工作区执行。干净检出的全量 Node 测试为 66 passed / 4 failed，失败来自未入库的旧 `quality-input-audit` cases / freeze-manifest 等 fixture；基线 `444bbde` 同样未跟踪这些文件，并非 B1 删除。本切片相关的共享切片与 corpus 测试在干净检出中 15 passed。保留历史失败，不补造评测输入，也不将全量干净检出描述为通过。
